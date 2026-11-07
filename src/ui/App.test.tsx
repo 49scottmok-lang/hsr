@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import App from './App';
 import { t } from './i18n';
 import type { Scenario } from './state/scenario';
+import { SCENARIO_STORAGE_KEY } from './state/scenario-storage';
 
 // TEST FIXTURE — NOT GAME DATA
 const draft: Scenario = {
@@ -19,7 +20,11 @@ const draft: Scenario = {
   }, { label: 'Test Team B', team: [], events: [] }],
 };
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  localStorage.clear();
+});
 
 it('loads a draft with issues and displays them on the matching step and shared enemy rows', async () => {
   render(<App />);
@@ -37,4 +42,31 @@ it('loads a draft with issues and displays them on the matching step and shared 
 
   fireEvent.change(within(second!).getByLabelText(t('rotation.target')), { target: { value: 'target' } });
   expect(within(second!).queryByText(targetIssue)).toBeNull();
+});
+
+it('restores an invalid draft, autosaves edits and resets to the default scenario', () => {
+  localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(draft));
+  const { unmount } = render(<App />);
+  expect(screen.getByRole('region', { name: 'Test Team A' })).toBeTruthy();
+  expect(screen.getByText(t('issue.level'))).toBeTruthy();
+  fireEvent.change(screen.getByLabelText(t('enemy.name')), { target: { value: 'Edited target' } });
+  unmount();
+  render(<App />);
+  expect(screen.getByRole('group', { name: 'Edited target' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: t('scenario.reset') }));
+  expect(screen.queryByRole('region', { name: 'Test Team A' })).toBeNull();
+  expect(JSON.parse(localStorage.getItem(SCENARIO_STORAGE_KEY)!)).toMatchObject({ enemies: [], teams: [
+    { label: t('team.a'), team: [], events: [] },
+    { label: t('team.b'), team: [], events: [] },
+  ] });
+});
+
+it('keeps the app editable when localStorage reads and writes throw', () => {
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('Storage denied'); });
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Storage denied'); });
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: t('enemy.add') }));
+  expect(screen.getByLabelText(t('enemy.id'))).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: t('scenario.reset') }));
+  expect(screen.queryByLabelText(t('enemy.id'))).toBeNull();
 });

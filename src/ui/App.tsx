@@ -1,4 +1,4 @@
-import { useReducer, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import type { CritMode } from '../engine/index';
 import { CharacterEditor } from './components/CharacterEditor';
 import { EffectEditor } from './components/EffectEditor';
@@ -11,6 +11,7 @@ import { suggestedBreakLevelMultiplier } from './state/break-level';
 import { scenarioReducer } from './state/reducer';
 import { editorIssues, scenarioIssues } from './state/scenario-issues';
 import { importScenario, type ScenarioImportResult } from './state/scenario-json';
+import { restoreScenario, saveScenario } from './state/scenario-storage';
 import type { Scenario, TeamIndex } from './state/scenario';
 
 const initialScenario: Scenario = {
@@ -24,15 +25,26 @@ const initialScenario: Scenario = {
 const critModes = ['expected', 'crit', 'nonCrit'] as const;
 
 export default function App() {
-  const [scenario, dispatch] = useReducer(scenarioReducer, initialScenario);
+  const [loaded, setLoaded] = useState(restoreScenario);
+  const [scenario, dispatch] = useReducer(scenarioReducer, loaded?.ok ? loaded.scenario : initialScenario);
   const [showResults, setShowResults] = useState(false);
-  const [loaded, setLoaded] = useState<ScenarioImportResult>();
   const issues = editorIssues(scenario, loaded?.ok && loaded.scenario === scenario
     ? loaded.issues
     : showResults || loaded?.ok ? scenarioIssues(scenario) : []);
   const fileRead = useRef(0);
   const nextCharacterNumber = useRef(1);
   const nextEnemyNumber = useRef(1);
+
+  useEffect(() => saveScenario(scenario), [scenario]);
+
+  function resetScenario() {
+    fileRead.current++;
+    setLoaded(undefined);
+    setShowResults(false);
+    nextCharacterNumber.current = 1;
+    nextEnemyNumber.current = 1;
+    dispatch({ type: 'replaceScenario', scenario: initialScenario });
+  }
 
   function loadScenario(result: ScenarioImportResult) {
     setLoaded(result);
@@ -114,6 +126,7 @@ export default function App() {
           if (file) void readScenarioFile(file);
         }} />
       </label>
+      <button type="button" onClick={resetScenario}>{t('scenario.reset')}</button>
       {loaded && !loaded.ok && <div role="alert"><IssueList issues={loaded.issues} /></div>}
       <section aria-label={t('enemy.shared')}>
         <h2>{t('enemy.shared')}</h2>

@@ -246,6 +246,7 @@ export const zhHK = {
   'issue.invalidStructure': '情境檔案的資料結構不正確。',
   'issue.unreadableFile': '無法讀取情境檔案。',
   'scenario.import': '匯入情境 JSON',
+  'scenario.reset': '重設情境',
   'issue.teamSize': '隊伍須有 1 至 4 名角色。',
   'issue.enemyRequired': '至少需要一名敵人。',
   'issue.uniqueIds': '角色及敵人的 ID 不可重複。',

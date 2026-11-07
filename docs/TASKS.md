@@ -80,7 +80,7 @@ Rules for every task:
 
 ### F8. Local persistence
 
-- [ ] Autosave the current scenario to `localStorage`, wrapping access in try/catch. Add a "Reset" button.
+- [x] Autosave the current scenario to `localStorage`, wrapping access in try/catch. Add a "Reset" button.
 - **Acceptance:** the app still works when `localStorage` throws.
 - Note: restore through `importScenario()`. A saved draft with issues (`ok: true`) must still load. Fall back to the default scenario only on `ok: false`.
 
