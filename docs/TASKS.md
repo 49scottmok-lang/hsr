@@ -117,9 +117,9 @@ Rules for every task:
 
 ### F13. Share by link — `src/ui/share/`
 
-- [ ] Encode the current `Scenario` as `#s=<version>.<base64url(compressed JSON)>` in the URL hash, with a "copy link" button. On load, decode it, validate it with `validateRotationInput`, and show any issues.
-- [ ] Include the scenario only. **Strip** anything from an account import except the resulting builds: no UID, no inventory.
-- [ ] Version the format, so that old links either still decode or show a clear "link from an older version" message.
+- [x] Encode the current `Scenario` as `#s=<version>.<base64url(compressed JSON)>` in the URL hash, with a "copy link" button. On load, decode it, validate it with `validateRotationInput`, and show any issues.
+- [x] Include the scenario only. **Strip** anything from an account import except the resulting builds: no UID, no inventory.
+- [x] Version the format, so that old links either still decode or show a clear "link from an older version" message.
 - Note: decode through `importScenario()` so the link reuses its field allowlist, which already drops `uid` and other unknown keys. Still keep the UID test, and also cover the encode side.
 - **Acceptance:** encode → decode gives a deep-equal result (unit test). A tampered link shows a validation error and doesn't crash. A test asserts that a link built from an imported scenario does not contain the UID.
 

@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterEach, expect, it, vi } from 'vitest';
 import App from './App';
 import { t } from './i18n';
+import { decodeScenarioLink, encodeScenarioLink } from './share/scenario-link';
 import type { Scenario } from './state/scenario';
 import { SCENARIO_STORAGE_KEY } from './state/scenario-storage';
 
@@ -24,6 +25,7 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   localStorage.clear();
+  window.history.replaceState(null, '', window.location.pathname);
 });
 
 it('loads a draft with issues and displays them on the matching step and shared enemy rows', async () => {
@@ -69,4 +71,28 @@ it('keeps the app editable when localStorage reads and writes throw', () => {
   expect(screen.getByLabelText(t('enemy.id'))).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: t('scenario.reset') }));
   expect(screen.queryByLabelText(t('enemy.id'))).toBeNull();
+});
+
+it('loads a shared draft with issues and keeps later edits on reload', async () => {
+  window.history.replaceState(null, '', await encodeScenarioLink(draft));
+  const { unmount } = render(<App />);
+  expect(await screen.findByRole('region', { name: 'Test Team A' })).toBeTruthy();
+  expect(screen.getByText(t('issue.level'))).toBeTruthy();
+  expect(window.location.hash).toBe('');
+  fireEvent.change(screen.getByLabelText(t('enemy.name')), { target: { value: 'Edited shared target' } });
+  unmount();
+  render(<App />);
+  expect(screen.getByRole('group', { name: 'Edited shared target' })).toBeTruthy();
+});
+
+it('reports a tampered link and falls back to a selectable link when clipboard access fails', async () => {
+  window.history.replaceState(null, '', '#s=1.eA');
+  localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(draft));
+  render(<App />);
+  expect((await screen.findByRole('alert')).textContent).toContain(t('share.invalidLink'));
+  expect(screen.getByRole('region', { name: 'Test Team A' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: t('share.copy') }));
+  const link = await screen.findByLabelText<HTMLInputElement>(t('share.link'));
+  expect(screen.getByRole('status').textContent).toBe(t('share.copyFailed'));
+  await expect(decodeScenarioLink(new URL(link.value).hash)).resolves.toMatchObject({ ok: true, scenario: draft });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import type { CritMode } from '../engine/index';
 import { CharacterEditor } from './components/CharacterEditor';
 import { EffectEditor } from './components/EffectEditor';
@@ -8,6 +8,8 @@ import { IssueList } from './components/IssueList';
 import { Results } from './components/Results';
 import { RotationEditor } from './components/RotationEditor';
 import { t } from './i18n';
+import { decodeScenarioLink, isScenarioLink } from './share/scenario-link';
+import { ShareButton } from './share/ShareButton';
 import { suggestedBreakLevelMultiplier } from './state/break-level';
 import { scenarioReducer } from './state/reducer';
 import { editorIssues, scenarioIssues } from './state/scenario-issues';
@@ -26,30 +28,56 @@ const initialScenario: Scenario = {
 const critModes = ['expected', 'crit', 'nonCrit'] as const;
 
 export default function App() {
-  const [loaded, setLoaded] = useState(restoreScenario);
-  const [scenario, dispatch] = useReducer(scenarioReducer, loaded?.ok ? loaded.scenario : initialScenario);
+  const [restored] = useState(restoreScenario);
+  const [loaded, setLoaded] = useState(restored?.ok ? restored : undefined);
+  const [loadErrors, setLoadErrors] = useState(restored?.ok === false ? restored.issues : undefined);
+  const [scenario, dispatch] = useReducer(scenarioReducer, loaded?.scenario ?? initialScenario);
   const [showResults, setShowResults] = useState(false);
-  const issues = editorIssues(scenario, loaded?.ok && loaded.scenario === scenario
+  const issues = editorIssues(scenario, loaded?.scenario === scenario
     ? loaded.issues
-    : showResults || loaded?.ok ? scenarioIssues(scenario) : []);
+    : showResults || loaded ? scenarioIssues(scenario) : []);
   const fileRead = useRef(0);
   const nextCharacterNumber = useRef(1);
   const nextEnemyNumber = useRef(1);
 
+  const loadScenario = useCallback((result: ScenarioImportResult) => {
+    setLoadErrors(result.ok ? undefined : result.issues);
+    if (result.ok) {
+      setLoaded(result);
+      dispatch({ type: 'replaceScenario', scenario: result.scenario });
+    }
+  }, []);
+
   useEffect(() => saveScenario(scenario), [scenario]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadLink() {
+      const { hash } = window.location;
+      if (!isScenarioLink(hash)) return;
+      const read = ++fileRead.current;
+      const result = await decodeScenarioLink(hash);
+      if (controller.signal.aborted || read !== fileRead.current || window.location.hash !== hash) return;
+      // Consume the link so subsequent reloads restore the latest local edits.
+      const url = new URL(window.location.href);
+      url.hash = '';
+      window.history.replaceState(window.history.state, '', url);
+      loadScenario(result);
+    }
+    function onHashChange() { void loadLink(); }
+    onHashChange();
+    window.addEventListener('hashchange', onHashChange, { signal: controller.signal });
+    return () => controller.abort();
+  }, [loadScenario]);
 
   function resetScenario() {
     fileRead.current++;
     setLoaded(undefined);
+    setLoadErrors(undefined);
     setShowResults(false);
     nextCharacterNumber.current = 1;
     nextEnemyNumber.current = 1;
     dispatch({ type: 'replaceScenario', scenario: initialScenario });
-  }
-
-  function loadScenario(result: ScenarioImportResult) {
-    setLoaded(result);
-    if (result.ok) dispatch({ type: 'replaceScenario', scenario: result.scenario });
   }
 
   async function readScenarioFile(file: File) {
@@ -128,7 +156,8 @@ export default function App() {
         }} />
       </label>
       <button type="button" onClick={resetScenario}>{t('scenario.reset')}</button>
-      {loaded && !loaded.ok && <div role="alert"><IssueList issues={loaded.issues} /></div>}
+      <ShareButton scenario={scenario} />
+      {loadErrors && <div role="alert"><IssueList issues={loadErrors} /></div>}
       <ImportPanel scenario={scenario} onAdd={(teamIndex, value) => dispatch({
         type: 'editCharacters', teamIndex, edit: { type: 'add', value },
       })} />
