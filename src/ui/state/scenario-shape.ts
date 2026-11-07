@@ -1,18 +1,37 @@
-type Check = (value: unknown) => boolean;
+import type { Scenario } from './scenario';
+
+const invalid = Symbol('invalid scenario shape');
+type Read = (value: unknown) => unknown;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function shape(fields: Readonly<Record<string, Check>>): Check {
-  return (value) => isRecord(value) && Object.entries(fields).every(([key, check]) => check(value[key]));
+function shape(fields: Readonly<Record<string, Read>>): Read {
+  return (value) => {
+    if (!isRecord(value)) return invalid;
+    const result: Record<string, unknown> = {};
+    for (const [key, read] of Object.entries(fields)) {
+      const field = read(value[key]);
+      if (field === invalid) return invalid;
+      if (field !== undefined) result[key] = field;
+    }
+    return result;
+  };
 }
 
-const string: Check = (value) => typeof value === 'string';
-const number: Check = (value) => typeof value === 'number' && Number.isFinite(value);
-const boolean: Check = (value) => typeof value === 'boolean';
-const optional = (check: Check): Check => (value) => value === undefined || check(value);
-const list = (check: Check): Check => (value) => Array.isArray(value) && value.every(check);
+const checked = (check: (value: unknown) => boolean): Read => (value) => check(value) ? value : invalid;
+const string = checked((value) => typeof value === 'string');
+const isNumber = (value: unknown) => typeof value === 'number' && Number.isFinite(value);
+const number = checked(isNumber);
+const boolean = checked((value) => typeof value === 'boolean');
+const oneOf = (...options: string[]): Read => checked((value) => typeof value === 'string' && options.includes(value));
+const optional = (read: Read): Read => (value) => value === undefined ? undefined : read(value);
+const list = (read: Read): Read => (value) => {
+  if (!Array.isArray(value)) return invalid;
+  const result = value.map(read);
+  return result.includes(invalid) ? invalid : result;
+};
 
 // The engine validator expects typed inputs. Check the JSON shape before handing it
 // numbers, enums and references for domain validation.
@@ -26,16 +45,17 @@ const modifier = shape({
     counterpartIds: optional(list(string)),
   })),
 });
+const unitRef = shape({ unitId: string });
 const duration = shape({
   turns: number,
-  tickUnit: (value) => value === 'holder' || value === 'source' || shape({ unitId: string })(value),
-  tickPhase: (value) => value === 'turnStart' || value === 'turnEnd',
+  tickUnit: (value) => value === 'holder' || value === 'source' ? value : unitRef(value),
+  tickPhase: oneOf('turnStart', 'turnEnd'),
   tickOnApplyTurn: optional(boolean),
 });
 const effect = shape({
   id: string,
   name: string,
-  kind: (value) => value === 'buff' || value === 'debuff',
+  kind: oneOf('buff', 'debuff'),
   modifiers: list(modifier),
   duration: optional(duration),
   maxStacks: optional(number),
@@ -61,12 +81,12 @@ const enemy = shape({
   ...unit,
   baseDef: optional(number),
   broken: optional(boolean),
-  res: (value) => isRecord(value) && Object.values(value).every(number),
+  res: (value) => isRecord(value) && Object.values(value).every(isNumber) ? { ...value } : invalid,
 });
 const hit = shape({
   attackerId: optional(string),
   targetId: string,
-  scaling: (value) => value === 'atk' || value === 'hp' || value === 'def',
+  scaling: oneOf('atk', 'hp', 'def'),
   multiplier: number,
   extraMultiplier: optional(number),
   flatDmg: optional(number),
@@ -75,31 +95,39 @@ const hit = shape({
   canCrit: optional(boolean),
   label: optional(string),
 });
-const applyStep = shape({ effect, to: string, sourceId: optional(string), stacks: optional(number) });
-const removeStep = shape({ effectId: string, from: string });
-const brokenStep = shape({ enemyId: string, broken: boolean });
+const stepFields = { op: string, requires: requirement };
+const hitStep = shape({ ...stepFields, hit });
+const applyStep = shape({ ...stepFields, effect, to: string, sourceId: optional(string), stacks: optional(number) });
+const removeStep = shape({ ...stepFields, effectId: string, from: string });
+const brokenStep = shape({ ...stepFields, enemyId: string, broken: boolean });
 
-function step(value: unknown): boolean {
-  if (!isRecord(value) || !requirement(value.requires)) return false;
+function step(value: unknown): unknown {
+  if (!isRecord(value)) return invalid;
   switch (value.op) {
-    case 'hit': return hit(value.hit);
+    case 'hit': return hitStep(value);
     case 'apply': return applyStep(value);
     case 'remove': return removeStep(value);
     case 'setBroken': return brokenStep(value);
-    default: return false;
+    default: return invalid;
   }
 }
 
 const event = shape({
   id: string,
   actorId: string,
-  kind: (value) => value === 'turn' || value === 'extra',
+  kind: oneOf('turn', 'extra'),
   label: optional(string),
   steps: list(step),
 });
 const team = shape({ label: string, team: list(character), events: list(event), cycles: optional(number) });
-export const hasScenarioShape = shape({
+const teams = list(team);
+const scenario = shape({
   enemies: list(enemy),
-  critMode: (value) => value === 'expected' || value === 'crit' || value === 'nonCrit',
-  teams: (value) => Array.isArray(value) && value.length === 2 && value.every(team),
+  critMode: oneOf('expected', 'crit', 'nonCrit'),
+  teams: (value) => Array.isArray(value) && value.length === 2 ? teams(value) : invalid,
 });
+
+export function readScenario(value: unknown): Scenario | undefined {
+  const result = scenario(value);
+  return result === invalid ? undefined : result as Scenario;
+}

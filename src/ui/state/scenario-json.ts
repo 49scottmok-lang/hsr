@@ -1,9 +1,9 @@
-import { validateRotationInput } from '../../engine/index';
+import { ELEMENTS, validateRotationInput } from '../../engine/index';
 import { toRotationInput, type Scenario } from './scenario';
-import { hasScenarioShape } from './scenario-shape';
+import { readScenario } from './scenario-shape';
 
 export type ScenarioImportResult =
-  | { ok: true; scenario: Scenario; issues: readonly [] }
+  | { ok: true; scenario: Scenario; issues: readonly string[] }
   | { ok: false; issues: readonly string[] };
 
 export function exportScenario(scenario: Scenario): string {
@@ -17,12 +17,22 @@ export function importScenario(json: string): ScenarioImportResult {
   } catch {
     return { ok: false, issues: ['Scenario: invalid JSON'] };
   }
-  if (!hasScenarioShape(data)) return { ok: false, issues: ['Scenario: invalid structure'] };
+  const scenario = readScenario(data);
+  if (!scenario) return { ok: false, issues: ['Scenario: invalid structure'] };
 
-  // The shape check makes validation safe. The engine checks domain values and references.
-  const scenario = data as Scenario;
-  const issues = ([0, 1] as const).flatMap((index) =>
-    validateRotationInput(toRotationInput(scenario, index)).map((issue) => `teams[${index}].${issue}`),
-  );
-  return issues.length > 0 ? { ok: false, issues } : { ok: true, scenario, issues: [] };
+  const issues = new Set<string>();
+  for (const index of [0, 1] as const) {
+    for (const issue of validateRotationInput(toRotationInput(scenario, index))) {
+      const shared = issue.startsWith('enemies:') || issue.startsWith('enemies[');
+      issues.add(shared ? issue : `teams[${index}].${issue}`);
+    }
+  }
+
+  // Let validation report unknown RES elements before dropping their keys.
+  const enemies = scenario.enemies.map((enemy) => ({
+    ...enemy,
+    res: Object.fromEntries(ELEMENTS.filter((element) => Object.hasOwn(enemy.res, element))
+      .map((element) => [element, enemy.res[element]])),
+  }));
+  return { ok: true, scenario: { ...scenario, enemies }, issues: [...issues] };
 }

@@ -122,10 +122,51 @@ describe('scenario JSON', () => {
       { ...scenario.teams[0], cycles: -1 },
       { ...scenario.teams[1], events: [{ ...event, steps: [] }] },
     ] };
-    expect(importScenario(exportScenario(invalid))).toEqual({ ok: false, issues: [
+    expect(importScenario(exportScenario(invalid))).toStrictEqual({ ok: true, scenario: invalid, issues: [
       'teams[0].cycles: must be a positive number',
       'teams[1].events[0]: actor "a" is not a unit',
     ] });
+  });
+
+  it('round-trips a draft with an empty Team B', () => {
+    const draft: Scenario = { ...scenario, teams: [scenario.teams[0], { ...scenario.teams[1], team: [] }] };
+    expect(importScenario(exportScenario(draft))).toStrictEqual({ ok: true, scenario: draft, issues: [
+      'teams[1].team: must contain 1 to 4 characters',
+    ] });
+  });
+
+  it('reports each shared enemy issue once', () => {
+    const draft = { ...scenario, enemies: [{ ...enemy, level: 0, res: { ...enemy.res, unknown: 0.1 } }] };
+    expect(importScenario(JSON.stringify(draft))).toStrictEqual({
+      ok: true,
+      scenario: { ...scenario, enemies: [{ ...enemy, level: 0 }] },
+      issues: [
+        'enemies[0]: level must be an integer >= 1',
+        'enemies[0].res: unknown element "unknown"',
+      ],
+    });
+  });
+
+  it('drops unknown keys at every level of the imported scenario', () => {
+    const withExtras = {
+      ...scenario,
+      uid: 'synthetic-test-value',
+      teams: [{
+        ...scenario.teams[0],
+        extraTeam: true,
+        team: [{ ...character, extraCharacter: true }],
+        events: [{ ...event, steps: event.steps.map((step) => step.op === 'apply' ? {
+          ...step,
+          extraStep: true,
+          effect: { ...step.effect, extraEffect: true },
+        } : step) }],
+      }, scenario.teams[1]],
+    };
+    const result = importScenario(JSON.stringify(withExtras));
+    expect(result).toStrictEqual({ ok: true, scenario, issues: [] });
+    if (result.ok) {
+      expect(exportScenario(result.scenario)).not.toMatch(/"(?:uid|extraTeam|extraCharacter|extraStep|extraEffect)"/);
+    }
   });
 
   it('returns an issue for invalid JSON', () => {
