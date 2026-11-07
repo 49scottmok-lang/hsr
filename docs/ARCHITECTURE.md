@@ -39,19 +39,20 @@ Engine independence is enforced three ways (and the same three cover `src/data` 
 | `formulas.ts` | One function per formula in `FORMULAS.md`, plus the documented constants. | yes |
 | `stats.ts` | Modifier collection, condition matching, final unit stats. | yes |
 | `damage.ts` | `resolveHitStats` → `computeBreakdown` → `calculateHit`. | yes |
+| `breakDamage.ts` | Break and Super Break DMG (E4): `computeBreakBreakdown`, `calculateBreakHit`. | yes |
 | `effects.ts` | Buff/debuff lifecycle: `applyEffect`, `removeEffect`, `tickEffects`. | yes (returns new state) |
 | `rotation.ts` | `createInitialState`, `runRotation` (manual rotation engine). | yes |
 | `compare.ts` | `compareTeams`. | yes |
 | `validate.ts` | `validateRotationInput`, `EngineValidationError`. | yes |
 | `index.ts` | **Public API.** The only import path for UI code. | — |
 
-`formulas` (exported as a namespace) also holds the stat-table level formulas `promotedBaseStat` and `relicMainStatValue` (added 2026-11-07, `FORMULAS.md § Level scaling`).
+`formulas` (exported as a namespace) also holds the stat-table level formulas `promotedBaseStat` and `relicMainStatValue` (added 2026-11-07, `FORMULAS.md § Level scaling`), and the break formulas `BREAK_ELEMENT_FACTOR`, `breakToughnessFactor`, `breakBaseDmg`, `superBreakToughness`, `superBreakBaseDmg` and `breakEffectMultiplier` (E4, `FORMULAS.md § Break DMG`).
 
 ## Data and import modules
 
 | Module | Public API (`index.ts`) |
 |---|---|
-| `src/data` | `DATA_TABLES`, record types (`CharacterRecord`, `LightConeRecord`, `RelicMainStatRecord`, `SetBonusRecord`, `TraceRecord`), `validateDataTables`, lookups `characterBase`, `lightConeBase`, `relicMainStat`, `setBonus2pc`, `statTrace` (each returns `{ ok: true, value } \| { ok: false, reason }` or `undefined`), the pinned `DATA_COMMIT` / `DATA_GAME_VERSION`, and `DATA_CREDITS` / `GAME_DATA_NOTICE` (D4). |
+| `src/data` | `DATA_TABLES`, record types (`CharacterRecord`, `LightConeRecord`, `RelicMainStatRecord`, `SetBonusRecord`, `TraceRecord`), `validateDataTables`, lookups `characterBase`, `lightConeBase`, `relicMainStat`, `setBonus2pc`, `statTrace`, `breakLevelMultiplier` (E4) (each returns `{ ok: true, value } \| { ok: false, reason }` or `undefined`), the pinned `DATA_COMMIT` / `DATA_GAME_VERSION`, `DATA_CREDITS` / `GAME_DATA_NOTICE` (D4), and the Traditional Chinese `NAME_TABLES` with `validateNameTables` and the lookups `characterName`, `lightConeName`, `relicSetName`, `pathName` (D5). |
 | `src/import` | `parseArchive(json)` (I1): checks and normalises a Reliquary Archiver export, drops the UID, gacha and materials, and returns `{ ok: true, archive, warnings } \| { ok: false, errors }`. `importArchive(archive, tables)` (I2) returns `{ builds, report }`: one `CharacterBuild` per character the tables cover, plus an `ImportReport` whose items (`lookedUp`, `toEnter`, `problems`) are structured with a `kind` so the UI can translate them. |
 
 All engine functions are deterministic. None mutates its inputs, and this is tested. `CombatState` is treated as immutable.
@@ -60,14 +61,15 @@ All engine functions are deterministic. None mutates its inputs, and this is tes
 
 Full definitions are in `src/engine/types.ts`.
 
-- **`CharacterBuild`**: id, level, element, base HP/ATK/DEF/SPD, optional base CRIT, `lightCone` (base stats plus passive `EffectDef[]`), `relics` (summed `StatModifier[]` plus set-bonus `EffectDef[]`), `traces`, `passiveEffects`.
-- **`EnemyConfig`**: id, level, optional `baseDef`, per-element `res`, initial `broken`, `passiveEffects`.
+- **`CharacterBuild`**: id, level, element, base HP/ATK/DEF/SPD, optional base CRIT, optional `breakLevelMultiplier` (E4), `lightCone` (base stats plus passive `EffectDef[]`), `relics` (summed `StatModifier[]` plus set-bonus `EffectDef[]`), `traces`, `passiveEffects`.
+- **`EnemyConfig`**: id, level, optional `baseDef`, per-element `res`, initial `broken`, optional `maxToughness` (displayed units, E4), `passiveEffects`.
 - **`StatModifier`**: `{ stat, value, condition? }`. The condition can filter on hit element, damage tags (any-of), or counterpart unit IDs.
-- **`EffectDef`** (buff or debuff): id, kind, modifiers, optional `DurationSpec`, `maxStacks`, `source`.
+- **`EffectDef`** (buff or debuff): id, kind, modifiers, optional `DurationSpec`, `maxStacks`, `stacking` (E5), `source`.
 - **`EffectInstance`**: a live effect on a holder, with stacks, remaining turns, resolved tick unit, and the skip flag.
 - **`CombatState`**: units by ID, effect instances, and the active turn unit.
 - **`HitSpec`**: attacker, target, scaling stat, multiplier, element, tags, and `canCrit`.
-- **`RotationEvent`**: either `turn` (ticks durations at the start and end) or `extra` (no ticking). Each holds ordered `ActionStep`s: `apply`, `remove`, `hit` or `setBroken`.
+- **`RotationEvent`**: either `turn` (ticks durations at the start and end) or `extra` (no ticking). Each holds ordered `ActionStep`s: `apply`, `remove`, `hit`, `break` or `setBroken`.
+- **`BreakHitSpec`** (E4, the `break` step): `kind: 'break'` (Break DMG, optional `multiplier`) or `kind: 'superBreak'` (`toughnessReduction`, optional `breakEfficiency` and `fixedToughnessReduction`, `multiplier`). Its `HitResult` has `break: BreakDetails`, no tags, `canCrit: false`, and `breakdown.baseDmg` that already includes 1 + Break Effect.
 - **`RotationResult`**: per-hit `HitResult` (stats and breakdown), per-event log, totals by attacker and tag, per-cycle damage, and final state.
 
 ### Holder-side modifier semantics
@@ -103,6 +105,7 @@ runRotation(input):
         remove  → removeEffect
         setBroken
         hit     → calculateHit against the CURRENT state → HitResult
+        break   → calculateBreakHit against the CURRENT state → HitResult (with .break)
      if turn:  tick(actor, turnEnd); activeTurn = none
   aggregate totals
 ```
@@ -110,7 +113,7 @@ runRotation(input):
 - The engine does **not** simulate SPD, action order, energy, or toughness. The user's event list is the authority.
 - Effects applied in a step affect every later step in the same event, but not earlier ones.
 - Duration ticking is explicit per effect (`DurationSpec.tickUnit` / `tickPhase`). By default, an effect that ticks at `turnEnd` and is applied during its tick unit's own turn is **not** decremented at the end of that turn. Set `tickOnApplyTurn` to change this. The game behaviour behind this default is **UNVERIFIED** (see `KNOWN_LIMITATIONS.md`).
-- Re-applying the same effect ID to the same holder replaces its definition, adds stacks up to `maxStacks`, and resets the duration. This is an **ASSUMPTION**.
+- Re-applying the same effect ID to the same holder follows the effect's `stacking` policy (E5, `STACKING_POLICIES`): `refresh` (default) replaces the definition, adds stacks up to `maxStacks` and restarts the duration; `noRefresh` keeps the live instance and only adds stacks; `independent` adds a separate instance with its own duration, and `maxStacks` caps the holder's total by trimming the oldest instances. Only the default is an **ASSUMPTION** (KNOWN_LIMITATIONS A1).
 
 ## Team comparison
 

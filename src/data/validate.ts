@@ -28,6 +28,8 @@ export const DATA_LIMITS = {
   relicFlatMax: 1000,
   /** Largest flat value a trace or 2-piece bonus may grant. */
   bonusFlatMax: 100,
+  /** Break DMG level multiplier rows: levels 1–`level`, values up to `value`. */
+  breakLevelMultiplier: { level: 200, value: 20000 },
 } as const;
 
 const COMMIT_RE = /^[0-9a-f]{40}$/;
@@ -35,7 +37,7 @@ const REPO_RE = /^[\w.-]+\/[\w.-]+$/;
 const VERSION_RE = /^\d+\.\d+(\.\d+)?$/;
 const ID_RE = /^\d+$/;
 
-type Push = (path: string, message: string) => void;
+export type Push = (path: string, message: string) => void;
 
 function inRange(push: Push, path: string, v: number, min: number, max: number, minExclusive = false): void {
   const low = minExclusive ? v <= min : v < min;
@@ -44,7 +46,7 @@ function inRange(push: Push, path: string, v: number, min: number, max: number, 
   }
 }
 
-function checkCited(push: Push, path: string, r: Cited): void {
+export function checkCited(push: Push, path: string, r: Cited): void {
   // Records come from generated code, but a hand edit could drop these fields,
   // so check presence before shape.
   const source = (r as Partial<Cited>).source;
@@ -105,7 +107,7 @@ function checkUnsupported(push: Push, path: string, list: readonly UnsupportedPr
   });
 }
 
-function checkUnique(push: Push, path: string, keys: readonly string[]): void {
+export function checkUnique(push: Push, path: string, keys: readonly string[]): void {
   const seen = new Set<string>();
   keys.forEach((k, i) => {
     if (seen.has(k)) push(`${path}[${i}]`, `duplicate key ${k}`);
@@ -193,6 +195,19 @@ export function validateDataTables(tables: DataTables): DataIssue[] {
     checkUnsupported(push, `${p}.unsupported`, t.unsupported);
   });
   checkUnique(push, 'traces', tables.traces.map((t) => `${t.characterId}/${t.tree}/${t.trace}`));
+
+  const lim = DATA_LIMITS.breakLevelMultiplier;
+  tables.breakLevelMultipliers.forEach((r, i) => {
+    const p = `breakLevelMultipliers[${i}]`;
+    checkCited(push, p, r);
+    if (!Number.isInteger(r.level)) push(`${p}.level`, 'must be an integer');
+    inRange(push, `${p}.level`, r.level, 1, lim.level);
+    inRange(push, `${p}.value`, r.value, 0, lim.value, true);
+    // A higher level never lowers the multiplier; a drop means a misread column.
+    const prev = tables.breakLevelMultipliers[i - 1];
+    if (prev && (r.level <= prev.level || r.value < prev.value)) push(p, 'levels must ascend and values must not decrease');
+  });
+  checkUnique(push, 'breakLevelMultipliers', tables.breakLevelMultipliers.map((r) => String(r.level)));
 
   return issues;
 }

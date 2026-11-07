@@ -1,10 +1,12 @@
 import {
   DAMAGE_TAGS,
   ELEMENTS,
+  STACKING_POLICIES,
   STAT_KEYS,
   type CharacterBuild,
   type EffectDef,
   type EnemyConfig,
+  type BreakHitSpec,
   type HitSpec,
   type Requirement,
   type RotationInput,
@@ -22,6 +24,8 @@ export class EngineValidationError extends Error {
 
 const isFiniteNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const isPosInt = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 1;
+const isPosNum = (v: unknown): v is number => isFiniteNum(v) && v > 0;
+const isNonNeg = (v: unknown): v is number => isFiniteNum(v) && v >= 0;
 
 function checkModifier(m: StatModifier, path: string, out: string[]): void {
   if (!(STAT_KEYS as readonly string[]).includes(m.stat)) out.push(`${path}: unknown stat "${m.stat}"`);
@@ -50,6 +54,9 @@ function checkEffect(def: EffectDef, path: string, unitIds: Set<string>, out: st
   if (def.maxStacks !== undefined && !isPosInt(def.maxStacks)) {
     out.push(`${path}: maxStacks must be an integer >= 1`);
   }
+  if (def.stacking !== undefined && !(STACKING_POLICIES as readonly string[]).includes(def.stacking)) {
+    out.push(`${path}: unknown stacking policy "${String(def.stacking)}"`);
+  }
   const d = def.duration;
   if (d) {
     if (!isPosInt(d.turns)) out.push(`${path}: duration.turns must be an integer >= 1`);
@@ -63,6 +70,9 @@ function checkBuild(b: CharacterBuild, path: string, unitIds: Set<string>, out: 
   if (!isPosInt(b.level)) out.push(`${path}: level must be an integer >= 1`);
   if (!(ELEMENTS as readonly string[]).includes(b.element)) out.push(`${path}: unknown element "${b.element}"`);
   if (b.eidolon !== undefined && !isIntIn(b.eidolon, 0, 6)) out.push(`${path}: eidolon must be an integer 0–6`);
+  if (b.breakLevelMultiplier !== undefined && !isPosNum(b.breakLevelMultiplier)) {
+    out.push(`${path}.breakLevelMultiplier: must be a positive number`);
+  }
   if (b.lightCone?.superimposition !== undefined && !isIntIn(b.lightCone.superimposition, 1, 5)) {
     out.push(`${path}.lightCone: superimposition must be an integer 1–5`);
   }
@@ -87,6 +97,7 @@ function checkEnemy(e: EnemyConfig, path: string, unitIds: Set<string>, out: str
   if (e.baseDef !== undefined && (!isFiniteNum(e.baseDef) || e.baseDef < 0)) {
     out.push(`${path}.baseDef: must be a finite number >= 0`);
   }
+  if (e.maxToughness !== undefined && !isPosNum(e.maxToughness)) out.push(`${path}.maxToughness: must be a positive number`);
   for (const [el, v] of Object.entries(e.res)) {
     if (!(ELEMENTS as readonly string[]).includes(el)) out.push(`${path}.res: unknown element "${el}"`);
     if (!isFiniteNum(v)) out.push(`${path}.res.${el}: must be a finite number`);
@@ -116,6 +127,43 @@ function checkHit(
   if (h.tags.length === 0) out.push(`${path}: at least one damage tag is required`);
   for (const t of h.tags) {
     if (!(DAMAGE_TAGS as readonly string[]).includes(t)) out.push(`${path}: unknown damage tag "${t}"`);
+  }
+}
+
+function checkBreakHit(
+  h: BreakHitSpec,
+  defaultAttacker: string,
+  path: string,
+  input: RotationInput,
+  out: string[],
+): void {
+  const attackerId = h.attackerId ?? defaultAttacker;
+  const attacker = input.team.find((b) => b.id === attackerId);
+  if (!attacker) out.push(`${path}: attacker "${attackerId}" must be a team member`);
+  else if (attacker.breakLevelMultiplier === undefined) {
+    out.push(`${path}: attacker "${attackerId}" needs a breakLevelMultiplier for break hits`);
+  }
+  const target = input.enemies.find((e) => e.id === h.targetId);
+  if (!target) out.push(`${path}: target "${h.targetId}" must be an enemy`);
+  if (h.element !== undefined && !(ELEMENTS as readonly string[]).includes(h.element)) {
+    out.push(`${path}: unknown element "${h.element}"`);
+  }
+  if (h.kind === 'break') {
+    if (target && target.maxToughness === undefined) {
+      out.push(`${path}: target "${h.targetId}" needs a maxToughness for Break DMG`);
+    }
+    if (h.multiplier !== undefined && !isNonNeg(h.multiplier)) out.push(`${path}: multiplier must be a finite number >= 0`);
+  } else if (h.kind === 'superBreak') {
+    if (!isNonNeg(h.toughnessReduction)) out.push(`${path}: toughnessReduction must be a finite number >= 0`);
+    if (h.breakEfficiency !== undefined && !isNonNeg(h.breakEfficiency)) {
+      out.push(`${path}: breakEfficiency must be a finite number >= 0`);
+    }
+    if (h.fixedToughnessReduction !== undefined && !isNonNeg(h.fixedToughnessReduction)) {
+      out.push(`${path}: fixedToughnessReduction must be a finite number >= 0`);
+    }
+    if (!isNonNeg(h.multiplier)) out.push(`${path}: multiplier must be a finite number >= 0`);
+  } else {
+    out.push(`${path}: unknown break kind "${String((h as { kind: unknown }).kind)}"`);
   }
 }
 
@@ -168,6 +216,9 @@ export function validateRotationInput(input: RotationInput): string[] {
           break;
         case 'setBroken':
           if (!enemies.has(st.enemyId)) out.push(`${sp}: "${st.enemyId}" is not an enemy`);
+          break;
+        case 'break':
+          checkBreakHit(st.hit, ev.actorId, sp, input, out);
           break;
       }
     });

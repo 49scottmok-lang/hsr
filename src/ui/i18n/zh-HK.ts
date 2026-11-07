@@ -95,6 +95,7 @@ export const zhHK = {
   'rotation.step.apply': '施加效果',
   'rotation.step.remove': '解除效果',
   'rotation.step.setBroken': '切換擊破狀態',
+  'rotation.step.break': '擊破傷害',
   'rotation.add.hit': '新增命中',
   'rotation.add.apply': '新增施加效果',
   'rotation.add.remove': '新增解除效果',

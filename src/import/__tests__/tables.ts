@@ -92,4 +92,8 @@ export const IMPORT_TABLES: DataTables = {
     },
     trace(1, 'critDmg', 0.04, 'enhanced'),
   ],
+  breakLevelMultipliers: [
+    { ...cite, level: 60, value: 2000 },
+    { ...cite, level: 80, value: 4000 },
+  ],
 };

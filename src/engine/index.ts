@@ -6,6 +6,8 @@ export * from './types';
 export * as formulas from './formulas';
 export { computeBreakdown, calculateHit, resolveHitStats, defaultCanCrit } from './damage';
 export type { DamageInput, CalculatedHit } from './damage';
+export { computeBreakBreakdown, calculateBreakHit } from './breakDamage';
+export type { BreakDamageInput, CalculatedBreakHit } from './breakDamage';
 export { resolveUnitStats, conditionMatches } from './stats';
 export type { HitContext, ResolvedUnitStats } from './stats';
 export { applyEffect, removeEffect, tickEffects, resolveUnitRef, meetsRequirement, unitEidolon } from './effects';

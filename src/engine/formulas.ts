@@ -2,6 +2,7 @@
  * Pure formula functions. Each corresponds 1:1 to a section in docs/FORMULAS.md.
  * No state, no defaults hidden here beyond the documented constants.
  */
+import type { Element } from './types';
 
 /** §Base CRIT: every character's base CRIT Rate / CRIT DMG. */
 export const DEFAULT_BASE_CRIT_RATE = 0.05;
@@ -111,6 +112,50 @@ export function mitigationMultiplier(mitigations: readonly number[]): number {
 /** §Toughness */
 export function brokenMultiplier(broken: boolean): number {
   return broken ? 1 : UNBROKEN_MULTIPLIER;
+}
+
+/**
+ * §Break DMG: element factor by the attacker's element. Cross-checked
+ * against R1 (`ElementToBreakScaling`, calculateContext.ts@dd0c4af).
+ */
+export const BREAK_ELEMENT_FACTOR: Readonly<Record<Element, number>> = {
+  physical: 2,
+  fire: 2,
+  ice: 1,
+  lightning: 1,
+  wind: 1.5,
+  quantum: 0.5,
+  imaginary: 0.5,
+};
+
+/** §Break DMG: 0.5 + MaxToughness / 40, with Toughness in displayed units. */
+export function breakToughnessFactor(maxToughness: number): number {
+  return 0.5 + maxToughness / 40;
+}
+
+/** §Break DMG: LevelMultiplier × ElementFactor × ToughnessFactor × Multiplier. */
+export function breakBaseDmg(
+  levelMultiplier: number,
+  elementFactor: number,
+  maxToughness: number,
+  multiplier: number,
+): number {
+  return levelMultiplier * elementFactor * breakToughnessFactor(maxToughness) * multiplier;
+}
+
+/** §Super Break DMG: (1 + Weakness Break Efficiency) × reduction + fixed reduction. */
+export function superBreakToughness(toughnessReduction: number, breakEfficiency: number, fixedToughnessReduction: number): number {
+  return (1 + breakEfficiency) * toughnessReduction + fixedToughnessReduction;
+}
+
+/** §Super Break DMG: LevelMultiplier × Toughness / 10 × Multiplier, with Toughness in displayed units. */
+export function superBreakBaseDmg(levelMultiplier: number, toughness: number, multiplier: number): number {
+  return (levelMultiplier * toughness * multiplier) / 10;
+}
+
+/** §Break DMG / §Super Break DMG: 1 + Break Effect. */
+export function breakEffectMultiplier(breakEffect: number): number {
+  return 1 + breakEffect;
 }
 
 /** §Action Value: AV = 10000 / SPD. Utility only; the rotation engine is manual. */

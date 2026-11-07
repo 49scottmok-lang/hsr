@@ -27,8 +27,8 @@ export type Element = (typeof ELEMENTS)[number];
 /**
  * In-game DMG type tags that buffs can condition on. A single hit may carry
  * several tags (e.g. a hit that "counts as" both Follow-up ATK DMG and
- * Ultimate DMG). Break / Super Break DMG are intentionally absent: they use a
- * different formula that is out of MVP scope (docs/KNOWN_LIMITATIONS.md).
+ * Ultimate DMG). Break / Super Break DMG are not tags: they are separate
+ * `break` steps with their own formula (docs/FORMULAS.md § Break DMG).
  */
 export const DAMAGE_TAGS = [
   'basic',
@@ -149,6 +149,21 @@ export interface Requirement {
   minEidolon?: number;
 }
 
+/**
+ * What re-applying an effect (same `id`, same holder) does. Abilities differ,
+ * so each effect states its own rule (TASKS E5; replaces assumption A1).
+ *
+ * - `refresh` (default): replace the definition and source, add stacks up to
+ *   `maxStacks`, and restart the duration.
+ * - `noRefresh`: keep the live instance (definition, source, remaining
+ *   turns) and only add stacks up to `maxStacks`. With one stack, nothing happens.
+ * - `independent`: every application is its own instance with its own
+ *   duration. `maxStacks` caps the holder's total stacks; when it is exceeded
+ *   the oldest instances lose stacks first.
+ */
+export const STACKING_POLICIES = ['refresh', 'noRefresh', 'independent'] as const;
+export type StackingPolicy = (typeof STACKING_POLICIES)[number];
+
 /** Definition of a buff or debuff. Pure data; instances live in CombatState. */
 export interface EffectDef {
   /**
@@ -156,15 +171,17 @@ export interface EffectDef {
    * always-on effects (light cone, relic sets, passives) the source is the holder.
    */
   requires?: Requirement;
-  /** Stable ID. Re-applying the same ID to the same holder refreshes it. */
+  /** Stable ID. Re-applying the same ID to the same holder follows `stacking`. */
   id: string;
   name: string;
   kind: 'buff' | 'debuff';
   modifiers: readonly StatModifier[];
   /** Absent = permanent until explicitly removed. */
   duration?: DurationSpec;
-  /** Default 1. */
+  /** Default 1. With `independent` stacking, the cap on the holder's total stacks. */
   maxStacks?: number;
+  /** Re-application rule. Default `refresh`. */
+  stacking?: StackingPolicy;
   /** Free-form source citation for the numbers (required by data/ policy, optional in engine). */
   source?: string;
 }
@@ -219,6 +236,12 @@ export interface CharacterBuild {
   element: Element;
   /** Eidolon level 0–6 (default 0). Gates effects and rotation steps via `requires`. */
   eidolon?: number;
+  /**
+   * Break DMG level multiplier at this character's level, needed only for
+   * `break` steps. Caller-supplied; `src/data` has the sourced table
+   * (`breakLevelMultiplier`), and the account import fills it in.
+   */
+  breakLevelMultiplier?: number;
   /** Character base HP/ATK/DEF at the chosen level/ascension. */
   base: BaseStats & { spd: number };
   /** Base CRIT. Defaults: 0.05 / 0.5 (see docs/FORMULAS.md §Base CRIT). */
@@ -248,6 +271,11 @@ export interface EnemyConfig {
   res: Partial<Record<Element, number>>;
   /** Initial toughness-broken state. Default false. */
   broken?: boolean;
+  /**
+   * Max Toughness in displayed units (a Basic ATK typically reduces 10).
+   * Needed only for Break DMG (`break` steps of kind 'break'). Caller-supplied.
+   */
+  maxToughness?: number;
   /** Always-on enemy effects (e.g. innate damage reduction). */
   passiveEffects?: readonly EffectDef[];
 }
@@ -297,6 +325,53 @@ export interface HitSpec {
   /** Defaults to false if tags include 'dot', otherwise true. */
   canCrit?: boolean;
   label?: string;
+}
+
+interface BreakHitBase {
+  /** Defaults to the enclosing action's actorId. */
+  attackerId?: string;
+  targetId: string;
+  /** Defaults to the attacker's element. Sets the Break DMG element factor and the RES used. */
+  element?: Element;
+  label?: string;
+}
+
+/** Break DMG, dealt when the attacker breaks the target's Toughness (docs/FORMULAS.md § Break DMG). */
+export interface BreakDmgSpec extends BreakHitBase {
+  kind: 'break';
+  /** Fraction of the full Break DMG, for abilities that deal "X% of Break DMG". Default 1. */
+  multiplier?: number;
+}
+
+/** Super Break DMG, dealt by a hit against a broken target (docs/FORMULAS.md § Super Break DMG). */
+export interface SuperBreakDmgSpec extends BreakHitBase {
+  kind: 'superBreak';
+  /** The triggering hit's Toughness reduction in displayed units, before Weakness Break Efficiency. */
+  toughnessReduction: number;
+  /** Weakness Break Efficiency of the triggering hit (fraction). Default 0. */
+  breakEfficiency?: number;
+  /** Toughness reduction that Weakness Break Efficiency does not scale. Default 0. */
+  fixedToughnessReduction?: number;
+  /** Super Break DMG multiplier, the sum of the active sources (e.g. 1.5 for 150%). Caller-supplied. */
+  multiplier: number;
+}
+
+export type BreakHitSpec = BreakDmgSpec | SuperBreakDmgSpec;
+
+/** The break-specific inputs of a break hit, for display. */
+export interface BreakDetails {
+  kind: BreakHitSpec['kind'];
+  levelMultiplier: number;
+  /** Break only. */
+  elementFactor?: number;
+  /** Break only: the target's max Toughness. */
+  maxToughness?: number;
+  /** Super Break only: (1 + breakEfficiency) × toughnessReduction + fixedToughnessReduction. */
+  toughness?: number;
+  multiplier: number;
+  breakEffect: number;
+  /** 1 + breakEffect. Already included in the breakdown's `baseDmg`. */
+  breakEffectMultiplier: number;
 }
 
 /** Fully resolved inputs used for one hit (useful for UI breakdowns and tests). */
@@ -351,6 +426,11 @@ export interface HitResult {
   stats: ResolvedHitStats;
   breakdown: DamageBreakdown;
   damage: number;
+  /**
+   * Set for Break and Super Break DMG (`break` steps). Such hits have no tags
+   * and never crit, and their `breakdown.baseDmg` already includes 1 + Break Effect.
+   */
+  break?: BreakDetails;
 }
 
 // ---------------------------------------------------------------------------
@@ -362,13 +442,14 @@ export type UnitRef = string | 'allAllies' | 'allEnemies';
 
 /**
  * One step of a rotation event. `requires` skips the step unless its source
- * unit meets it: hit → attacker, apply → sourceId, otherwise the event actor.
+ * unit meets it: hit and break → attacker, apply → sourceId, otherwise the event actor.
  * This lets one rotation be reused across eidolon levels.
  */
 export type ActionStep = { requires?: Requirement } & (
   | { op: 'apply'; effect: EffectDef; to: UnitRef; sourceId?: string; stacks?: number }
   | { op: 'remove'; effectId: string; from: UnitRef }
   | { op: 'hit'; hit: HitSpec }
+  | { op: 'break'; hit: BreakHitSpec }
   | { op: 'setBroken'; enemyId: string; broken: boolean }
 );
 

@@ -7,7 +7,7 @@
  * (F11); `message` is an English fallback. Nothing is rounded.
  */
 import type { CharacterBuild, EffectDef, LightCone, StatKey, StatModifier } from '../engine';
-import { characterBase, lightConeBase, relicMainStat, setBonus2pc, statTrace, STAT_TRACES } from '../data';
+import { breakLevelMultiplier, characterBase, lightConeBase, relicMainStat, setBonus2pc, statTrace, STAT_TRACES } from '../data';
 import type { DataSource, DataTables, RelicSlot, StatTrace, TraceTree } from '../data';
 import type { Archive, ArchiveCharacter, ArchiveRelic, SubstatKey } from './archive';
 
@@ -30,6 +30,7 @@ export const SUBSTAT_TARGETS: Readonly<Record<SubstatKey, { readonly stat: StatK
 /** Something filled in from the stat tables. */
 export type LookedUpItem =
   | { readonly kind: 'characterBase'; readonly message: string }
+  | { readonly kind: 'breakLevelMultiplier'; readonly level: number; readonly message: string }
   | { readonly kind: 'lightConeBase'; readonly lightConeId: string; readonly message: string }
   | { readonly kind: 'relicMainStat'; readonly slot: RelicSlot; readonly mainstat: string; readonly message: string }
   | { readonly kind: 'setBonus2pc'; readonly setId: string; readonly message: string }
@@ -46,7 +47,11 @@ export type ToEnterItem =
 
 /** Something that could not be imported as-is. */
 export type ProblemItem =
-  | { readonly kind: 'tableMiss'; readonly what: 'character' | 'lightCone' | 'relicMainStat' | 'trace'; readonly message: string }
+  | {
+      readonly kind: 'tableMiss';
+      readonly what: 'character' | 'lightCone' | 'relicMainStat' | 'trace' | 'breakLevelMultiplier';
+      readonly message: string;
+    }
   | { readonly kind: 'unsupportedStat'; readonly property: string; readonly value: number; readonly message: string }
   | { readonly kind: 'traceTree'; readonly tree: TraceTree; readonly message: string };
 
@@ -220,6 +225,12 @@ function importCharacter(
     return finish();
   }
   r.lookedUp.push({ kind: 'characterBase', message: `base stats at level ${c.level}, ascension ${c.ascension}` });
+  const breakLevel = breakLevelMultiplier(tables, c.level);
+  if (breakLevel.ok) {
+    r.lookedUp.push({ kind: 'breakLevelMultiplier', level: c.level, message: `break DMG level multiplier at level ${c.level}` });
+  } else {
+    r.problems.push({ kind: 'tableMiss', what: 'breakLevelMultiplier', message: breakLevel.reason });
+  }
 
   let lightCone: LightCone | undefined;
   const lc = archive.lightCones.find((l) => l.location === c.id);
@@ -256,6 +267,7 @@ function importCharacter(
     base: base.value.base,
     baseCritRate: base.value.critRate,
     baseCritDmg: base.value.critDmg,
+    ...(breakLevel.ok ? { breakLevelMultiplier: breakLevel.value } : {}),
     ...(lightCone ? { lightCone } : {}),
     relics: { stats: mergeModifiers(relicMods), setEffects: sets },
     traces: mergeModifiers(traces),

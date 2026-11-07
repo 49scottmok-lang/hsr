@@ -107,6 +107,7 @@ describe('importArchive (I2) with the synthetic fixture (I3)', () => {
     const r = report.builds[0]!;
     expect(r.lookedUp.map((i) => i.kind)).toEqual([
       'characterBase',
+      'breakLevelMultiplier',
       'lightConeBase',
       'relicMainStat',
       'relicMainStat',
@@ -119,6 +120,21 @@ describe('importArchive (I2) with the synthetic fixture (I3)', () => {
     expect(r.toEnter.map((i) => i.kind)).toEqual(['kit', 'eidolonEffects', 'lightConePassive']);
     expect(r.toEnter[2]).toMatchObject({ lightConeId: '9101', superimposition: 3 });
     expect(r.problems).toEqual([]);
+  });
+
+  it('fills the break level multiplier for the build level from the table', () => {
+    expect(builds[0]!.breakLevelMultiplier).toBe(4000); // fixture row for level 80
+  });
+
+  it('reports a table miss, and leaves the field out, when the level has no break row', () => {
+    const tables = { ...IMPORT_TABLES, breakLevelMultipliers: [] };
+    const out = importArchive(parse(), tables);
+    expect(out.builds[0]!.breakLevelMultiplier).toBeUndefined();
+    expect(out.report.builds[0]!.problems).toContainEqual({
+      kind: 'tableMiss',
+      what: 'breakLevelMultiplier',
+      message: 'no break level multiplier for level 80',
+    });
   });
 });
 

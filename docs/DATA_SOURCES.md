@@ -101,3 +101,43 @@ Cross-check against B (`crosscheck-b.test.ts`, all passing):
 | Trace stat and value | all 1040 traces, against `traceTree` (enhanced trees against B's `…b1` entries) |
 | 2-piece value appears in B's set text | all 54 sets |
 | Nothing B flags unreleased; known coverage gap | see Decision |
+
+## Names (D5, 2026-11-07)
+
+Display names in Traditional Chinese come from **source A at the same pinned commit**, so they always match the stat tables. They are the game's own 繁體中文 text, not translations of ours.
+
+| Table | A files | Join |
+|---|---|---|
+| Paths (命途) | `AvatarBaseType` | `BaseTypeText.Hash` → `TextMap/TextMapCHT.json`. The row without an `ID` (通用) is skipped. |
+| Characters | `AvatarConfig`, `MultiplePathAvatarConfig` | `AvatarName.Hash`; path from `AvatarBaseType`. |
+| Light cones | `EquipmentConfig` | `EquipmentName.Hash`; path from `AvatarBaseType`. |
+| Relic sets | `RelicSetConfig` | `SetName.Hash`. |
+
+- **Text hashes are 64-bit integers.** `JSON.parse` would round them, so the generator quotes `"Hash"` values before parsing (`parseExcelJson`).
+- **Markup.** The only markup in any name is `<unbreak>…</unbreak>` around "999" in 1506's name (銀狼LV.999). The generator removes that tag and fails on any other markup.
+- **Trailblazer.** A's name for 8001–8010 is `{NICKNAME}`, the player's chosen name. The record has `name: null`, and its gender from `MultiplePathAvatarConfig` (`GENDER_MAN` / `GENDER_WOMAN`). The UI supplies its own label.
+- **Shared names.** 1001 and 1224 are both 三月七 (存護 and 巡獵). The validator requires name + path to be unique.
+- The same `Release: true` filter as the stat tables gives 94 characters, 170 light cones, 62 relic sets and 9 paths. Every stat-table record has a name (`names.test.ts`).
+
+Cross-check against B's `public/locales/zh_TW/gameData.yaml` at `dd0c4af` (`crosscheck-b.test.ts`): every name and path name matches, except for these differences, each of which the test lists explicitly:
+
+| Difference | Count | Which is right |
+|---|---|---|
+| B prefixes some characters with `⚰️ ` | 10 characters | A. The prefix is B's own marker. |
+| B shows the Trailblazer's default names 穹 (male) / 星 (female) | 10 characters | Both. A has the nickname placeholder. The genders agree. |
+| B's zh_TW file still has Simplified text | LC 23055 and sets 133 and 134 | A. It has the Traditional text. |
+
+## Break DMG level multiplier (E4, 2026-11-07)
+
+`breakLevelMultipliers` comes from source A's `ExcelOutput/AvatarBreakDamage.json` at the pinned commit: one `BreakBaseDamage` value per attacker level, for levels 1–100 and 120 (101 rows), copied exactly. `breakLevelMultiplier(tables, level)` returns only a listed level. The validator requires ascending levels and values that never decrease.
+
+Cross-check against B (`crosscheck-b.test.ts`). B hard-codes the attacker at level 80:
+
+| Check | Result |
+|---|---|
+| A's level-80 value against B's `3767.5533` in `damageCalculator.ts` | A has `3767.5535`. They agree to 3 decimals, a difference of 0.0002. |
+| Element factors against B's `ElementToBreakScaling` (`calculateContext.ts`) | Equal for all 7 elements |
+| Toughness units: B's `0.5 + T / 120` with T stored ×3 (`EnemyConfigurationsDrawer.tsx`, label `toughness / 3`) against the engine's `0.5 + T / 40` with T displayed | Equal |
+| B's Super Break base `(3767.5533 / 10) × toughness` | Equal to the engine's `superBreakBaseDmg` |
+
+Levels other than 80 have no second source (**[UNVERIFIED]**, `FORMULAS.md § Break DMG`).

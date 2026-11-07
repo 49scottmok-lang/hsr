@@ -31,9 +31,9 @@ function resolveTickUnit(def: EffectDef, holderId: string, sourceId: string): st
 /**
  * Apply an effect to one holder. Returns a new state.
  *
- * Re-application rule (ASSUMPTION, docs/KNOWN_LIMITATIONS.md): if an instance
- * with the same def.id already exists on the holder, it is replaced by the new
- * definition, stacks are added (capped at maxStacks), and duration is reset.
+ * Re-application follows `def.stacking` (default `refresh`), see
+ * `StackingPolicy` in types.ts. Existing instances are matched by holder and
+ * `def.id`.
  */
 export function applyEffect(
   state: CombatState,
@@ -44,7 +44,17 @@ export function applyEffect(
 ): CombatState {
   if (!state.units[holderId]) throw new Error(`Unknown holder: ${holderId}`);
   const maxStacks = def.maxStacks ?? 1;
-  const existing = state.effects.find((e) => e.holderId === holderId && e.def.id === def.id);
+  const policy = def.stacking ?? 'refresh';
+  const same = (e: EffectInstance) => e.holderId === holderId && e.def.id === def.id;
+  const existing = state.effects.find(same);
+
+  if (policy === 'noRefresh' && existing) {
+    // Only the stack count changes; definition, source and duration stay.
+    const next = Math.min(maxStacks, existing.stacks + stacks);
+    if (next === existing.stacks) return state;
+    return { ...state, effects: state.effects.map((e) => (e === existing ? { ...e, stacks: next } : e)) };
+  }
+
   const tickUnitId = resolveTickUnit(def, holderId, sourceId);
   const skipNextTick =
     def.duration !== undefined &&
@@ -52,16 +62,34 @@ export function applyEffect(
     !def.duration.tickOnApplyTurn &&
     state.activeTurnUnitId !== undefined &&
     state.activeTurnUnitId === tickUnitId;
-
-  const instance: EffectInstance = {
+  const fresh = (n: number): EffectInstance => ({
     def,
     holderId,
     sourceId,
-    stacks: Math.min(maxStacks, (existing?.stacks ?? 0) + stacks),
+    stacks: n,
     remainingTurns: def.duration?.turns,
     tickUnitId,
     skipNextTick,
-  };
+  });
+
+  if (policy === 'independent') {
+    const added = Math.min(maxStacks, stacks);
+    // Trim the oldest instances (earliest in the list) so the total stays within maxStacks.
+    let excess = state.effects.filter(same).reduce((n, e) => n + e.stacks, 0) + added - maxStacks;
+    const effects: EffectInstance[] = [];
+    for (const e of state.effects) {
+      if (excess > 0 && same(e)) {
+        const cut = Math.min(excess, e.stacks);
+        excess -= cut;
+        if (e.stacks > cut) effects.push({ ...e, stacks: e.stacks - cut });
+        continue;
+      }
+      effects.push(e);
+    }
+    return { ...state, effects: [...effects, fresh(added)] };
+  }
+
+  const instance = fresh(Math.min(maxStacks, (existing?.stacks ?? 0) + stacks));
   const effects = existing
     ? state.effects.map((e) => (e === existing ? instance : e))
     : [...state.effects, instance];

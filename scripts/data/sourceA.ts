@@ -90,6 +90,11 @@ export interface RawSkillTreePoint {
   StatusAddList: { PropertyType: string; Value: Num }[];
 }
 
+export interface RawAvatarBreakDamage {
+  Level: number;
+  BreakBaseDamage: Num;
+}
+
 export interface RawSourceA {
   avatars: RawAvatar[];
   avatarPromotions: RawAvatarPromotion[];
@@ -100,6 +105,7 @@ export interface RawSourceA {
   relicSets: RawRelicSet[];
   relicSetSkills: RawRelicSetSkill[];
   skillTree: RawSkillTreePoint[];
+  avatarBreakDamage: RawAvatarBreakDamage[];
 }
 
 // --- Output shapes (records without the citation, added by the writer) -----
@@ -138,12 +144,17 @@ export interface TraceRow {
   modifiers: StatModifier[];
   unsupported: UnsupportedProperty[];
 }
+export interface BreakLevelMultiplierRow {
+  level: number;
+  value: number;
+}
 export interface TablesA {
   characters: CharacterRow[];
   lightCones: LightConeRow[];
   relicMainStats: RelicMainStatRow[];
   setBonuses: SetBonusRow[];
   traces: TraceRow[];
+  breakLevelMultipliers: BreakLevelMultiplierRow[];
 }
 
 // --- Helpers -----------------------------------------------------------------
@@ -347,5 +358,155 @@ export function transformSourceA(raw: RawSourceA): TablesA {
   }
   traces.sort((x, y) => byNumber(x.characterId, y.characterId) || x.tree.localeCompare(y.tree) || byNumber(x.pointId, y.pointId));
 
-  return { characters, lightCones, relicMainStats, setBonuses, traces };
+  // Break DMG level multipliers, one row per attacker level, copied as is.
+  const seenLevels = new Set<number>();
+  const breakLevelMultipliers: BreakLevelMultiplierRow[] = raw.avatarBreakDamage
+    .map((r) => {
+      if (!Number.isInteger(r.Level) || seenLevels.has(r.Level)) throw new Error(`break level ${r.Level}: duplicate or not an integer`);
+      seenLevels.add(r.Level);
+      const value = v(r.BreakBaseDamage);
+      if (!(value > 0)) throw new Error(`break level ${r.Level}: BreakBaseDamage ${value} is not positive`);
+      return { level: r.Level, value };
+    })
+    .sort((x, y) => x.level - y.level);
+
+  return { characters, lightCones, relicMainStats, setBonuses, traces, breakLevelMultipliers };
+}
+
+// --- Display names (Traditional Chinese) ------------------------------------
+
+/** A text-map reference. Hashes are 64-bit, so the loader keeps them as strings. */
+export interface TextHash {
+  Hash: string;
+}
+export interface RawNamedAvatar extends RawAvatar {
+  AvatarName: TextHash;
+  AvatarBaseType: string;
+}
+export interface RawNamedEquipment extends RawEquipment {
+  EquipmentName: TextHash;
+  AvatarBaseType: string;
+}
+export interface RawNamedRelicSet extends RawRelicSet {
+  SetName: TextHash;
+}
+export interface RawAvatarBaseType {
+  /** Missing on the "general" row, which no character or light cone uses. */
+  ID?: string;
+  BaseTypeText: TextHash;
+}
+export interface RawMultiplePathAvatar {
+  AvatarID: number;
+  Gender?: string;
+}
+export interface RawNamesA {
+  avatars: RawNamedAvatar[];
+  equipment: RawNamedEquipment[];
+  relicSets: RawNamedRelicSet[];
+  baseTypes: RawAvatarBaseType[];
+  multiplePathAvatars: RawMultiplePathAvatar[];
+  /** `TextMap/TextMapCHT.json`: hash → text. */
+  textMap: Record<string, string>;
+}
+
+export interface PathNameRow {
+  id: string;
+  name: string;
+}
+export interface CharacterNameRow {
+  id: string;
+  name: string | null;
+  path: string;
+  gender?: 'male' | 'female';
+}
+export interface LightConeNameRow {
+  id: string;
+  name: string;
+  path: string;
+}
+export interface RelicSetNameRow {
+  setId: string;
+  name: string;
+}
+export interface NamesA {
+  paths: PathNameRow[];
+  characters: CharacterNameRow[];
+  lightCones: LightConeNameRow[];
+  relicSets: RelicSetNameRow[];
+}
+
+/** The text the game swaps for the player's nickname. */
+export const NICKNAME_PLACEHOLDER = '{NICKNAME}';
+
+/**
+ * Removes the one markup tag seen in names (`<unbreak>`, a no-line-break hint
+ * around "999" in 1506's name) and rejects anything else that looks like
+ * markup, so a new tag fails the generator instead of reaching the UI.
+ */
+export function cleanName(text: string, where: string): string {
+  const s = text.replace(/<\/?unbreak>/g, '');
+  if (/[<>{}]/.test(s)) throw new Error(`${where}: unexpected markup in ${JSON.stringify(text)}`);
+  if (s === '' || s !== s.trim()) throw new Error(`${where}: empty or untrimmed name ${JSON.stringify(text)}`);
+  return s;
+}
+
+const GENDERS: Readonly<Record<string, 'male' | 'female'>> = { GENDER_MAN: 'male', GENDER_WOMAN: 'female' };
+
+export function transformNames(raw: RawNamesA): NamesA {
+  const text = (h: TextHash | undefined, where: string): string => {
+    const t = h ? raw.textMap[h.Hash] : undefined;
+    if (t === undefined) throw new Error(`${where}: text hash ${h?.Hash ?? '(none)'} is not in the text map`);
+    return t;
+  };
+
+  const paths: PathNameRow[] = raw.baseTypes
+    .filter((b): b is RawAvatarBaseType & { ID: string } => typeof b.ID === 'string')
+    .map((b) => ({ id: b.ID, name: cleanName(text(b.BaseTypeText, `path ${b.ID}`), `path ${b.ID}`) }))
+    .sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
+  const pathIds = new Set(paths.map((p) => p.id));
+  const checkPath = (path: string, where: string): string => {
+    if (!pathIds.has(path)) throw new Error(`${where}: unknown path ${path}`);
+    return path;
+  };
+
+  const genders = new Map(raw.multiplePathAvatars.map((m) => [m.AvatarID, m.Gender]));
+  const characters: CharacterNameRow[] = raw.avatars
+    .filter((a) => a.Release === true)
+    .map((a) => {
+      const where = `avatar ${a.AvatarID}`;
+      const t = text(a.AvatarName, where);
+      const path = checkPath(a.AvatarBaseType, where);
+      if (t !== NICKNAME_PLACEHOLDER) return { id: String(a.AvatarID), name: cleanName(t, where), path };
+      const gender = GENDERS[genders.get(a.AvatarID) ?? ''];
+      if (!gender) throw new Error(`${where}: nickname character without a multi-path gender`);
+      return { id: String(a.AvatarID), name: null, path, gender };
+    })
+    .sort((x, y) => byNumber(x.id, y.id));
+
+  const lightCones: LightConeNameRow[] = raw.equipment
+    .filter((e) => e.Release === true)
+    .map((e) => {
+      const where = `light cone ${e.EquipmentID}`;
+      return {
+        id: String(e.EquipmentID),
+        name: cleanName(text(e.EquipmentName, where), where),
+        path: checkPath(e.AvatarBaseType, where),
+      };
+    })
+    .sort((x, y) => byNumber(x.id, y.id));
+
+  const relicSets: RelicSetNameRow[] = raw.relicSets
+    .filter((s) => s.Release === true)
+    .map((s) => ({ setId: String(s.SetID), name: cleanName(text(s.SetName, `set ${s.SetID}`), `set ${s.SetID}`) }))
+    .sort((x, y) => byNumber(x.setId, y.setId));
+
+  return { paths, characters, lightCones, relicSets };
+}
+
+/**
+ * Text-map hashes are unsigned 64-bit integers, which `JSON.parse` would
+ * round. Quote them before parsing so they stay exact.
+ */
+export function parseExcelJson(text: string): unknown {
+  return JSON.parse(text.replace(/"Hash":\s*(-?\d+)/g, '"Hash":"$1"'));
 }

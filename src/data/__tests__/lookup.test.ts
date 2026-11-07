@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { characterBase, lightConeBase, relicMainStat, setBonus2pc, statTrace } from '..';
+import { breakLevelMultiplier, characterBase, lightConeBase, relicMainStat, setBonus2pc, statTrace } from '..';
 import { FIXTURE_TABLES as T } from './fixtures';
 
 describe('characterBase (base + perLevel × (level − 1))', () => {
@@ -76,5 +76,12 @@ describe('set and trace lookups', () => {
     expect(statTrace(T, '9001', 'stat_1')?.modifiers).toEqual([{ stat: 'atkPct', value: 0.04 }]);
     expect(statTrace(T, '9001', 'stat_1', 'enhanced')).toBeUndefined();
     expect(setBonus2pc(T, '1')).toBeUndefined();
+  });
+});
+
+describe('breakLevelMultiplier (exact rows only)', () => {
+  it('returns the row for a listed level and misses otherwise', () => {
+    expect(breakLevelMultiplier(T, 80)).toEqual({ ok: true, value: 4000 });
+    expect(breakLevelMultiplier(T, 79)).toEqual({ ok: false, reason: 'no break level multiplier for level 79' });
   });
 });

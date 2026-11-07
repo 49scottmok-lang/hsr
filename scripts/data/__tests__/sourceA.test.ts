@@ -1,7 +1,7 @@
 // TEST FIXTURE — NOT GAME DATA: every raw row below is synthetic.
 import { describe, expect, it } from 'vitest';
-import { readObfuscatedProperty, transformSourceA } from '../sourceA.ts';
-import type { RawSourceA } from '../sourceA.ts';
+import { cleanName, parseExcelJson, readObfuscatedProperty, transformNames, transformSourceA } from '../sourceA.ts';
+import type { RawNamesA, RawSourceA } from '../sourceA.ts';
 
 const promo = (promotion: number | undefined, maxLevel: number) => ({
   ...(promotion === undefined ? {} : { Promotion: promotion }),
@@ -79,6 +79,10 @@ function raw(overrides: Partial<RawSourceA> = {}): RawSourceA {
       { ...point(9001001, 9001, 'Point01', 'AttackAddedRatio', 1), PointType: 2 },
       point(9002201, 9002, 'Point09', 'AttackAddedRatio', 0.04),
     ],
+    avatarBreakDamage: [
+      { Level: 2, BreakBaseDamage: { Value: 60.5 } },
+      { Level: 1, BreakBaseDamage: { Value: 54 } },
+    ],
     ...overrides,
   };
 }
@@ -127,5 +131,79 @@ describe('transformSourceA', () => {
     expect(() => transformSourceA(raw({ skillTree: [point(9001201, 9001, 'Point20', 'AttackAddedRatio', 0.1)] }))).toThrow(/unexpected anchor/);
     expect(() => transformSourceA(raw({ avatars: [{ AvatarID: 9001, DamageType: 'Light', Release: true }] }))).toThrow(/DamageType/);
     expect(() => readObfuscatedProperty({ A: 'x', B: 'y' }, 'test')).toThrow(/cannot read/);
+    expect(() => transformSourceA(raw({ avatarBreakDamage: [{ Level: 1, BreakBaseDamage: {} }] }))).toThrow(/not positive/);
+  });
+
+  it('copies break level multipliers by level, sorted', () => {
+    expect(out.breakLevelMultipliers).toEqual([
+      { level: 1, value: 54 },
+      { level: 2, value: 60.5 },
+    ]);
+  });
+});
+
+describe('transformNames', () => {
+  const h = (Hash: string) => ({ Hash });
+  const names = (overrides: Partial<RawNamesA> = {}): RawNamesA => ({
+    avatars: [
+      { AvatarID: 9002, DamageType: 'Fire', Release: true, AvatarName: h('2'), AvatarBaseType: 'Mage' },
+      { AvatarID: 9001, DamageType: 'Thunder', Release: true, AvatarName: h('1'), AvatarBaseType: 'Knight' },
+      { AvatarID: 9801, DamageType: 'Physical', Release: true, AvatarName: h('9'), AvatarBaseType: 'Knight' },
+      { AvatarID: 9003, DamageType: 'Ice', Release: false, AvatarName: h('404'), AvatarBaseType: 'Mage' },
+    ],
+    equipment: [{ EquipmentID: 9101, Release: true, EquipmentName: h('3'), AvatarBaseType: 'Mage' }],
+    relicSets: [
+      { SetID: 9201, Release: true, SetName: h('4') },
+      { SetID: 9202, Release: false, SetName: h('404') },
+    ],
+    baseTypes: [
+      { ID: 'Mage', BaseTypeText: h('10') },
+      { ID: 'Knight', BaseTypeText: h('11') },
+      { BaseTypeText: h('12') }, // the "general" row has no ID
+    ],
+    multiplePathAvatars: [{ AvatarID: 9801, Gender: 'GENDER_WOMAN' }],
+    textMap: {
+      '1': '甲',
+      '2': '乙<unbreak>99</unbreak>',
+      '3': '丙',
+      '4': '丁',
+      '9': '{NICKNAME}',
+      '10': '智',
+      '11': '護',
+      '12': '通',
+    },
+    ...overrides,
+  });
+
+  it('joins text by hash, keeps released rows only, sorts by ID and strips <unbreak>', () => {
+    const out = transformNames(names());
+    expect(out.paths).toEqual([
+      { id: 'Knight', name: '護' },
+      { id: 'Mage', name: '智' },
+    ]);
+    expect(out.characters).toEqual([
+      { id: '9001', name: '甲', path: 'Knight' },
+      { id: '9002', name: '乙99', path: 'Mage' },
+      { id: '9801', name: null, path: 'Knight', gender: 'female' },
+    ]);
+    expect(out.lightCones).toEqual([{ id: '9101', name: '丙', path: 'Mage' }]);
+    expect(out.relicSets).toEqual([{ setId: '9201', name: '丁' }]);
+  });
+
+  it('fails loudly on missing text, unknown paths, new markup and nickname rows without a gender', () => {
+    expect(() => transformNames(names({ textMap: {} }))).toThrow(/not in the text map/);
+    expect(() =>
+      transformNames(names({ equipment: [{ EquipmentID: 9101, Release: true, EquipmentName: h('3'), AvatarBaseType: 'Bard' }] })),
+    ).toThrow(/unknown path Bard/);
+    expect(() => transformNames(names({ multiplePathAvatars: [] }))).toThrow(/without a multi-path gender/);
+    expect(() => cleanName('名<color=#fff>', 'test')).toThrow(/markup/);
+    expect(() => cleanName(' 名', 'test')).toThrow(/untrimmed/);
+  });
+
+  it('keeps 64-bit text hashes exact', () => {
+    const raw = '[{"AvatarName":{"Hash":12345678901234567891}}]';
+    // A double cannot hold this hash, so plain JSON.parse would give a different text-map key.
+    expect(String((JSON.parse(raw) as [{ AvatarName: { Hash: number } }])[0].AvatarName.Hash)).not.toBe('12345678901234567891');
+    expect(parseExcelJson(raw)).toEqual([{ AvatarName: { Hash: '12345678901234567891' } }]);
   });
 });

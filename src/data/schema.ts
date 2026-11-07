@@ -144,10 +144,65 @@ export interface TraceRecord extends Cited {
   readonly unsupported: readonly UnsupportedProperty[];
 }
 
+/**
+ * Break DMG level multiplier (E4): the base that Break and Super Break DMG
+ * scale from, by the attacker's level. Source column: `BreakBaseDamage`.
+ */
+export interface BreakLevelMultiplierRecord extends Cited {
+  readonly level: number;
+  readonly value: number;
+}
+
 export interface DataTables {
   readonly characters: readonly CharacterRecord[];
   readonly lightCones: readonly LightConeRecord[];
   readonly relicMainStats: readonly RelicMainStatRecord[];
   readonly setBonuses: readonly SetBonusRecord[];
   readonly traces: readonly TraceRecord[];
+  readonly breakLevelMultipliers: readonly BreakLevelMultiplierRecord[];
+}
+
+// --- Display names (Traditional Chinese) -------------------------------------
+//
+// Text comes from the source's Traditional Chinese text map
+// (`TextMap/TextMapCHT.json`), joined by the hash each config row names.
+// It is the game's own text, so no name here is a translation of ours.
+
+/** Path (命途) as the source names it, e.g. `Warrior` = 毀滅. */
+export interface PathNameRecord extends Cited {
+  /** Source path ID (`AvatarBaseType.ID`). */
+  readonly id: string;
+  readonly name: string;
+}
+
+export interface CharacterNameRecord extends Cited {
+  readonly id: string;
+  /**
+   * `null` when the game shows the player's chosen nickname instead of a
+   * fixed name (the Trailblazer). The UI must supply its own label then.
+   */
+  readonly name: string | null;
+  /** Path ID; join with `PathNameRecord`. Two characters can share a name (e.g. 1001 and 1224), but not a name and path. */
+  readonly path: string;
+  /** Set only when `name` is `null`, from the source's multi-path table. */
+  readonly gender?: 'male' | 'female';
+}
+
+export interface LightConeNameRecord extends Cited {
+  readonly id: string;
+  readonly name: string;
+  /** Path ID; join with `PathNameRecord`. */
+  readonly path: string;
+}
+
+export interface RelicSetNameRecord extends Cited {
+  readonly setId: string;
+  readonly name: string;
+}
+
+export interface NameTables {
+  readonly paths: readonly PathNameRecord[];
+  readonly characters: readonly CharacterNameRecord[];
+  readonly lightCones: readonly LightConeNameRecord[];
+  readonly relicSets: readonly RelicSetNameRecord[];
 }

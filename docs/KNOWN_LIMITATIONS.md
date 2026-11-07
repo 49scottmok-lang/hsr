@@ -10,6 +10,7 @@ Status is as of 2026-11-07. Formula-level verification status is tracked inline 
 - **Enhanced trace trees.** Ten characters have a second ("enhanced") skill tree; only one of them (1004) has different stat traces. Which tree an account uses is **[UNVERIFIED]**. Both trees are tabulated, and `importArchive` **assumes** that a non-zero `ability_version` means the enhanced tree; it reports this as a `traceTree` problem whenever it applies.
 - Outgoing Healing Boost and Elation DMG are tabulated as `unsupported`: the engine doesn't model them. The import reports them instead of dropping them silently.
 - Imported builds carry stats only. Kit, eidolon effects, light cone passives, 4-piece sets and the ability part of 2-piece sets are listed in the import report as still to be entered.
+- **Names are the game's 繁體中文 text** (TextMapCHT, D5). The game ships one Traditional Chinese text for every region, so a name may not match Hong Kong usage word for word. The Trailblazer has no fixed name (`name: null`); the UI labels it itself.
 - Kit behaviour is still entered by the user: skill multipliers, talents, eidolon effects, 4-piece sets, light cone passives, and enemy RES.
 - Account import (planned) supports **only** the Reliquary Archiver format, at the version documented in `IMPORT_FORMAT.md`. Other tools' formats (Kel-Z HSR Scanner, HoYoLAB, UID lookup) are not supported in v1.
 - Imported relic data reflects the export's moment in time. Re-import after changing gear in game.
@@ -63,7 +64,7 @@ R1 is a widely used optimizer, but it is not the game. If game testing contradic
 
 | # | Assumption | Where |
 |---|---|---|
-| A1 | Re-applying an effect with the same ID to the same holder replaces the definition, adds stacks up to `maxStacks`, and resets the duration. Real abilities vary: some don't refresh, and some stack independently. | `effects.ts applyEffect` |
+| A1 | *Replaced 2026-11-07 by `EffectDef.stacking` (E5).* Each effect now states its re-application rule: `refresh` (the default, and the old behaviour), `noRefresh` or `independent`. What remains an assumption is the **default**: an effect without `stacking` refreshes. Which rule a real ability uses is user-supplied. | `effects.ts applyEffect` |
 | A2 | An effect that ticks at `turnEnd`, applied during its tick unit's own turn, skips that turn's end tick unless `tickOnApplyTurn: true`. The default is a guess about common in-game behaviour. | `effects.ts` |
 | A3 | `extra` events (Ultimates, follow-ups) never tick durations. | `rotation.ts` |
 | A4 | Weaken is floored so the multiplier can't go below 0. | `formulas.ts` |
@@ -74,13 +75,17 @@ R1 is a widely used optimizer, but it is not the game. If game testing contradic
 
 ## Out of scope for the MVP
 
-- **Break DMG and Super Break DMG.** Both need the level multiplier table, which is game data. Break Effect is tracked as a stat but unused.
+- **Break and Super Break DMG (E4, added 2026-11-07) have these gaps** (formulas: `FORMULAS.md § Break DMG`):
+  - Break-specific DMG boosts ("Break DMG +X%") are not modelled. Break hits ignore every `dmgBoost` modifier and carry no damage tags. Adding `break` / `superBreak` tags needs zh-HK labels in the UI, so it is a follow-up.
+  - Weakness Break Efficiency and the Super Break DMG multiplier are entered on each Super Break step (as totals), not as buff stats.
+  - The level multiplier is checked against R1 only at level 80. Weaken and Mitigation on break hits, and the broken factor at the moment of the break, are **[UNVERIFIED]**.
+  - Toughness is not simulated: the user states the enemy's max Toughness (displayed units) and each Super Break step's Toughness reduction.
 - **Toughness simulation.** Weakness break is a manual toggle (`setBroken`).
 - **SPD/AV timeline simulation.** Rotations are manual. `actionValue` exists as a utility only.
 - **Energy and skill points.** Neither is tracked or validated, so a rotation can be "illegal" in-game.
 - **Standalone True DMG** (based on tallied DMG, Max HP, etc.). Not supported. Only "True DMG equal to X% of this hit" is modelled, via `trueDmg`.
 - **Superimposition scaling.** `LightCone.superimposition` is a label only. The values for each S1–S5 level must be entered or supplied by data.
-- **Eidolon effects** are gated by `requires.minEidolon`, but the effects themselves (what E1–E6 do) must be entered by the user, because no kit data ships. Eidolons that *replace* an earlier effect, rather than adding to it, need two effects with the same ID: the later one replaces the earlier one when applied.
+- **Eidolon effects** are gated by `requires.minEidolon`, but the effects themselves (what E1–E6 do) must be entered by the user, because no kit data ships. Eidolons that *replace* an earlier effect, rather than adding to it, need two effects with the same ID: with the default `refresh` stacking, the later one replaces the earlier one when applied. (`noRefresh` keeps the earlier one.)
 - **Stat-conversion buffs** (e.g. "ATK increases by X% of another stat"). Callers must precompute a flat value. The value doesn't update if the source stat changes mid-rotation.
 - **Effect hit rate / effect RES and debuff application chance.** All debuffs land. R1 weights DoT damage by its application chance (`baseChance × (1 + EHR) × (1 − enemyEffectRES + effectResPen)`); we don't.
 - **Attacker level.** Our DEF formula supports any attacker level. R1 always assumes Lv80, so results only match R1 at Lv80.

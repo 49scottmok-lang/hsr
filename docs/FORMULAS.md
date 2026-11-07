@@ -15,7 +15,7 @@ Every formula below maps to one function in `src/engine/formulas.ts`. All percen
 
 - **S1**: Prydwen damage formula guide (`prydwen.gg/star-rail/guides/damage-formula`). Only the search-result summary was available; the page returned HTTP 403 to automated fetch.
 - **S2**: GenshinTheory, "hsr damage" (`genshintheory.github.io/hsr-damage.html`). Read in full. It is an early, pre-release write-up.
-- **R1**: Fribbels HSR Optimizer, `github.com/fribbels/hsr-optimizer`, MIT license, commit `ac5e9d6` (2026-11-04). The file is `src/lib/optimization/engine/damage/damageCalculator.ts`, mainly `computeCommonMultipliers`, `calculateDefMulti`, `getCritMultiplier` and `DotDamageFunction`. It was read on 2026-11-07. No code was copied; only the formulas were compared.
+- **R1** (also **B** in `DATA_SOURCES.md`): Fribbels HSR Optimizer, `github.com/fribbels/hsr-optimizer`, MIT license, commit `ac5e9d6` (2026-11-04). The file is `src/lib/optimization/engine/damage/damageCalculator.ts`, mainly `computeCommonMultipliers`, `calculateDefMulti`, `getCritMultiplier` and `DotDamageFunction`. It was read on 2026-11-07. No code was copied; only the formulas were compared.
 - **R2**: Nous StarRailSim (`starrailsim.com`). This is a closed-source cloud simulator that claims ≤0.5% error against the game. It publishes **no formulas**, so it cannot verify anything here. It is a design reference for a future AV/APL simulator (TASKS E6).
 - **S3**: Honkai: Star Rail Wiki (Fandom), "Damage" (`honkai-star-rail.fandom.com/wiki/Damage`), section "General Damage Formula". Read in full on 2026-11-07, after the user cleared the site's bot check in the browser pane. Text is CC-BY-SA. Only the formulas are referenced; none of the page's game data (hit splits, ability values) is used.
 - The sub-pages (Damage RES, Vulnerability, CRIT Rate, DEF) were **not** read, because each one triggered a new bot check.
@@ -204,6 +204,50 @@ Hand-computed tests (synthetic numbers):
 
 Covered by `src/engine/__tests__/formulas.test.ts` and `src/data/__tests__/lookup.test.ts`.
 
+## Break DMG (added 2026-11-07, TASKS E4)
+
+```
+BreakDMG = LevelMultiplier × ElementFactor × (0.5 + MaxToughness / 40) × Multiplier × (1 + BreakEffect)
+         × Weaken × DEF × RES × Vulnerability × Mitigation × Broken × FinalDMG × TrueDMG
+```
+
+- **LevelMultiplier** is the attacker's `CharacterBuild.breakLevelMultiplier`. `src/data` tabulates it from source A's `ExcelOutput/AvatarBreakDamage.json` (`BreakBaseDamage` by level, levels 1–100 and 120) and the account import fills it in. **[SOURCED]** A. **[CROSS-CHECKED]** at level 80 only: A's 3767.5535 equals R1's constant 3767.5533 to 3 decimals. R1 fixes the attacker at level 80, so other levels are **[UNVERIFIED]**.
+- **ElementFactor** (`formulas.BREAK_ELEMENT_FACTOR`): Physical 2, Fire 2, Wind 1.5, Ice 1, Lightning 1, Quantum 0.5, Imaginary 0.5. **[CROSS-CHECKED]** R1 `ElementToBreakScaling` (`calculateContext.ts@dd0c4af`), compared by `crosscheck-b.test.ts`.
+- **MaxToughness** is `EnemyConfig.maxToughness` in **displayed** units (a Basic ATK typically shows 10). **[CROSS-CHECKED]** R1 computes `0.5 + T / 120`, but its enemy form stores Toughness ×3 and labels it `toughness / 3` (`EnemyConfigurationsDrawer.tsx@dd0c4af`), so R1's term is `0.5 + T_displayed / 40`. Source A shows the same ×3 ratio for skills: March 7th's Basic ATK has `ShowStanceList` 30 and `StanceDamageDisplay` 10 (`AvatarSkillConfig`).
+- **Multiplier** (`BreakDmgSpec.multiplier`, default 1) is R1's `specialScaling`, for abilities that deal "X% of Break DMG".
+- **(1 + BreakEffect)**: **[CROSS-CHECKED]** R1 `beMulti`. The engine folds it into `DamageBreakdown.baseDmg`, so the breakdown keeps the same factors as an ordinary hit. `HitResult.break` lists the parts.
+- **No CRIT, no ordinary DMG Boost.** **[CROSS-CHECKED]** R1 applies only a break-specific "hit-level" boost (its comment: "no action-level, no elemental boost"). Break-specific boosts are not modelled yet (see `KNOWN_LIMITATIONS.md`), so `critMultiplier` and `dmgBoostMultiplier` are 1 and `stats.dmgBoost` is shown as 0.
+- **DEF, RES, Vulnerability, Broken, Final DMG, True DMG**: the same functions as ordinary hits. **[CROSS-CHECKED]** R1 applies the same common multipliers to Break DMG.
+- **Weaken and Mitigation** are applied as for ordinary hits. **[UNVERIFIED]** R1 models neither, for any damage type.
+- Break hits carry **no damage tags**, so tag-conditioned modifiers never apply to them. Element-conditioned ones do. **[ENGINE]**
+- **Broken** uses the target's state at that step. Whether the game's Break DMG uses 0.9 or 1.0 is **[UNVERIFIED]** (R1 uses its global broken toggle). Put a `setBroken` step before or after the `break` step to choose.
+
+Function: `calculateBreakHit` / `computeBreakBreakdown` in `src/engine/breakDamage.ts`, with `formulas.breakToughnessFactor`, `breakBaseDmg` and `breakEffectMultiplier`.
+
+## Super Break DMG (added 2026-11-07, TASKS E4)
+
+```
+Toughness       = (1 + BreakEfficiency) × ToughnessReduction + FixedToughnessReduction
+SuperBreakDMG   = LevelMultiplier × Toughness / 10 × Multiplier × (1 + BreakEffect)
+                × Weaken × DEF × RES × Vulnerability × Mitigation × Broken × FinalDMG × TrueDMG
+```
+
+- **[CROSS-CHECKED]** R1 `SuperBreakDamageFunction`: `(3767.5533 / 10) × effectiveToughness × beMulti × superBreakModMulti`, with `effectiveToughness = (1 + breakEfficiency) × toughnessDmg + fixedToughnessDmg`. R1's `toughnessDmg` is in displayed units (e.g. March 7th's Basic ATK is `.toughnessDmg(10)` in `March7th.ts@dd0c4af`).
+- **ToughnessReduction**, **BreakEfficiency** (Weakness Break Efficiency) and **FixedToughnessReduction** describe the triggering hit and are entered on the step (`SuperBreakDmgSpec`).
+- **Multiplier** is the Super Break DMG multiplier (R1's `SUPER_BREAK_MODIFIER`), entered on the step as the sum of the active sources. R1 sums its sources too.
+- The other factors follow § Break DMG, including the unverified Weaken and Mitigation.
+
+Function: `calculateBreakHit` with `formulas.superBreakToughness` and `superBreakBaseDmg`.
+
+Hand-computed tests (synthetic numbers, `src/engine/__tests__/break.test.ts`). The attacker has LevelMultiplier 4000 and Break Effect 150%. The target is Lv90 (DEF 1100), Fire RES 20%, max Toughness 120, broken. DEF = 1000/2100, RES = 0.8.
+
+| Hit | Arithmetic | Result |
+|---|---|---|
+| Break, Fire | 4000 × 2 × (0.5 + 120/40) × 1 × 2.5 × 1000/2100 × 0.8 | 26666.666… |
+| Break, Quantum override (no Quantum RES) | 4000 × 0.5 × 3.5 × 2.5 × 1000/2100 | 8333.333… |
+| Super Break, reduction 20, efficiency 50%, multiplier 150% | 4000 × (1.5 × 20) / 10 × 1.5 × 2.5 × 1000/2100 × 0.8 | 17142.857… |
+| Break, unbroken, target vulnerability 20% | 70000 × 1000/2100 × 0.8 × 1.2 × 0.9 | 28800 |
+
 ## Action Value
 
 ```
@@ -247,7 +291,7 @@ Cross-check against R1's DEF form: `100 / ((90 + 20) × 1 + 100) = 100/210 = 0.4
 
 ## Not covered in the MVP
 
-- Break DMG, Super Break DMG, and the break level multiplier table. R1 has a break formula, but it depends on game constants, so it waits for TASKS E4 with sourcing.
+- Break-specific DMG boosts ("Break DMG +X%"), and Weakness Break Efficiency or Super Break DMG as buff stats. See § Break DMG.
 - DoT application-chance weighting and DoT snapshotting rules.
 - Stat-conversion buffs.
 

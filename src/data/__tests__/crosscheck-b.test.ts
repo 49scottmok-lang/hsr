@@ -6,8 +6,9 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { StatModifier } from '../../engine';
-import { DATA_TABLES, characterBase, lightConeBase, relicMainStat } from '..';
+import { formulas } from '../../engine';
+import type { Element, StatModifier } from '../../engine';
+import { DATA_TABLES, NAME_TABLES, breakLevelMultiplier, characterBase, lightConeBase, relicMainStat } from '..';
 import { isFlatStat } from '../properties';
 
 interface Reference {
@@ -20,6 +21,15 @@ interface Reference {
   relicMainAffixes: Record<string, Record<string, { base: number; step: number }>>;
   maxedMainStats: Record<string, number[]>;
   setDescriptions: Record<string, string>;
+  namesZhTW: Record<'characters' | 'lightCones' | 'relicSets' | 'paths', Record<string, string>>;
+  breakConstants: {
+    levelMultiplierLv80: number;
+    breakToughnessDivisor: number;
+    superBreakLevelMultiplierLv80: number;
+    superBreakToughnessDivisor: number;
+    enemyToughnessPerDisplayedPoint: number;
+    elementFactors: Record<string, number>;
+  };
 }
 
 const B = JSON.parse(readFileSync(new URL('./reference-b.json', import.meta.url), 'utf8')) as Reference;
@@ -176,5 +186,76 @@ describe('cross-check against B (fribbels/hsr-optimizer)', () => {
         expect(text, `${s.setId} ${pct}`).toContain(pct);
       }
     }
+  });
+});
+
+/**
+ * Names: A's Traditional Chinese text against B's zh_TW locale file. B builds
+ * its names from the same game text, so agreement mainly confirms that the
+ * text-hash join picks the right row. Every difference at the pinned commits
+ * is listed here with its reason; a new one fails the test.
+ */
+describe('zh-Hant names against B (public/locales/zh_TW/gameData.yaml)', () => {
+  const NAMES = B.namesZhTW;
+  /** B marks some characters with a "⚰️ " prefix of its own; it is not game text. */
+  const bName = (name: string | undefined): string | undefined => name?.replace(/^⚰️ /, '');
+  /** B's zh_TW file still has Simplified Chinese for these; A has the Traditional text. */
+  const B_SIMPLIFIED = { lightCones: { '23055': '献给明日的色彩' }, relicSets: { '133': '戏梦点星的伶人', '134': '贪噬禁果的异端' } };
+  /** B shows the Trailblazer's default names; A has the nickname placeholder (`name: null`) and a gender. */
+  const B_TRAILBLAZER = { male: '穹', female: '星' } as const;
+
+  it('path names equal B', () => {
+    for (const p of NAME_TABLES.paths) expect(NAMES.paths[p.id], p.id).toBe(p.name);
+  });
+
+  it('character names equal B, except the Trailblazer', () => {
+    for (const c of NAME_TABLES.characters) {
+      const b = bName(NAMES.characters[c.id]);
+      if (c.name === null) expect(b, c.id).toBe(B_TRAILBLAZER[c.gender!]);
+      else expect(b, c.id).toBe(c.name);
+    }
+  });
+
+  it('light cone and relic set names equal B, except the listed Simplified entries', () => {
+    const check = (records: readonly { key: string; name: string }[], b: Record<string, string>, simplified: Record<string, string>) => {
+      for (const r of records) expect(b[r.key], r.key).toBe(simplified[r.key] ?? r.name);
+      // Each listed exception must still be a real difference, or it should be removed.
+      for (const [key, text] of Object.entries(simplified)) expect(records.find((r) => r.key === key)?.name).not.toBe(text);
+    };
+    check(NAME_TABLES.lightCones.map((l) => ({ key: l.id, name: l.name })), NAMES.lightCones, B_SIMPLIFIED.lightCones);
+    check(NAME_TABLES.relicSets.map((s) => ({ key: s.setId, name: s.name })), NAMES.relicSets, B_SIMPLIFIED.relicSets);
+  });
+});
+
+/**
+ * E4: Break and Super Break DMG against B's damageCalculator.ts and
+ * calculateContext.ts. B fixes the attacker at level 80 and stores enemy
+ * Toughness ×3 (its form labels it `toughness / 3`); the engine takes
+ * displayed Toughness, so B's `0.5 + T×3 / 120` must equal our `0.5 + T / 40`.
+ */
+describe('Break DMG constants against B', () => {
+  const K = B.breakConstants;
+
+  it("A's level-80 multiplier equals B's constant to 3 decimals (A 3767.5535, B 3767.5533)", () => {
+    const a = breakLevelMultiplier(DATA_TABLES, 80);
+    expect(a.ok && a.value).toBeCloseTo(K.levelMultiplierLv80, 3);
+    expect(K.superBreakLevelMultiplierLv80).toBe(K.levelMultiplierLv80);
+  });
+
+  it('element factors equal B', () => {
+    const b = Object.fromEntries(Object.entries(K.elementFactors).map(([el, v]) => [el.toLowerCase() as Element, v]));
+    expect(formulas.BREAK_ELEMENT_FACTOR).toEqual(b);
+  });
+
+  it("Break and Super Break bases equal B's formulas once Toughness units are converted", () => {
+    const level = K.levelMultiplierLv80;
+    for (const displayed of [30, 120, 160, 240]) {
+      const bInternal = displayed * K.enemyToughnessPerDisplayedPoint;
+      const bBreak = level * 2 * (0.5 + bInternal / K.breakToughnessDivisor);
+      expect(formulas.breakBaseDmg(level, 2, displayed, 1), String(displayed)).toBeCloseTo(bBreak, 9);
+    }
+    // B: (level / 10) × ((1 + efficiency) × toughnessDmg + fixed), toughnessDmg in displayed units.
+    const toughness = formulas.superBreakToughness(20, 0.5, 5);
+    expect(formulas.superBreakBaseDmg(level, toughness, 1)).toBeCloseTo((level / K.superBreakToughnessDivisor) * toughness, 9);
   });
 });

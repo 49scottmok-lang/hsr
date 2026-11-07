@@ -1,3 +1,4 @@
+import { calculateBreakHit } from './breakDamage';
 import { calculateHit } from './damage';
 import { applyEffect, meetsRequirement, removeEffect, resolveUnitRef, tickEffects } from './effects';
 import type {
@@ -47,7 +48,7 @@ interface StepOutcome {
 
 /** The unit whose build a step's `requires` is checked against. */
 function stepSourceId(step: ActionStep, actorId: string): string {
-  if (step.op === 'hit') return step.hit.attackerId ?? actorId;
+  if (step.op === 'hit' || step.op === 'break') return step.hit.attackerId ?? actorId;
   if (step.op === 'apply') return step.sourceId ?? actorId;
   return actorId;
 }
@@ -97,6 +98,25 @@ function runSteps(
           stats: c.stats,
           breakdown: c.breakdown,
           damage: c.breakdown.total,
+        });
+        break;
+      }
+      case 'break': {
+        const c = calculateBreakHit(state, step.hit, event.actorId);
+        hits.push({
+          eventId: event.id,
+          hitIndex: hitIndex++,
+          label: step.hit.label,
+          attackerId: c.attackerId,
+          targetId: step.hit.targetId,
+          element: c.element,
+          tags: [],
+          critMode,
+          canCrit: false,
+          stats: c.stats,
+          breakdown: c.breakdown,
+          damage: c.breakdown.total,
+          break: c.details,
         });
         break;
       }

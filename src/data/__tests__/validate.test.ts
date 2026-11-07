@@ -79,4 +79,12 @@ describe('validateDataTables', () => {
     const tables = { ...FIXTURE_TABLES, traces: [t, { ...t, modifiers: [{ stat: 'luck', value: 0.1 }] }] } as DataTables;
     expect(paths(tables)).toEqual(['traces[1].modifiers[0].stat', 'traces[1]']);
   });
+
+  it('fails break level multiplier rows that are out of order, decreasing or not positive', () => {
+    const [a, b, c] = FIXTURE_TABLES.breakLevelMultipliers;
+    const t = (rows: unknown[]) => paths({ ...FIXTURE_TABLES, breakLevelMultipliers: rows } as DataTables);
+    expect(t([a, { ...b!, value: 40 }, c])).toEqual(['breakLevelMultipliers[1]']); // 60 → 40 is a drop
+    expect(t([b, a, c])).toEqual(['breakLevelMultipliers[1]']); // level 2 before level 1
+    expect(t([{ ...a!, value: 0 }, b, c])).toEqual(['breakLevelMultipliers[0].value']);
+  });
 });

@@ -108,4 +108,9 @@ export const FIXTURE_TABLES: DataTables = {
       unsupported: [],
     },
   ],
+  breakLevelMultipliers: [
+    { ...cite, level: 1, value: 50 },
+    { ...cite, level: 2, value: 60 },
+    { ...cite, level: 80, value: 4000 },
+  ],
 };

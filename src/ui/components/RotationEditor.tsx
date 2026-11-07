@@ -67,6 +67,7 @@ export function RotationEditor({ draft, enemies, teamIndex, dispatch }: Rotation
       case 'setBroken':
         value = { op, enemyId, broken: true };
         break;
+      case 'break': return; // TODO(frontend): break step editor; engine stub, see TASKS.md E4
     }
     editStep(eventIndex, { type: 'add', value });
   }

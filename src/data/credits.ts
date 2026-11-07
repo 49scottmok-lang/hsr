@@ -27,7 +27,7 @@ export const DATA_CREDITS: readonly DataCredit[] = [
     role: 'tableSource',
     licence: null,
     commit: COMMIT,
-    note: `Every number in the stat tables comes from this datamine, game build ${BUILD} (${GAME_VERSION}). Its README asks for credit.`,
+    note: `Every number in the stat tables, and every Traditional Chinese name, comes from this datamine, game build ${BUILD} (${GAME_VERSION}). Its README asks for credit.`,
   },
   {
     name: 'Fribbels HSR Optimizer',

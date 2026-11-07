@@ -124,3 +124,13 @@ export function statTrace(
 ): TraceRecord | undefined {
   return tables.traces.find((t) => t.characterId === characterId && t.trace === trace && t.tree === tree);
 }
+
+/**
+ * Break DMG level multiplier for an attacker at `level` (E4). Only levels the
+ * source lists are returned; nothing is interpolated.
+ */
+export function breakLevelMultiplier(tables: DataTables, level: number): Lookup<number> {
+  const record = tables.breakLevelMultipliers.find((r) => r.level === level);
+  if (!record) return miss(`no break level multiplier for level ${level}`);
+  return { ok: true, value: record.value };
+}

@@ -1,17 +1,18 @@
 /**
- * D3 generator: fetches the needed tables from source A at the pinned commit
- * and writes `src/data/generated/*.ts`. See docs/DATA_SOURCES.md § Decision.
+ * D3/D5 generator: fetches the needed tables and the Traditional Chinese text
+ * map from source A at the pinned commit and writes `src/data/generated/*.ts`.
+ * See docs/DATA_SOURCES.md § Decision and § Names.
  *
  *   node scripts/data/extract.ts              # fetch from GitHub at SOURCE_A.commit
- *   node scripts/data/extract.ts --from DIR   # read DIR/<Table>.json instead (offline)
+ *   node scripts/data/extract.ts --from DIR   # read DIR/<Table>.json and DIR/TextMapCHT.json instead (offline)
  *
  * Needs Node ≥ 22.18 (runs TypeScript directly). Output is deterministic.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { transformSourceA } from './sourceA.ts';
-import type { RawSourceA } from './sourceA.ts';
+import { parseExcelJson, transformNames, transformSourceA } from './sourceA.ts';
+import type { RawNamesA, RawSourceA } from './sourceA.ts';
 
 const SOURCE_A = {
   repo: 'DimbreathBot/TurnBasedGameData',
@@ -30,16 +31,26 @@ const TABLES = {
   relicSets: 'RelicSetConfig',
   relicSetSkills: 'RelicSetSkillConfig',
   skillTree: 'AvatarSkillTreeConfig',
+  avatarBreakDamage: 'AvatarBreakDamage',
 } as const satisfies Record<keyof RawSourceA, string>;
+
+/** Extra tables for the display names. */
+const NAME_TABLES = {
+  baseTypes: 'AvatarBaseType',
+  multiplePathAvatars: 'MultiplePathAvatarConfig',
+} as const satisfies Partial<Record<keyof RawNamesA, string>>;
+/** The game's Traditional Chinese (繁體中文) text map, about 52 MB. */
+const TEXT_MAP = 'TextMap/TextMapCHT.json';
 
 const file = (table: string): string => `ExcelOutput/${table}.json`;
 
-async function load(table: string, fromDir: string | undefined): Promise<unknown> {
-  if (fromDir) return JSON.parse(readFileSync(join(fromDir, `${table}.json`), 'utf8'));
-  const url = `https://raw.githubusercontent.com/${SOURCE_A.repo}/${SOURCE_A.commit}/${file(table)}`;
+/** `path` is a repository path; with `--from DIR`, `DIR/<file name>` is read instead. */
+async function load(path: string, fromDir: string | undefined): Promise<unknown> {
+  if (fromDir) return parseExcelJson(readFileSync(join(fromDir, path.split('/').pop() ?? path), 'utf8'));
+  const url = `https://raw.githubusercontent.com/${SOURCE_A.repo}/${SOURCE_A.commit}/${path}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-  return res.json();
+  return parseExcelJson(await res.text());
 }
 
 function gameVersion(build: string): string {
@@ -70,15 +81,21 @@ async function main(): Promise<void> {
 
   const raw = {} as Record<keyof RawSourceA, unknown>;
   for (const [key, table] of Object.entries(TABLES) as [keyof RawSourceA, string][]) {
-    raw[key] = await load(table, fromDir);
+    raw[key] = await load(file(table), fromDir);
   }
   const out = transformSourceA(raw as unknown as RawSourceA);
+  const names = transformNames({
+    ...(raw as unknown as Pick<RawNamesA, 'avatars' | 'equipment' | 'relicSets'>),
+    baseTypes: (await load(file(NAME_TABLES.baseTypes), fromDir)) as RawNamesA['baseTypes'],
+    multiplePathAvatars: (await load(file(NAME_TABLES.multiplePathAvatars), fromDir)) as RawNamesA['multiplePathAvatars'],
+    textMap: (await load(TEXT_MAP, fromDir)) as RawNamesA['textMap'],
+  });
 
   const outDir = join(dirname(fileURLToPath(import.meta.url)), '../../src/data/generated');
   mkdirSync(outDir, { recursive: true });
 
-  const src = (name: string, tables: readonly string[]): string =>
-    `export const ${name}: DataSource = { repo: REPO, commit: COMMIT, files: ${JSON.stringify(tables.map(file))} };\n`;
+  const src = (name: string, tables: readonly string[], extra: readonly string[] = []): string =>
+    `export const ${name}: DataSource = { repo: REPO, commit: COMMIT, files: ${JSON.stringify([...tables.map(file), ...extra])} };\n`;
   writeFileSync(
     join(outDir, 'source.ts'),
     HEADER +
@@ -91,7 +108,12 @@ async function main(): Promise<void> {
       src('LIGHT_CONE_SOURCE', [TABLES.equipment, TABLES.equipmentPromotions]) +
       src('RELIC_MAIN_STAT_SOURCE', [TABLES.relics, TABLES.relicMainAffixes]) +
       src('SET_BONUS_SOURCE', [TABLES.relicSets, TABLES.relicSetSkills]) +
-      src('TRACE_SOURCE', [TABLES.avatars, TABLES.skillTree]),
+      src('TRACE_SOURCE', [TABLES.avatars, TABLES.skillTree]) +
+      src('BREAK_LEVEL_MULTIPLIER_SOURCE', [TABLES.avatarBreakDamage]) +
+      src('PATH_NAME_SOURCE', [NAME_TABLES.baseTypes], [TEXT_MAP]) +
+      src('CHARACTER_NAME_SOURCE', [TABLES.avatars, NAME_TABLES.multiplePathAvatars], [TEXT_MAP]) +
+      src('LIGHT_CONE_NAME_SOURCE', [TABLES.equipment], [TEXT_MAP]) +
+      src('RELIC_SET_NAME_SOURCE', [TABLES.relicSets], [TEXT_MAP]),
   );
   const write = (fileName: string, type: string, name: string, sourceConst: string, rows: readonly object[]): void => {
     writeFileSync(join(outDir, fileName), tableModule(type, name, sourceConst, rows));
@@ -102,6 +124,11 @@ async function main(): Promise<void> {
   write('relicMainStats.ts', 'RelicMainStatRecord', 'RELIC_MAIN_STATS', 'RELIC_MAIN_STAT_SOURCE', out.relicMainStats);
   write('setBonuses.ts', 'SetBonusRecord', 'SET_BONUSES', 'SET_BONUS_SOURCE', out.setBonuses);
   write('traces.ts', 'TraceRecord', 'TRACES', 'TRACE_SOURCE', out.traces);
+  write('breakLevelMultipliers.ts', 'BreakLevelMultiplierRecord', 'BREAK_LEVEL_MULTIPLIERS', 'BREAK_LEVEL_MULTIPLIER_SOURCE', out.breakLevelMultipliers);
+  write('pathNames.ts', 'PathNameRecord', 'PATH_NAMES', 'PATH_NAME_SOURCE', names.paths);
+  write('characterNames.ts', 'CharacterNameRecord', 'CHARACTER_NAMES', 'CHARACTER_NAME_SOURCE', names.characters);
+  write('lightConeNames.ts', 'LightConeNameRecord', 'LIGHT_CONE_NAMES', 'LIGHT_CONE_NAME_SOURCE', names.lightCones);
+  write('relicSetNames.ts', 'RelicSetNameRecord', 'RELIC_SET_NAMES', 'RELIC_SET_NAME_SOURCE', names.relicSets);
 }
 
 await main();

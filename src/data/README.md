@@ -6,7 +6,8 @@ Stat tables only (SPEC D5, TASKS D2–D3). Kit logic never goes here. The source
 |---|---|
 | `schema.ts` | Record types. Every record has `source` (repo, commit, files) and `gameVersion`. |
 | `validate.ts` | `validateDataTables()`: missing citations and out-of-range values. |
-| `lookup.ts` | `characterBase`, `lightConeBase`, `relicMainStat`, `setBonus2pc`, `statTrace`. Level values come from the engine's level formulas (`docs/FORMULAS.md § Level scaling`). |
+| `lookup.ts` | `characterBase`, `lightConeBase`, `relicMainStat`, `setBonus2pc`, `statTrace`, `breakLevelMultiplier` (E4, exact levels only). Level values come from the engine's level formulas (`docs/FORMULAS.md § Level scaling`). |
+| `names.ts` | `NAME_TABLES` (D5): Traditional Chinese names of characters, light cones, relic sets and paths, from the game's text map. `validateNameTables()` and the lookups `characterName`, `lightConeName`, `relicSetName`, `pathName`. |
 | `credits.ts` | `DATA_CREDITS` (D4): every source, its licence and pinned commit, for the F9 footer. |
 | `properties.ts` | Game property → engine stat, and the export's main-stat names. |
 | `generated/*.ts` | **Generated. Do not edit.** Written by `pnpm data:extract` (`scripts/data/extract.ts`). |
