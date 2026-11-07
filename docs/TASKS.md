@@ -31,6 +31,7 @@ Rules for every task:
 
 ### F2. Character build editor — `src/ui/components/CharacterEditor.tsx`
 
+- [ ] Add an eidolon selector (E0–E6) and a light cone superimposition selector (S1–S5). Superimposition is a label only (SPEC D4).
 - [ ] Add numeric inputs for level, element, base HP/ATK/DEF/SPD, optional base CRIT, LC base HP/ATK/DEF, and relic stat totals as a `StatModifier` list editor. Each row picks a `STAT_KEYS` stat, a value, and an optional condition (elements and damage tags).
 - [ ] Enter percentages in the UI as `%`, and divide by 100 when storing.
 - [ ] Show live final stats via `resolveUnitStats(createInitialState([build], [anyEnemy]), build.id)`.
@@ -43,14 +44,15 @@ Rules for every task:
 
 ### F4. Effect editor — `src/ui/components/EffectEditor.tsx`
 
-- [ ] Edit an `EffectDef`: id, name, kind, modifiers (reuse the F2 modifier list), maxStacks, an optional duration (turns, tickUnit, tickPhase, tickOnApplyTurn), and a `source` text field.
+- [ ] Edit an `EffectDef`: id, name, kind, modifiers (reuse the F2 modifier list), maxStacks, an optional duration (turns, tickUnit, tickPhase, tickOnApplyTurn), an optional "Requires Eidolon ≥ N" (`requires.minEidolon`), and a `source` text field.
 - [ ] Add a per-team **effect library**. Steps reference effects from it, and the full `EffectDef` is copied into the step on export.
 - **Acceptance:** the duration controls explain the tick semantics inline, with a link to KNOWN_LIMITATIONS A2.
 
 ### F5. Manual rotation editor — `src/ui/components/RotationEditor.tsx`
 
 - [ ] Show an ordered list of events. Add a Turn or an Extra event, choose the actor, add a label, and reorder with up/down buttons (no drag-and-drop needed).
-- [ ] Each event has an ordered step list: `hit` (target, scaling, multiplier %, element override, tags multi-select, canCrit override, label), `apply` (effect from the library, target or allAllies/allEnemies, stacks), `remove`, and `setBroken`.
+- [ ] Each event has an ordered step list: `hit` (target, scaling, multiplier %, element override, tags multi-select, canCrit override, label), `apply` (effect from the library, target or allAllies/allEnemies, stacks), `remove`, and `setBroken`. Every step has an optional "Requires Eidolon ≥ N" field (`step.requires`).
+- [ ] In the results view (F6), show steps skipped by eidolon gating (`log[].skippedSteps`) so users can see why a hit didn't happen.
 - [ ] Add a "duplicate event" button to make repeating cycles quick.
 - **Acceptance:** you can build both `rotation.test.ts` scenarios ("buff applied earlier" and "enemy debuff ticking") in the UI, and they give the same totals as the tests.
 
@@ -88,7 +90,8 @@ Rules for every task:
   - **Remaining:** base CRIT, the stat formula, game rounding, Weaken and Final DMG stacking, and the RES clamp and vulnerability cap (wiki sub-pages). See KNOWN_LIMITATIONS for the list.
 - [ ] E8. DoT application-chance weighting (EHR vs effect RES), as R1 does. This needs `effectHitRate` plumbing and an enemy effect RES field.
 - [ ] E9. Evaluate Nous StarRailSim's APL model (`action on target if condition`) as the design for E6. Its source is closed, so use it for design only.
-- [ ] E2. Reconcile the architecture with the master specification once it is added to `docs/`.
+- [x] E2. Reconcile the architecture with the master specification (`docs/SPEC.md`). This added eidolon gating and superimposition, bringing the total to 72 tests.
+- [ ] E10. Decide on and implement the answers to SPEC Q1–Q3: built-in game data, UI language, hosting.
 - [ ] E3. Data layer: a schema plus a validator for `src/data` entries that requires a `source` on every number-bearing record.
 - [ ] E4. Break / Super Break DMG. This needs the sourced level multiplier table.
 - [ ] E5. Effect stacking policies per effect: `refresh` | `independent` | `noRefresh`. This replaces assumption A1.

@@ -69,6 +69,8 @@ R1 is a widely used optimizer, but it is not the game. If game testing contradic
 - **SPD/AV timeline simulation.** Rotations are manual. `actionValue` exists as a utility only.
 - **Energy and skill points.** Neither is tracked or validated, so a rotation can be "illegal" in-game.
 - **Standalone True DMG** (based on tallied DMG, Max HP, etc.). Not supported. Only "True DMG equal to X% of this hit" is modelled, via `trueDmg`.
+- **Superimposition scaling.** `LightCone.superimposition` is a label only. The values for each S1–S5 level must be entered or supplied by data.
+- **Eidolon effects** are gated by `requires.minEidolon`, but the effects themselves (what E1–E6 do) must be entered by the user, because no kit data ships. Eidolons that *replace* an earlier effect, rather than adding to it, need two effects with the same ID: the later one replaces the earlier one when applied.
 - **Stat-conversion buffs** (e.g. "ATK increases by X% of another stat"). Callers must precompute a flat value. The value doesn't update if the source stat changes mid-rotation.
 - **Effect hit rate / effect RES and debuff application chance.** All debuffs land. R1 weights DoT damage by its application chance (`baseChance × (1 + EHR) × (1 − enemyEffectRES + effectResPen)`); we don't.
 - **Attacker level.** Our DEF formula supports any attacker level. R1 always assumes Lv80, so results only match R1 at Lv80.

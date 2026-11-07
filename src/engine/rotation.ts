@@ -1,5 +1,5 @@
 import { calculateHit } from './damage';
-import { applyEffect, removeEffect, resolveUnitRef, tickEffects } from './effects';
+import { applyEffect, meetsRequirement, removeEffect, resolveUnitRef, tickEffects } from './effects';
 import type {
   ActionStep,
   CharacterBuild,
@@ -26,7 +26,9 @@ export function createInitialState(team: readonly CharacterBuild[], enemies: rea
   }
   let state: CombatState = { units, effects: [] };
   const permanent = (holderId: string, defs: readonly EffectDef[] | undefined) => {
-    for (const def of defs ?? []) state = applyEffect(state, def, holderId, holderId);
+    for (const def of defs ?? []) {
+      if (meetsRequirement(state, holderId, def.requires)) state = applyEffect(state, def, holderId, holderId);
+    }
   };
   for (const b of team) {
     permanent(b.id, b.lightCone?.effects);
@@ -40,6 +42,14 @@ export function createInitialState(team: readonly CharacterBuild[], enemies: rea
 interface StepOutcome {
   state: CombatState;
   hits: HitResult[];
+  skippedSteps: number[];
+}
+
+/** The unit whose build a step's `requires` is checked against. */
+function stepSourceId(step: ActionStep, actorId: string): string {
+  if (step.op === 'hit') return step.hit.attackerId ?? actorId;
+  if (step.op === 'apply') return step.sourceId ?? actorId;
+  return actorId;
 }
 
 function runSteps(
@@ -49,12 +59,19 @@ function runSteps(
   critMode: CritMode,
 ): StepOutcome {
   const hits: HitResult[] = [];
+  const skippedSteps: number[] = [];
   let hitIndex = 0;
-  for (const step of steps) {
+  for (const [stepIndex, step] of steps.entries()) {
+    const sourceId = stepSourceId(step, event.actorId);
+    const effectGate = step.op === 'apply' ? step.effect.requires : undefined;
+    if (!meetsRequirement(state, sourceId, step.requires) || !meetsRequirement(state, sourceId, effectGate)) {
+      skippedSteps.push(stepIndex);
+      continue;
+    }
     switch (step.op) {
       case 'apply':
         for (const id of resolveUnitRef(state, step.to)) {
-          state = applyEffect(state, step.effect, id, step.sourceId ?? event.actorId, step.stacks ?? 1);
+          state = applyEffect(state, step.effect, id, sourceId, step.stacks ?? 1);
         }
         break;
       case 'remove':
@@ -85,7 +102,7 @@ function runSteps(
       }
     }
   }
-  return { state, hits };
+  return { state, hits, skippedSteps };
 }
 
 /**
@@ -124,6 +141,7 @@ export function runRotation(input: RotationInput): RotationResult {
       label: event.label,
       damage: out.hits.reduce((a, h) => a + h.damage, 0),
       expired,
+      skippedSteps: out.skippedSteps,
     });
   }
 

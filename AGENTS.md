@@ -2,7 +2,7 @@
 
 HSR Team Damage Comparator: a React + TypeScript app that compares two teams' damage over manual rotations.
 
-Start by reading `docs/ARCHITECTURE.md` (layers, module ownership), `docs/FORMULAS.md` and `docs/TASKS.md`.
+Start by reading `docs/SPEC.md` (the owner's requirements and open questions), `docs/ARCHITECTURE.md` (layers, module ownership), `docs/FORMULAS.md` and `docs/TASKS.md`.
 
 ## Commands (pnpm, Node ≥ 20)
 

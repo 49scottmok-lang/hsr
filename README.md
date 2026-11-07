@@ -12,6 +12,7 @@ pnpm dev
 
 Docs:
 
+- [Master specification](docs/SPEC.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Formulas](docs/FORMULAS.md)
 - [Tasks](docs/TASKS.md)

@@ -4,7 +4,7 @@
 
 The HSR Team Damage Comparator compares the damage of two teams. Each team gets a **user-defined manual rotation** against the **same enemy scenario**. The MVP is deliberately narrow: the formulas must be correct and transparent, and every number comes from the user.
 
-> **Spec note:** the "master specification" referenced in the kickoff prompt was not available in the repository or on disk when this architecture was written (2026-11-07). The design follows the kickoff prompt's explicit requirements. Reconcile with the master spec once it is added under `docs/`.
+> **Spec:** see `docs/SPEC.md` for the master specification, the requirement-to-module mapping, interpretation decisions, and open questions. It was received and reconciled on 2026-11-07, which added eidolon support.
 
 ## Layers
 
@@ -65,6 +65,13 @@ A modifier always belongs to the unit that **holds** the effect. During a hit:
 - **Target-held keys** are `defPct`, `defFlat`, `defReduction`, `resReduction`, `vulnerability` and `dmgMitigation`.
 
 So a "DEF reduction" debuff is an effect applied **to the enemy**, and a "DMG +X%" team buff is applied **to each ally**.
+
+### Eidolon gating
+
+- `CharacterBuild.eidolon` (0–6, default 0) is checked against `requires.minEidolon`.
+- `EffectDef.requires` is checked against the effect's **source**, which for always-on effects is the holder. `ActionStep.requires` is checked against the step's source: the attacker for `hit`, `sourceId` for `apply`, and otherwise the event actor.
+- Steps that fail the check are skipped and listed in `EventLogEntry.skippedSteps`, so one rotation can be reused across eidolon levels.
+- `LightCone.superimposition` (1–5) is metadata only.
 
 ### Conditional modifiers
 

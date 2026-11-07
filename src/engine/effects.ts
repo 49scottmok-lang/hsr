@@ -1,4 +1,16 @@
-import type { CombatState, EffectDef, EffectInstance, TurnPhase, UnitRef } from './types';
+import type { CombatState, EffectDef, EffectInstance, Requirement, TurnPhase, UnitRef } from './types';
+
+/** Eidolon of a unit; non-allies and unset builds count as 0. */
+export function unitEidolon(state: CombatState, unitId: string): number {
+  return state.units[unitId]?.build?.eidolon ?? 0;
+}
+
+/** True if `sourceId` satisfies `req` (absent requirement always passes). */
+export function meetsRequirement(state: CombatState, sourceId: string, req: Requirement | undefined): boolean {
+  if (!req) return true;
+  if (req.minEidolon !== undefined && unitEidolon(state, sourceId) < req.minEidolon) return false;
+  return true;
+}
 
 /** Resolve a UnitRef to concrete unit IDs (in insertion order of state.units). */
 export function resolveUnitRef(state: CombatState, ref: UnitRef): string[] {

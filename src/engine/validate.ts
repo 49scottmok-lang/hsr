@@ -6,6 +6,7 @@ import {
   type EffectDef,
   type EnemyConfig,
   type HitSpec,
+  type Requirement,
   type RotationInput,
   type StatModifier,
 } from './types';
@@ -33,8 +34,18 @@ function checkModifier(m: StatModifier, path: string, out: string[]): void {
   }
 }
 
+const isIntIn = (v: unknown, lo: number, hi: number): boolean =>
+  Number.isInteger(v) && (v as number) >= lo && (v as number) <= hi;
+
+function checkRequirement(req: Requirement | undefined, path: string, out: string[]): void {
+  if (req?.minEidolon !== undefined && !isIntIn(req.minEidolon, 0, 6)) {
+    out.push(`${path}: requires.minEidolon must be an integer 0–6`);
+  }
+}
+
 function checkEffect(def: EffectDef, path: string, unitIds: Set<string>, out: string[]): void {
   if (!def.id) out.push(`${path}: effect id is required`);
+  checkRequirement(def.requires, path, out);
   def.modifiers.forEach((m, i) => checkModifier(m, `${path}.modifiers[${i}]`, out));
   if (def.maxStacks !== undefined && !isPosInt(def.maxStacks)) {
     out.push(`${path}: maxStacks must be an integer >= 1`);
@@ -51,6 +62,10 @@ function checkEffect(def: EffectDef, path: string, unitIds: Set<string>, out: st
 function checkBuild(b: CharacterBuild, path: string, unitIds: Set<string>, out: string[]): void {
   if (!isPosInt(b.level)) out.push(`${path}: level must be an integer >= 1`);
   if (!(ELEMENTS as readonly string[]).includes(b.element)) out.push(`${path}: unknown element "${b.element}"`);
+  if (b.eidolon !== undefined && !isIntIn(b.eidolon, 0, 6)) out.push(`${path}: eidolon must be an integer 0–6`);
+  if (b.lightCone?.superimposition !== undefined && !isIntIn(b.lightCone.superimposition, 1, 5)) {
+    out.push(`${path}.lightCone: superimposition must be an integer 1–5`);
+  }
   for (const k of ['hp', 'atk', 'def', 'spd'] as const) {
     if (!isFiniteNum(b.base[k]) || b.base[k] < 0) out.push(`${path}.base.${k}: must be a finite number >= 0`);
   }
@@ -131,6 +146,7 @@ export function validateRotationInput(input: RotationInput): string[] {
     if (!unitIds.has(ev.actorId)) out.push(`${p}: actor "${ev.actorId}" is not a unit`);
     ev.steps.forEach((st, j) => {
       const sp = `${p}.steps[${j}]`;
+      checkRequirement(st.requires, sp, out);
       switch (st.op) {
         case 'hit':
           checkHit(st.hit, ev.actorId, sp, allies, enemies, out);

@@ -140,8 +140,22 @@ export interface DurationSpec {
   tickOnApplyTurn?: boolean;
 }
 
+/**
+ * Gate on the source unit's build. A requirement on a non-ally source
+ * (enemy) is evaluated with eidolon 0.
+ */
+export interface Requirement {
+  /** Source character's eidolon must be >= this (0–6). */
+  minEidolon?: number;
+}
+
 /** Definition of a buff or debuff. Pure data; instances live in CombatState. */
 export interface EffectDef {
+  /**
+   * Only applied if the SOURCE unit meets this (e.g. an E2 effect). For
+   * always-on effects (light cone, relic sets, passives) the source is the holder.
+   */
+  requires?: Requirement;
   /** Stable ID. Re-applying the same ID to the same holder refreshes it. */
   id: string;
   name: string;
@@ -180,6 +194,11 @@ export interface BaseStats {
 
 export interface LightCone {
   name: string;
+  /**
+   * Superimposition 1–5 (default 1). Metadata only: the engine does not scale
+   * values by it. Callers/data must supply the effect values for the chosen S.
+   */
+  superimposition?: number;
   /** Base HP/ATK/DEF at the chosen level/ascension. Caller-supplied. */
   base: BaseStats;
   /** Passive effects. The caller decides which conditional passives are active. */
@@ -198,6 +217,8 @@ export interface CharacterBuild {
   name: string;
   level: number;
   element: Element;
+  /** Eidolon level 0–6 (default 0). Gates effects and rotation steps via `requires`. */
+  eidolon?: number;
   /** Character base HP/ATK/DEF at the chosen level/ascension. */
   base: BaseStats & { spd: number };
   /** Base CRIT. Defaults: 0.05 / 0.5 (see docs/FORMULAS.md §Base CRIT). */
@@ -207,7 +228,10 @@ export interface CharacterBuild {
   relics?: Relics;
   /** Minor trace stat bonuses. */
   traces?: readonly StatModifier[];
-  /** Any other always-on effects (eidolons, talents, team passives). */
+  /**
+   * Any other always-on effects (talents, traces, team passives, eidolons).
+   * Eidolon effects should carry `requires.minEidolon` so one list serves E0–E6.
+   */
   passiveEffects?: readonly EffectDef[];
 }
 
@@ -336,11 +360,17 @@ export interface HitResult {
 /** Who an effect is applied to. */
 export type UnitRef = string | 'allAllies' | 'allEnemies';
 
-export type ActionStep =
+/**
+ * One step of a rotation event. `requires` skips the step unless its source
+ * unit meets it: hit → attacker, apply → sourceId, otherwise the event actor.
+ * This lets one rotation be reused across eidolon levels.
+ */
+export type ActionStep = { requires?: Requirement } & (
   | { op: 'apply'; effect: EffectDef; to: UnitRef; sourceId?: string; stacks?: number }
   | { op: 'remove'; effectId: string; from: UnitRef }
   | { op: 'hit'; hit: HitSpec }
-  | { op: 'setBroken'; enemyId: string; broken: boolean };
+  | { op: 'setBroken'; enemyId: string; broken: boolean }
+);
 
 /**
  * A manual rotation is an ordered list of events. The engine does NOT
@@ -372,6 +402,8 @@ export interface EventLogEntry {
   damage: number;
   /** Effect IDs that expired during this event, as `${holderId}:${effectId}`. */
   expired: string[];
+  /** Indexes of steps skipped because a `requires` gate was not met (step or effect). */
+  skippedSteps: number[];
 }
 
 export interface RotationResult {

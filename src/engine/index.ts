@@ -8,7 +8,7 @@ export { computeBreakdown, calculateHit, resolveHitStats, defaultCanCrit } from 
 export type { DamageInput, CalculatedHit } from './damage';
 export { resolveUnitStats, conditionMatches } from './stats';
 export type { HitContext, ResolvedUnitStats } from './stats';
-export { applyEffect, removeEffect, tickEffects, resolveUnitRef } from './effects';
+export { applyEffect, removeEffect, tickEffects, resolveUnitRef, meetsRequirement, unitEidolon } from './effects';
 export { runRotation, createInitialState } from './rotation';
 export { compareTeams } from './compare';
 export { validateRotationInput, EngineValidationError } from './validate';
