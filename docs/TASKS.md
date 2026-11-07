@@ -9,6 +9,9 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done. Owners are defined
 - [x] Engine independence guards: typecheck, lint, and test.
 - [x] 63 unit tests, including the hand-computed worked example.
 - [x] Cross-checked the formulas against Fribbels HSR Optimizer. Added the vulnerability cap and the Final/True DMG multipliers, bringing the total to 66 tests.
+- [x] Checked the formulas against the Fandom wiki Damage page.
+- [x] Reconciled the design with the master spec. Added eidolon gating and superimposition, bringing the total to 72 tests.
+- [x] v1 plan: account import, sourced stat tables, zh-HK UI, and share-by-link (SPEC D5–D7).
 
 ---
 
@@ -78,9 +81,74 @@ Rules for every task:
 
 ### F9. Disclaimers
 
-- [ ] Add a persistent footer: "All game numbers are user-entered. Formulas marked UNVERIFIED in docs/FORMULAS.md may differ from the game."
+- [ ] Add a persistent footer in zh-HK. It says that game numbers come from the user or from cited stat tables (with a link to the data credits from D4), that formulas marked UNVERIFIED in docs/FORMULAS.md may differ from the game, and that this is a fan project not affiliated with HoYoverse.
+
+### F10. Account import UI — `src/ui/components/ImportPanel.tsx` (after I1–I2)
+
+- [ ] Add a file picker for a Reliquary Archiver `.json` export. The file is read **in the browser only**, with no upload or network request.
+- [ ] Call `importArchive()` (I2) and list the imported characters with level, eidolon, light cone and superimposition, and relic summary. The user picks which ones to add to Team A or Team B.
+- [ ] For each imported build, show what was **looked up** (base stats, main stats, 2-piece sets, traces) and what **must still be entered** (kit effects, 4-piece sets, LC passive), using `ImportReport` (I2).
+- [ ] Keep the raw export in memory only. Never persist it to `localStorage` and never put it in a share link.
+- **Acceptance:** importing the synthetic fixture from I3 adds a build whose final stats match the I3 expected values. An unsupported file shows a zh-HK error and doesn't crash.
+
+### F11. Traditional Chinese (Hong Kong) UI — `src/ui/i18n/` (start alongside F1)
+
+- [ ] Put every UI string in `src/ui/i18n/zh-HK.ts`, as a typed key → string map, behind a `t(key)` helper. Hard-coded UI text is not allowed. This leaves room for other languages later.
+- [ ] Use zh-HK game terms consistently: 星魂, 光錐, 疊影, 遺器, 行跡, 暴擊率, 暴擊傷害, 增傷, 易傷, 減防, 抗性穿透, 擊破, 持續傷害, 追加攻擊, 終結技, 戰技, 普攻, 天賦. Keep a glossary at the top of the file.
+- [ ] Translate `EngineValidationError.issues` for display by pattern, and fall back to the English text.
+- [ ] Format numbers with `Intl.NumberFormat('zh-HK')`.
+- [ ] Set `<html lang="zh-HK">`.
+- **Acceptance:** a test fails if any component renders a string literal that isn't from `t()`, which can be checked with a simple lint/test scan.
+
+### F12. Static deployment (needs SPEC Q4)
+
+- [ ] Make the production build work from a sub-path (Vite `base`) and add a deploy workflow for the chosen host.
+- [ ] Add a CI step that runs `pnpm check` and `pnpm build` before deploying.
+- **Acceptance:** the public URL loads and the worked example computes 4386.
+
+### F13. Share by link — `src/ui/share/`
+
+- [ ] Encode the current `Scenario` as `#s=<version>.<base64url(compressed JSON)>` in the URL hash, with a "copy link" button. On load, decode it, validate it with `validateRotationInput`, and show any issues.
+- [ ] Include the scenario only. **Strip** anything from an account import except the resulting builds: no UID, no inventory.
+- [ ] Version the format, so that old links either still decode or show a clear "link from an older version" message.
+- **Acceptance:** encode → decode gives a deep-equal result (unit test). A tampered link shows a validation error and doesn't crash. A test asserts that a link built from an imported scenario does not contain the UID.
+
+### Suggested order
+
+F1 + F11 → F2 → F3 → F4 → F5 → F6 → F7 → F8 → F10 (once I1–I2 land) → F13 → F9 → F12
 
 ---
+
+## Data tasks (owner: engine owner) — `src/data/`
+
+- [ ] **D1. Choose the stat-table source** (SPEC Q5).
+  - List candidates with their licence and update cadence, e.g. datamined resource repositories, or Fribbels' MIT-licensed data files.
+  - Record the chosen source, its version and the date checked.
+  - **Do not add numbers before this is decided.**
+- [ ] **D2. Schema and validator** (replaces E3).
+  - Each table record carries `source` and `gameVersion`.
+  - A validator test fails on any record without a citation, or with an out-of-range value.
+- [ ] **D3. Tables (stat-only, no kit logic):**
+  - character element and base HP/ATK/DEF/SPD per level and ascension
+  - light cone base HP/ATK/DEF per level and ascension
+  - relic main stat value per slot, stat, rarity and level
+  - 2-piece set bonuses **only when they are unconditional stat bonuses**
+  - character trace stat bonuses (`stat_1`–`stat_10`)
+  - The values must match the source exactly. No interpolation.
+- [ ] **D4. Credits.** Add a data credits list (source, licence, version), shown by F9.
+
+## Import tasks (owner: engine owner) — `src/import/` (pure TS; same independence rules as the engine)
+
+- [ ] **I1. Parse and validate the Reliquary Archiver export.**
+  - The format is documented in `docs/IMPORT_FORMAT.md`, observed from a v0.19.0 / `version: 4` export.
+  - Reject unknown `source` or `version` values with a clear error.
+  - Drop `metadata.uid`, `gacha` and `materials` immediately after parsing.
+- [ ] **I2. `importArchive(json, tables): { builds: CharacterBuild[]; report: ImportReport }`.**
+  - Map each owned character to a `CharacterBuild`: level, ascension, eidolon, and the equipped light cone (matched by `location`) with superimposition.
+  - Convert relics using the IMPORT_FORMAT key map. Substats with a trailing `_` are percentages, so divide by 100. Main stat **values** come from D3. Equipped sets with an unconditional 2-piece bonus become `setEffects`.
+  - Unlocked `stat_N` traces become `traces`, with values from D3.
+  - `ImportReport` lists, per build, everything looked up and everything still missing: kit, 4-piece sets, LC passive, and any table miss.
+- [ ] **I3. Tests with a small synthetic fixture** that is hand-written and has a fake UID. **Never commit a real account export.** Expected final stats are computed by hand from the fixture tables.
 
 ## Engine backlog (owner: engine)
 
@@ -91,8 +159,8 @@ Rules for every task:
 - [ ] E8. DoT application-chance weighting (EHR vs effect RES), as R1 does. This needs `effectHitRate` plumbing and an enemy effect RES field.
 - [ ] E9. Evaluate Nous StarRailSim's APL model (`action on target if condition`) as the design for E6. Its source is closed, so use it for design only.
 - [x] E2. Reconcile the architecture with the master specification (`docs/SPEC.md`). This added eidolon gating and superimposition, bringing the total to 72 tests.
-- [ ] E10. Decide on and implement the answers to SPEC Q1–Q3: built-in game data, UI language, hosting.
-- [ ] E3. Data layer: a schema plus a validator for `src/data` entries that requires a `source` on every number-bearing record.
+- [x] E10. Owner answered SPEC Q1–Q3 (decisions D5–D7). The work is split into D1–D4, I1–I3 and F10–F13.
+- ~~E3. Data layer schema.~~ Superseded by D2.
 - [ ] E4. Break / Super Break DMG. This needs the sourced level multiplier table.
 - [ ] E5. Effect stacking policies per effect: `refresh` | `independent` | `noRefresh`. This replaces assumption A1.
 - [ ] E6. Optional SPD/AV timeline helper, which would generate a turn order suggestion.

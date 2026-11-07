@@ -13,13 +13,15 @@ The HSR Team Damage Comparator compares the damage of two teams. Each team gets 
 │ src/ui/       React UI (frontend agent)    │  forms, rotation editor, results
 │   └─ imports ONLY from 'src/engine' index  │
 ├────────────────────────────────────────────┤
-│ src/data/     curated game data (empty)    │  sourced JSON/TS, validated
+│ src/import/   account import (planned)     │  Reliquary Archiver → CharacterBuild
+├────────────────────────────────────────────┤
+│ src/data/     sourced stat tables (planned)│  cited, validated, no kit logic
 ├────────────────────────────────────────────┤
 │ src/engine/   pure TypeScript engine       │  no React, no DOM, no I/O
 └────────────────────────────────────────────┘
 ```
 
-Dependency direction: `ui → engine`, `ui → data`, `data → engine (types only)`. **The engine never imports from `ui` or `data`.**
+Dependency direction: `ui → engine`, `ui → import`, `ui → data`, `import → data`, `import → engine (types only)`, `data → engine (types only)`. **The engine never imports from `ui`, `import` or `data`.** `src/import` follows the same framework-free rules as the engine: no React, no DOM, and it receives the file contents as a parsed object.
 
 Engine independence is enforced three ways:
 
@@ -109,7 +111,9 @@ runRotation(input):
 |---|---|---|
 | `src/engine/**` (including `__tests__`) | **Engine owner** (Claude / lead architect) | Read and import via `src/engine/index.ts` only. Request changes in `docs/TASKS.md § Engine change requests`. |
 | `src/ui/**`, `src/main.tsx`, `src/index.css`, `index.html`, `public/**` | **Frontend agent** (Codex) | — |
-| `src/data/**` | **Data curator** (unassigned; requires citations) | Frontend may read. |
+| `src/data/**` | **Engine owner** (tasks D1–D4; citations required) | Frontend may read. |
+| `src/import/**` | **Engine owner** (tasks I1–I3) | Frontend calls `importArchive()` only. |
+| `src/ui/i18n/**`, `src/ui/share/**` | **Frontend agent** (F11, F13) | — |
 | `docs/ARCHITECTURE.md`, `docs/FORMULAS.md` | Engine owner | Propose edits via TASKS.md. |
 | `docs/TASKS.md`, `docs/KNOWN_LIMITATIONS.md` | Shared | Append. Don't delete others' items. |
 | `package.json`, `tsconfig*.json`, `vite.config.ts`, `vitest.config.ts`, `.oxlintrc.json` | Engine owner | Frontend may add UI deps and UI test setup. Note the change in the commit. |

@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Personal game-account exports (contain UID and inventory) — never commit
+archive_output*.json
+*reliquary*.json
+*hsr_scan*.json

@@ -2,9 +2,12 @@
 
 Status is as of 2026-11-07. Formula-level verification status is tracked inline in `FORMULAS.md`. This file lists **scope gaps** and **mechanics the engine assumes**.
 
-## No game data
+## Game data
 
-- The repository ships **no** character, light cone, relic, or enemy data. Every base stat, skill multiplier, buff value, and enemy RES must be entered by the user, or added to `src/data/` with a source citation (`src/data/README.md`).
+- The repository currently ships **no** game data. v1 (SPEC D5) will add **stat tables only**, with citations: base stats, main stat values, unconditional 2-piece sets, and trace stats.
+- Kit behaviour is still entered by the user: skill multipliers, talents, eidolon effects, 4-piece sets, light cone passives, and enemy RES.
+- Account import (planned) supports **only** the Reliquary Archiver format, at the version documented in `IMPORT_FORMAT.md`. Other tools' formats (Kel-Z HSR Scanner, HoYoLAB, UID lookup) are not supported in v1.
+- Imported relic data reflects the export's moment in time. Re-import after changing gear in game.
 - Test fixtures (`src/engine/__tests__/fixtures.ts`) are synthetic and are **not** game data.
 
 ## Formula verification status

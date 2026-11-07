@@ -16,16 +16,29 @@ English: *"I want a website that compares the damage of two Honkai: Star Rail te
 | R4 | Light cones (光錐) | `CharacterBuild.lightCone`: base stats, passive `effects`, and `superimposition` 1–5 (metadata). | ✅ Engine done. Effect values per superimposition are user/data-supplied. |
 | R5 | Eidolons (星魂) | `CharacterBuild.eidolon` 0–6, plus `requires.minEidolon` on `EffectDef` and on each `ActionStep`. One kit definition and one rotation serve E0–E6. | ✅ Engine done 2026-11-07 |
 | R6 | Skill rotation (技能循環) | Manual ordered `RotationEvent`s (`turn` / `extra`) with ordered steps. | ✅ Engine done. Editor is F5. |
+| R7 | Import the user's own account (decided 2026-11-07, Q1) | `src/import/` turns a Reliquary Archiver export into `CharacterBuild`s, using the stat tables in R8. The file picker is F10. | ⬜ Planned: I1–I3, F10 |
+| R8 | Sourced stat tables (decided 2026-11-07, Q1) | `src/data/`: tabular game numbers only, each with a citation. | ⬜ Planned: D1–D4 |
+| R9 | UI language: Traditional Chinese (Hong Kong) (decided 2026-11-07, Q2) | All UI strings in `zh-HK`, collected in one module so another language can be added later. | ⬜ Planned: F11 |
+| R10 | Reachable and shareable by link (decided 2026-11-07, Q3) | Static deploy at a public URL, and a comparison encoded into the URL so it can be shared. | ⬜ Planned: F12, F13 |
 
 ## Interpretation decisions (until the owner says otherwise)
 
 - **D1. The rotation is manual.** The user lists the order of actions. SPD/AV simulation is not required by the spec (backlog E6/E9).
 - **D2. "Damage" means expected damage by default.** Crit and non-crit modes are also available.
-- **D3. No game data is invented.** Character kits, light cone values and eidolon effects are user-entered, or come from `src/data` with citations. *See open question Q1.*
+- **D3. No game data is invented.** Character kits, light cone values and eidolon effects are user-entered, or come from `src/data` with citations. *Refined by D5.*
 - **D4. Superimposition is a label.** The engine doesn't scale light cone values by S1–S5. The UI or data layer supplies the values for the chosen superimposition.
 
-## Open questions for the owner
+## Owner decisions (2026-11-07)
 
-- **Q1. Built-in game data.** Should the site ship a character, light cone and eidolon database, so that users pick from lists? The alternative is that users type every value in manually (the current design). A database needs a sourced data pipeline, for example datamined or MIT-licensed community data with attribution.
-- **Q2. UI language.** Traditional Chinese (Hong Kong), English, or both?
-- **Q3. Hosting.** Where will the site be deployed (e.g. GitHub Pages, Vercel)? Do comparisons need shareable links?
+- **D5 (Q1). Account import plus a sourced stat table; kits are entered manually.** In v1:
+  - **Imported** from the user's Reliquary Archiver export: owned characters, level, ascension, eidolon, unlocked traces, equipped light cone and superimposition, and relic set, slot, rarity, level, main stat name and substat values.
+  - **Looked up** in sourced tables (R8): character and light cone base stats, relic main stat values, simple stat-only set bonuses, trace stat bonuses, and character element.
+  - **Entered manually**, as before: skill multipliers, talents and conditional buffs, eidolon effects, 4-piece and conditional set effects, light cone passives, and enemies.
+- **D6 (Q2). The UI language is Traditional Chinese (Hong Kong).** Code, docs and engine messages stay in English. The UI translates engine validation messages for display.
+- **D7 (Q3). The site is reachable and shareable by link.** It is deployed as a static site at a public URL, and a comparison can be shared as a URL. *Interpretation of "部署 in link", to be confirmed. The hosting platform is not yet chosen; any static host works, because the app has no server.*
+  - A shared link contains **only the scenario** (builds, effects, rotations, enemies). It never contains the account export, UID, or unequipped inventory.
+
+## Open questions
+
+- **Q4. Hosting platform**, e.g. GitHub Pages, Vercel or Cloudflare Pages. This only matters for F12.
+- **Q5. Which stat-table source to use**, once D1 has listed the candidates and their licences.

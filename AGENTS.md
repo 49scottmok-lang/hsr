@@ -22,7 +22,9 @@ pnpm check       # typecheck + test + lint — must pass before every commit
 3. **Do not invent game data or abilities.** No character stats, skill multipliers, light cone or relic values, or enemy RES from memory. Every game number comes from user input, or from `src/data` with a `source` citation.
 4. **Document every unverified mechanic.** Tag it in `docs/FORMULAS.md` or `docs/KNOWN_LIMITATIONS.md`.
 5. **The UI never re-implements formulas.** Display engine output only.
-6. Report actual command output. Never claim tests or the build passed without running them.
+6. **Never commit a real game-account export**, or any UID or inventory data. Tests use hand-written synthetic fixtures.
+7. **UI text is Traditional Chinese (Hong Kong)** and goes through `t()` (F11). Code, comments and docs stay in English.
+8. Report actual command output. Never claim tests or the build passed without running them.
 
 ## Code conventions
 
