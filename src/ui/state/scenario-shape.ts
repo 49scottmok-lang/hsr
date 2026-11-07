@@ -119,7 +119,13 @@ const event = shape({
   label: optional(string),
   steps: list(step),
 });
-const team = shape({ label: string, team: list(character), events: list(event), cycles: optional(number) });
+const team = shape({
+  label: string,
+  team: list(character),
+  events: list(event),
+  effectLibrary: optional(list(effect)),
+  cycles: optional(number),
+});
 const teams = list(team);
 const scenario = shape({
   enemies: list(enemy),

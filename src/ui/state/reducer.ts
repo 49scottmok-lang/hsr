@@ -1,4 +1,4 @@
-import type { ActionStep, CharacterBuild, CritMode, EnemyConfig, RotationEvent } from '../../engine/index';
+import type { ActionStep, CharacterBuild, CritMode, EffectDef, EnemyConfig, RotationEvent } from '../../engine/index';
 import type { Scenario, TeamDraft, TeamIndex } from './scenario';
 
 type ListEdit<T> =
@@ -13,6 +13,7 @@ export type ScenarioAction =
   | ({ teamIndex: TeamIndex } & (
     | { type: 'editCharacters'; edit: ListEdit<CharacterBuild> }
     | { type: 'editEvents'; edit: ListEdit<RotationEvent> }
+    | { type: 'editEffects'; edit: ListEdit<EffectDef> }
     | { type: 'editSteps'; eventIndex: number; edit: ListEdit<ActionStep> }
     | { type: 'setCycles'; cycles: number | undefined }
   ));
@@ -54,6 +55,26 @@ export function scenarioReducer(scenario: Scenario, action: ScenarioAction): Sce
       const events = editList(draft.events, action.edit);
       if (events === draft.events) return scenario;
       updated = { ...draft, events };
+      break;
+    }
+    case 'editEffects': {
+      const library = draft.effectLibrary ?? [];
+      const effectLibrary = editList(library, action.edit);
+      if (effectLibrary === library) return scenario;
+      updated = { ...draft, effectLibrary };
+      if (action.edit.type === 'update') {
+        const previous = library[action.edit.index]!;
+        const effect = action.edit.value;
+        // Keep apply steps self-contained for the engine and JSON exports.
+        updated.events = draft.events.map((event) => ({
+          ...event,
+          steps: event.steps.map((step) => {
+            if (step.op === 'apply' && step.effect.id === previous.id) return { ...step, effect };
+            if (step.op === 'remove' && step.effectId === previous.id) return { ...step, effectId: effect.id };
+            return step;
+          }),
+        }));
+      }
       break;
     }
     case 'editSteps': {

@@ -1,6 +1,7 @@
 import type {
   CharacterBuild,
   CritMode,
+  EffectDef,
   EnemyConfig,
   RotationEvent,
   RotationInput,
@@ -12,6 +13,7 @@ export interface TeamDraft {
   label: string;
   team: readonly CharacterBuild[];
   events: readonly RotationEvent[];
+  effectLibrary?: readonly EffectDef[];
   cycles?: number;
 }
 

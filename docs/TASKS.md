@@ -49,8 +49,9 @@ Rules for every task:
 
 ### F4. Effect editor — `src/ui/components/EffectEditor.tsx`
 
-- [ ] Edit an `EffectDef`: id, name, kind, modifiers (reuse the F2 modifier list), maxStacks, an optional duration (turns, tickUnit, tickPhase, tickOnApplyTurn), an optional "Requires Eidolon ≥ N" (`requires.minEidolon`), and a `source` text field.
-- [ ] Add a per-team **effect library**. Steps reference effects from it, and the full `EffectDef` is copied into the step on export.
+- [x] Edit an `EffectDef`: id, name, kind, modifiers (reuse the F2 modifier list), maxStacks, an optional duration (turns, tickUnit, tickPhase, tickOnApplyTurn), an optional "Requires Eidolon ≥ N" (`requires.minEidolon`), and a `source` text field.
+- [x] Add a per-team **effect library**. Steps reference effects from it, and the full `EffectDef` is copied into the step on export.
+- Library edits update matching steps in that team by effect ID. Removing a library entry keeps the existing apply steps' full definitions. F5 adds the effect picker.
 - **Acceptance:** the duration controls explain the tick semantics inline, with a link to KNOWN_LIMITATIONS A2.
 
 ### F5. Manual rotation editor — `src/ui/components/RotationEditor.tsx`

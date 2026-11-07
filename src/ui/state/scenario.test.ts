@@ -113,6 +113,26 @@ it.each([0, 1] as const)('converts team %i using shared enemies and crit mode', 
 });
 
 describe('scenario JSON', () => {
+  it('keeps full effect definitions in exported steps after a library edit or removal', () => {
+    const step = event.steps.find((step) => step.op === 'apply')!;
+    const withLibrary = scenarioReducer(scenario, {
+      type: 'editEffects', teamIndex: 0, edit: { type: 'add', value: step.effect },
+    });
+    const effect = { ...step.effect, id: 'renamed-effect', source: 'Test citation' };
+    const updated = scenarioReducer(withLibrary, {
+      type: 'editEffects', teamIndex: 0, edit: { type: 'update', index: 0, value: effect },
+    });
+    const result = importScenario(exportScenario(updated));
+    expect(result).toStrictEqual({ ok: true, scenario: updated, issues: [] });
+    expect(updated.teams[0].events[0]?.steps).toContainEqual({ ...step, effect });
+    expect(updated.teams[1]).toBe(scenario.teams[1]);
+    const removed = scenarioReducer(updated, {
+      type: 'editEffects', teamIndex: 0, edit: { type: 'remove', index: 0 },
+    });
+    expect(removed.teams[0].effectLibrary).toEqual([]);
+    expect(removed.teams[0].events[0]?.steps).toContainEqual({ ...step, effect });
+  });
+
   it('round-trips both teams and their nested build and rotation data', () => {
     expect(importScenario(exportScenario(scenario))).toStrictEqual({ ok: true, scenario, issues: [] });
   });

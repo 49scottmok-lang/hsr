@@ -1,5 +1,6 @@
 import { useReducer, useRef } from 'react';
 import { CharacterEditor } from './components/CharacterEditor';
+import { EffectEditor } from './components/EffectEditor';
 import { EnemyEditor } from './components/EnemyEditor';
 import { t } from './i18n';
 import { scenarioReducer } from './state/reducer';
@@ -53,6 +54,24 @@ export default function App() {
     });
   }
 
+  function addEffect(teamIndex: TeamIndex) {
+    const { effectLibrary, events } = scenario.teams[teamIndex];
+    const ids = new Set(effectLibrary?.map(({ id }) => id));
+    for (const { steps } of events) {
+      for (const step of steps) {
+        if (step.op === 'apply') ids.add(step.effect.id);
+        if (step.op === 'remove') ids.add(step.effectId);
+      }
+    }
+    let number = 1;
+    while (ids.has(`effect-${number}`)) number++;
+    dispatch({
+      type: 'editEffects',
+      teamIndex,
+      edit: { type: 'add', value: { id: `effect-${number}`, name: '', kind: 'buff', modifiers: [] } },
+    });
+  }
+
   return (
     <main>
       <h1>{t('app.title')}</h1>
@@ -69,7 +88,7 @@ export default function App() {
         <button type="button" onClick={addEnemy}>{t('enemy.add')}</button>
       </section>
       {([0, 1] as const).map((teamIndex) => {
-        const { label, team } = scenario.teams[teamIndex];
+        const { label, team, effectLibrary = [] } = scenario.teams[teamIndex];
         return (
           <section key={teamIndex} aria-label={label}>
             <h2>{label}</h2>
@@ -88,6 +107,20 @@ export default function App() {
             >
               {t('character.add')}
             </button>
+            <fieldset>
+              <legend>{t('effect.library')}</legend>
+              {effectLibrary.map((effect, index) => (
+                <EffectEditor
+                  key={index}
+                  effect={effect}
+                  units={[...team, ...scenario.enemies]}
+                  reservedIds={new Set(effectLibrary.filter((_, i) => i !== index).map(({ id }) => id))}
+                  onChange={(value) => dispatch({ type: 'editEffects', teamIndex, edit: { type: 'update', index, value } })}
+                  onRemove={() => dispatch({ type: 'editEffects', teamIndex, edit: { type: 'remove', index } })}
+                />
+              ))}
+              <button type="button" onClick={() => addEffect(teamIndex)}>{t('effect.add')}</button>
+            </fieldset>
           </section>
         );
       })}

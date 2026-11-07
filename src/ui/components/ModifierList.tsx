@@ -1,10 +1,11 @@
 import { DAMAGE_TAGS, ELEMENTS, STAT_KEYS, type ModifierCondition, type StatKey, type StatModifier } from '../../engine/index';
-import { t } from '../i18n';
+import { t, type TranslationKey } from '../i18n';
 import { NumberField } from './NumberField';
 
 interface ModifierListProps {
   modifiers: readonly StatModifier[];
   onChange: (modifiers: readonly StatModifier[]) => void;
+  addLabel?: TranslationKey;
 }
 
 function isPercent(stat: StatKey): boolean {
@@ -16,7 +17,7 @@ function selectedValues<T extends string>(select: HTMLSelectElement, options: re
   return options.filter((value) => selected.has(value));
 }
 
-export function ModifierList({ modifiers, onChange }: ModifierListProps) {
+export function ModifierList({ modifiers, onChange, addLabel = 'modifier.add' }: ModifierListProps) {
   return (
     <>
       {modifiers.map((modifier, index) => {
@@ -90,7 +91,7 @@ export function ModifierList({ modifiers, onChange }: ModifierListProps) {
         );
       })}
       <button type="button" onClick={() => onChange([...modifiers, { stat: 'atkPct', value: 0 }])}>
-        {t('modifier.add')}
+        {t(addLabel)}
       </button>
     </>
   );
