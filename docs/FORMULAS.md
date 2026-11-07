@@ -59,7 +59,11 @@ An ally's own DEF uses the same pool as the target DEF formula: `base × max(0, 
 
 ## Base CRIT
 
-Defaults are CRIT Rate 5% and CRIT DMG 50% for every character, overridable via `CharacterBuild.baseCritRate/baseCritDmg`. **[UNVERIFIED]**: these constants were not located in R1.
+Defaults are CRIT Rate 5% and CRIT DMG 50% for every character, overridable via `CharacterBuild.baseCritRate/baseCritDmg`.
+
+- **[SOURCED]** *(2026-11-07)* Source A (`DimbreathBot/TurnBasedGameData@74a7b96`, `AvatarPromotionConfig`) has `CriticalChance 0.05` and `CriticalDamage 0.5` for every character at every ascension. The stat tables carry them per ascension (`CharacterAscension.critRate/critDmg`).
+- **[CROSS-CHECKED]** B (`fribbels/hsr-optimizer@dd0c4af`, `game_data.json`) lists the same `CRIT Rate`/`CRIT DMG` for every character (`crosscheck-b.test.ts`).
+- Previously **[UNVERIFIED]**: the constants were not located in R1's damage code.
 
 ## CRIT
 
@@ -169,6 +173,36 @@ TrueDMG = 1 + Σ trueDmg   (read from the attacker)
 - **[CROSS-CHECKED]** R1 uses `1 + TRUE_DMG_MODIFIER + hit.trueDmgModifier`, which is additive.
 - S3 describes True DMG as damage dealt directly, "without being modified by any damage calculation multipliers". So this multiplier only models effects of the form "additionally deals True DMG equal to X% of this hit's DMG". True DMG based on other values (tallied DMG, Max HP) is **not supported**; enter it as a separate figure outside the engine.
 - Whether a given True DMG effect applies to DoT or Break DMG is ability-specific. Restrict it with modifier conditions.
+
+## Level scaling (stat tables, added 2026-11-07)
+
+The stat tables (`src/data`, TASKS D3) store each ascension's starting value and a per-level increment, exactly as source A gives them. Values for a given level are computed by these two functions, never stored.
+
+```
+BaseStat(level) = Base[ascension] + Add[ascension] × (level − 1)    character / light cone HP, ATK, DEF
+MainStat(level) = BaseValue[group, stat] + LevelAdd[group, stat] × level    relic main stat, level +0 … +max
+```
+
+- Functions: `formulas.promotedBaseStat` and `formulas.relicMainStatValue`, used by `characterBase`, `lightConeBase` and `relicMainStat` in `src/data/lookup.ts`. The lookups reject a level that the ascension can't reach (ascension *a* covers levels `cap[a−1]` … `cap[a]`, with ascension 0 starting at 1).
+- SPD and base CRIT do not scale with level: the source has no increment for them.
+- Relic rarity is `MaxLevel / 3` (2★ +6 … 5★ +15), the same rule Reliquary Archiver uses (`converters.rs@5e50dcb`). The main-stat group is chosen by slot and rarity from A's `RelicConfig`.
+
+Verification:
+
+- **[CROSS-CHECKED] at level 80 only.** `BaseStat(80)` at the last ascension equals B's level-80 values for all 94 characters and 170 light cones (`src/data/__tests__/crosscheck-b.test.ts`). B stores level 80 only, so no source checks other levels: **[UNVERIFIED] below level 80.**
+- **[CROSS-CHECKED] at each rarity's max level.** `MainStat(max)` equals B's `maxedMainStats` (`src/lib/relics/statCalculator.ts@dd0c4af`, 3 decimals) for all 19 stats × 4 rarities. This also settles `× level` over `× (level − 1)`: for a 5★ Head (flat HP), A's group-51 pair gives `705.6` with `× 15`, which is B's value, but `666.086` with `× 14`. **[UNVERIFIED] at intermediate levels.**
+- B's `relic_main_affixes.json` has the same `base`/`step` pairs as A for every group (exact equality in the same test).
+
+Hand-computed tests (synthetic numbers):
+
+| Call | Arithmetic | Result |
+|---|---|---|
+| `promotedBaseStat(100, 5, 20)` | 100 + 5 × 19 | 195 |
+| `promotedBaseStat(100, 5, 1)` | 100 + 5 × 0 | 100 |
+| `relicMainStatValue(10, 2, 15)` | 10 + 2 × 15 | 40 |
+| `characterBase` fixture, Lv20 at ascension 0 / 1 | 100 + 5 × 19 / 140 + 5 × 19 | HP 195 / 235 |
+
+Covered by `src/engine/__tests__/formulas.test.ts` and `src/data/__tests__/lookup.test.ts`.
 
 ## Action Value
 

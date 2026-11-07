@@ -97,4 +97,19 @@ describe('formulas', () => {
     expect(f.actionValue(134)).toBeCloseTo(74.6268656716, 9);
     expect(() => f.actionValue(0)).toThrow(RangeError);
   });
+
+  // TEST FIXTURE — NOT GAME DATA: base 100, add 5 (synthetic).
+  it('promotedBaseStat = base + add × (level − 1)', () => {
+    expect(f.promotedBaseStat(100, 5, 1)).toBe(100); // 100 + 5 × 0
+    expect(f.promotedBaseStat(100, 5, 20)).toBe(195); // 100 + 5 × 19
+    expect(f.promotedBaseStat(100, 5, 80)).toBe(495); // 100 + 5 × 79
+    expect(f.promotedBaseStat(144, 7.2, 80)).toBeCloseTo(712.8, 9); // 144 + 568.8
+  });
+
+  // TEST FIXTURE — NOT GAME DATA: base 10, perLevel 2 (synthetic).
+  it('relicMainStatValue = base + perLevel × level (levels start at +0)', () => {
+    expect(f.relicMainStatValue(10, 2, 0)).toBe(10); // 10 + 2 × 0
+    expect(f.relicMainStatValue(10, 2, 15)).toBe(40); // 10 + 2 × 15
+    expect(f.relicMainStatValue(0.05, 0.01, 12)).toBeCloseTo(0.17, 12); // 0.05 + 0.12
+  });
 });

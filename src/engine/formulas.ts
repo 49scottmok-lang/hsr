@@ -118,3 +118,20 @@ export function actionValue(spd: number): number {
   if (spd <= 0) throw new RangeError('SPD must be positive');
   return 10000 / spd;
 }
+
+/**
+ * §Level scaling (base stats): a character's or light cone's base HP/ATK/DEF
+ * at `level`, from its current ascension's `base` and per-level `add`.
+ * Level 1 gives `base` itself, hence `level − 1`.
+ */
+export function promotedBaseStat(base: number, add: number, level: number): number {
+  return base + add * (level - 1);
+}
+
+/**
+ * §Level scaling (relic main stat): main stat value at relic `level`.
+ * Relic levels start at +0 (not 1), so there is no `− 1`.
+ */
+export function relicMainStatValue(base: number, perLevel: number, level: number): number {
+  return base + perLevel * level;
+}
