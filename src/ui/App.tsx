@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import type { CritMode } from '../engine/index';
 import { CharacterEditor } from './components/CharacterEditor';
+import { DataFooter } from './components/DataFooter';
 import { EffectEditor } from './components/EffectEditor';
 import { EnemyEditor } from './components/EnemyEditor';
 import { ImportPanel } from './components/ImportPanel';
@@ -226,6 +227,7 @@ export default function App() {
       </label>
       {!showResults && <button type="button" onClick={() => setShowResults(true)}>{t('results.calculate')}</button>}
       {showResults && <Results scenario={scenario} />}
+      <DataFooter />
     </main>
   );
 }

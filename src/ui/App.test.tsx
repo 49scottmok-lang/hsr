@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
+import { DATA_CREDITS } from '../data';
 import App from './App';
 import { t } from './i18n';
 import { decodeScenarioLink, encodeScenarioLink } from './share/scenario-link';
@@ -95,4 +96,18 @@ it('reports a tampered link and falls back to a selectable link when clipboard a
   const link = await screen.findByLabelText<HTMLInputElement>(t('share.link'));
   expect(screen.getByRole('status').textContent).toBe(t('share.copyFailed'));
   await expect(decodeScenarioLink(new URL(link.value).hash)).resolves.toMatchObject({ ok: true, scenario: draft });
+});
+
+it('shows the localized data notices and every sourced credit before calculating results', () => {
+  render(<App />);
+  expect(screen.getByText(t('credits.gameNotice'))).toBeTruthy();
+  expect(screen.getByText(t('credits.formulaNotice'))).toBeTruthy();
+  expect(screen.getByRole('link', { name: t('credits.title') }).getAttribute('href')).toBe('#data-credits');
+  const credits = within(screen.getByRole('region', { name: t('credits.title') }));
+  for (const credit of DATA_CREDITS) {
+    const link = credits.getByRole('link', { name: credit.name });
+    expect(link.getAttribute('href')).toBe(credit.url);
+    expect(link.closest('li')?.textContent).toContain(credit.commit.slice(0, 7));
+    expect(link.closest('li')?.textContent).toContain(credit.licence ?? t('credits.licenceUnknown'));
+  }
 });

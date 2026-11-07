@@ -88,7 +88,7 @@ Rules for every task:
 
 - **Ready 2026-11-07 (D4 done):** list `DATA_CREDITS` (name, link, licence, short commit) and translate `GAME_DATA_NOTICE`.
 
-- [ ] Add a persistent footer in zh-HK. It says that game numbers come from the user or from cited stat tables (with a link to the data credits from D4), that formulas marked UNVERIFIED in docs/FORMULAS.md may differ from the game, and that this is a fan project not affiliated with HoYoverse.
+- [x] Add a persistent footer in zh-HK. It says that game numbers come from the user or from cited stat tables (with a link to the data credits from D4), that formulas marked UNVERIFIED in docs/FORMULAS.md may differ from the game, and that this is a fan project not affiliated with HoYoverse.
 
 ### F10. Account import UI — `src/ui/components/ImportPanel.tsx` (after I1–I2)
 
