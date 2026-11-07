@@ -13,4 +13,4 @@ export type { HitContext, ResolvedUnitStats } from './stats';
 export { applyEffect, removeEffect, tickEffects, resolveUnitRef, meetsRequirement, unitEidolon } from './effects';
 export { runRotation, createInitialState } from './rotation';
 export { compareTeams } from './compare';
-export { validateRotationInput, EngineValidationError } from './validate';
+export { validateRotationInput, EngineValidationError, RESERVED_UNIT_IDS } from './validate';

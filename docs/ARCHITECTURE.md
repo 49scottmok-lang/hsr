@@ -43,7 +43,7 @@ Engine independence is enforced three ways (and the same three cover `src/data` 
 | `effects.ts` | Buff/debuff lifecycle: `applyEffect`, `removeEffect`, `tickEffects`. | yes (returns new state) |
 | `rotation.ts` | `createInitialState`, `runRotation` (manual rotation engine). | yes |
 | `compare.ts` | `compareTeams`. | yes |
-| `validate.ts` | `validateRotationInput`, `EngineValidationError`. | yes |
+| `validate.ts` | `validateRotationInput`, `EngineValidationError`, `RESERVED_UNIT_IDS` (unit IDs that validation rejects). | yes |
 | `index.ts` | **Public API.** The only import path for UI code. | — |
 
 `formulas` (exported as a namespace) also holds the stat-table level formulas `promotedBaseStat` and `relicMainStatValue` (added 2026-11-07, `FORMULAS.md § Level scaling`), and the break formulas `BREAK_ELEMENT_FACTOR`, `breakToughnessFactor`, `breakBaseDmg`, `superBreakToughness`, `superBreakBaseDmg` and `breakEffectMultiplier` (E4, `FORMULAS.md § Break DMG`).
@@ -54,6 +54,8 @@ Engine independence is enforced three ways (and the same three cover `src/data` 
 |---|---|
 | `src/data` | `DATA_TABLES`, record types (`CharacterRecord`, `LightConeRecord`, `RelicMainStatRecord`, `SetBonusRecord`, `TraceRecord`), `validateDataTables`, lookups `characterBase`, `lightConeBase`, `relicMainStat`, `setBonus2pc`, `statTrace`, `breakLevelMultiplier` (E4) (each returns `{ ok: true, value } \| { ok: false, reason }` or `undefined`), the pinned `DATA_COMMIT` / `DATA_GAME_VERSION`, `DATA_CREDITS` / `GAME_DATA_NOTICE` (D4), and the Traditional Chinese `NAME_TABLES` with `validateNameTables` and the lookups `characterName`, `lightConeName`, `relicSetName`, `pathName` (D5). |
 | `src/import` | `parseArchive(json)` (I1): checks and normalises a Reliquary Archiver export, drops the UID, gacha and materials, and returns `{ ok: true, archive, warnings } \| { ok: false, errors }`. `importArchive(archive, tables)` (I2) returns `{ builds, report }`: one `CharacterBuild` per character the tables cover, plus an `ImportReport` whose items (`lookedUp`, `toEnter`, `problems`) are structured with a `kind` so the UI can translate them. |
+
+`CombatState.units` is a null-prototype record keyed by unit ID (added 2026-11-07), so read it with indexing, `Object.keys` or `Object.values` rather than `Object.prototype` methods such as `units.hasOwnProperty`.
 
 All engine functions are deterministic. None mutates its inputs, and this is tested. `CombatState` is treated as immutable.
 

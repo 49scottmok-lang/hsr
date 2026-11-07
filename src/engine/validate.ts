@@ -22,6 +22,13 @@ export class EngineValidationError extends Error {
   }
 }
 
+/**
+ * Unit IDs the engine cannot accept: `allAllies`/`allEnemies` collide with the
+ * group `UnitRef`s in apply/remove steps, and `__proto__` is special-cased by
+ * plain-object property assignment in callers that key records by unit ID.
+ */
+export const RESERVED_UNIT_IDS: readonly string[] = ['allAllies', 'allEnemies', '__proto__'];
+
 const isFiniteNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const isPosInt = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 1;
 const isPosNum = (v: unknown): v is number => isFiniteNum(v) && v > 0;
@@ -178,6 +185,12 @@ export function validateRotationInput(input: RotationInput): string[] {
   const all = [...input.team.map((c) => c.id), ...input.enemies.map((e) => e.id)];
   const unitIds = new Set(all);
   if (unitIds.size !== all.length) out.push('units: character and enemy IDs must be unique');
+
+  const checkUnitId = (id: string, path: string) => {
+    if (RESERVED_UNIT_IDS.includes(id)) out.push(`${path}: id "${id}" is reserved`);
+  };
+  input.team.forEach((b, i) => checkUnitId(b.id, `team[${i}]`));
+  input.enemies.forEach((e, i) => checkUnitId(e.id, `enemies[${i}]`));
 
   input.team.forEach((b, i) => checkBuild(b, `team[${i}]`, unitIds, out));
   input.enemies.forEach((e, i) => checkEnemy(e, `enemies[${i}]`, unitIds, out));
