@@ -85,9 +85,13 @@ Rules for every task:
 
 ### F9. Disclaimers
 
+- **Ready 2026-11-07 (D4 done):** list `DATA_CREDITS` (name, link, licence, short commit) and translate `GAME_DATA_NOTICE`.
+
 - [ ] Add a persistent footer in zh-HK. It says that game numbers come from the user or from cited stat tables (with a link to the data credits from D4), that formulas marked UNVERIFIED in docs/FORMULAS.md may differ from the game, and that this is a fan project not affiliated with HoYoverse.
 
 ### F10. Account import UI — `src/ui/components/ImportPanel.tsx` (after I1–I2)
+
+- **Ready 2026-11-07 (I1–I3 done).** Flow: `JSON.parse` the file → `parseArchive(json)` from `src/import` (show `errors` on `ok: false`, `warnings` otherwise) → `importArchive(archive, DATA_TABLES)` with `DATA_TABLES` from `src/data`. Per build, `report.builds[i]` has `lookedUp`, `toEnter` and `problems`. Each item has a `kind` for zh-HK text and an English `message` as a fallback. `report.dropped` counts the unequipped items the parser discarded.
 
 - [ ] Add a file picker for a Reliquary Archiver `.json` export. The file is read **in the browser only**, with no upload or network request.
 - [ ] Call `importArchive()` (I2) and list the imported characters with level, eidolon, light cone and superimposition, and relic summary. The user picks which ones to add to Team A or Team B.
@@ -142,7 +146,7 @@ F1 + F11 → F2 → F3 → F4 → F5 → F6 → F7 → F8 → F10 (once I1–I2 
   - 2-piece set bonuses **only when they are unconditional stat bonuses**
   - character trace stat bonuses (`stat_1`–`stat_10`)
   - The values must match the source exactly. No interpolation.
-- [ ] **D4. Credits.** Add a data credits list (source, licence, version), shown by F9.
+- [x] **D4. Credits.** Add a data credits list (source, licence, version), shown by F9. *Done 2026-11-07:* `DATA_CREDITS` and `GAME_DATA_NOTICE` from `src/data` (`credits.ts`). Each credit has `role` (`tableSource` / `crossCheck` / `exportFormat`) so F9 can show its own zh-HK text; `note` is English.
 
 ## Import tasks (owner: engine owner) — `src/import/` (pure TS; same independence rules as the engine)
 
@@ -150,12 +154,12 @@ F1 + F11 → F2 → F3 → F4 → F5 → F6 → F7 → F8 → F10 (once I1–I2 
   - The format is documented in `docs/IMPORT_FORMAT.md`, observed from a v0.19.0 / `version: 4` export.
   - Reject unknown `source` or `version` values with a clear error.
   - Drop `metadata.uid`, `gacha` and `materials` immediately after parsing.
-- [ ] **I2. `importArchive(json, tables): { builds: CharacterBuild[]; report: ImportReport }`.**
+- [x] **I2. `importArchive(archive, tables): { builds; report: ImportReport }`.** *Done 2026-11-07* in `src/import/importArchive.ts`. It takes the parsed `Archive` from `parseArchive()` (I1), not the raw JSON, so the UI can show parse errors first. Builds have no kit effects; set and trace modifiers carry their citation in `EffectDef.source`. Characters missing from the tables get `built: false` and no build.
   - Map each owned character to a `CharacterBuild`: level, ascension, eidolon, and the equipped light cone (matched by `location`) with superimposition.
   - Convert relics using the IMPORT_FORMAT key map. Substats with a trailing `_` are percentages, so divide by 100. Main stat **values** come from D3. Equipped sets with an unconditional 2-piece bonus become `setEffects`.
   - Unlocked `stat_N` traces become `traces`, with values from D3.
   - `ImportReport` lists, per build, everything looked up and everything still missing: kit, 4-piece sets, LC passive, and any table miss.
-- [ ] **I3. Tests with a small synthetic fixture** that is hand-written and has a fake UID. **Never commit a real account export.** Expected final stats are computed by hand from the fixture tables.
+- [x] **I3. Tests with a small synthetic fixture** (*done 2026-11-07*, `src/import/__tests__/importArchive.test.ts`; final stats are checked through `resolveUnitStats`) that is hand-written and has a fake UID. **Never commit a real account export.** Expected final stats are computed by hand from the fixture tables.
 
 ## Engine backlog (owner: engine)
 

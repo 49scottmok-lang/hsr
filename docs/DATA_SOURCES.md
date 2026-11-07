@@ -87,7 +87,7 @@ The open points from D1 were settled as follows.
 - **Main-stat groups.** Slot and rarity map to a group through A's `RelicConfig` (`Type`, `MaxLevel / 3`, `MainAffixGroup`, ordinary `BASIC` relics only). Each slot and rarity has exactly one group (21–26 for 2★ … 51–56 for 5★). The flat-vs-percent question is settled: Head and Hands groups hold only `HPDelta`/`AttackDelta` (flat), and the other slots hold only `…AddedRatio` (percent). Reliquary Archiver writes both as `"HP"`/`"ATK"` (`utils.rs@5e50dcb`), so the slot decides.
 - **2-piece sets.** `PropertyList` entries are read by shape (one string = the property, one `{ Value }` = the value), so the obfuscated key names don't matter. 54 sets have a 2-piece `PropertyList`. The 8 sets whose 2-piece is ability-only are not tabulated.
 - **Traces.** Export `stat_N` = A skill-tree anchor `Point(N + 8)` with `PointType 1`, per Reliquary Archiver `export_skill_tree` (`converters.rs@5e50dcb`). Every released character has exactly these ten anchors.
-- **Commit SHAs** are in `src/data/generated/source.ts` and on every record. The D4 credits list still needs to be written.
+- **Commit SHAs** are in `src/data/generated/source.ts` and on every record. The D4 credits list is `DATA_CREDITS` in `src/data/credits.ts`; a test keeps its commits in step with the tables and the reference.
 
 Generated tables: 94 characters, 170 light cones, 112 main-stat rows (24 groups), 54 two-piece bonuses, and 1040 stat traces (94 base trees and 10 enhanced trees). Re-running the generator against GitHub at the pinned commit reproduces them byte for byte.
 
