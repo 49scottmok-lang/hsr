@@ -8,6 +8,7 @@ type ListEdit<T> =
   | { type: 'reorder'; index: number; toIndex: number };
 
 export type ScenarioAction =
+  | { type: 'replaceScenario'; scenario: Scenario }
   | { type: 'editEnemies'; edit: ListEdit<EnemyConfig> }
   | { type: 'setCritMode'; critMode: CritMode }
   | ({ teamIndex: TeamIndex } & (
@@ -36,6 +37,7 @@ function editList<T>(items: readonly T[], edit: ListEdit<T>): readonly T[] {
 }
 
 export function scenarioReducer(scenario: Scenario, action: ScenarioAction): Scenario {
+  if (action.type === 'replaceScenario') return action.scenario;
   if (action.type === 'setCritMode') return { ...scenario, critMode: action.critMode };
   if (action.type === 'editEnemies') {
     const enemies = editList(scenario.enemies, action.edit);

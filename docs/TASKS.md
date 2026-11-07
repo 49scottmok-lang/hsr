@@ -74,7 +74,7 @@ Rules for every task:
 
 ### F7. Validation UX
 
-- [ ] Catch `EngineValidationError` and list its `issues`. Map each `events[i].steps[j]` path to the matching editor row where possible.
+- [x] Catch `EngineValidationError` and list its `issues`. Map each `events[i].steps[j]` path to the matching editor row where possible.
 - **Acceptance:** an invalid target shows a visible error and does not crash the app.
 - Note: also show the `issues` from an `ok: true` import (see F1 import contract). Route `enemies…` paths to the shared enemy editor, not to a team.
 
