@@ -79,6 +79,7 @@ export function RotationEditor({ draft, enemies, teamIndex, issues, dispatch }: 
   return (
     <fieldset>
       <legend>{t('rotation.title')}</legend>
+      <IssueList issues={issues?.get(`teams[${teamIndex}].cycles`)} />
       <NumberField
         label={t('rotation.cycles')}
         value={cycles}
@@ -87,9 +88,10 @@ export function RotationEditor({ draft, enemies, teamIndex, issues, dispatch }: 
       />
       <ol>
         {events.map((event, index) => (
-          <li key={event.id}>
+          <li key={index}>
             <fieldset>
               <legend>{t('rotation.eventNumber').replace('{number}', formatNumber(index + 1))}</legend>
+              <IssueList issues={issues?.get(`teams[${teamIndex}].events[${index}]`)} />
               <label>
                 {t('rotation.eventKind')}
                 <select value={event.kind} onChange={({ currentTarget }) => editEvent({

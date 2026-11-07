@@ -74,13 +74,13 @@ Rules for every task:
 
 ### F7. Validation UX
 
-- [ ] Catch `EngineValidationError` and list its `issues`. Map each `events[i].steps[j]` path to the matching editor row where possible.
+- [x] Catch `EngineValidationError` and list its `issues`. Map each `events[i].steps[j]` path to the matching editor row where possible.
 - **Acceptance:** an invalid target shows a visible error and does not crash the app.
 - Note: also show the `issues` from an `ok: true` import (see F1 import contract). Route `enemies…` paths to the shared enemy editor, not to a team.
 
 ### F8. Local persistence
 
-- [ ] Autosave the current scenario to `localStorage`, wrapping access in try/catch. Add a "Reset" button.
+- [x] Autosave the current scenario to `localStorage`, wrapping access in try/catch. Add a "Reset" button.
 - **Acceptance:** the app still works when `localStorage` throws.
 - Note: restore through `importScenario()`. A saved draft with issues (`ok: true`) must still load. Fall back to the default scenario only on `ok: false`.
 
@@ -88,16 +88,16 @@ Rules for every task:
 
 - **Ready 2026-11-07 (D4 done):** list `DATA_CREDITS` (name, link, licence, short commit) and translate `GAME_DATA_NOTICE`.
 
-- [ ] Add a persistent footer in zh-HK. It says that game numbers come from the user or from cited stat tables (with a link to the data credits from D4), that formulas marked UNVERIFIED in docs/FORMULAS.md may differ from the game, and that this is a fan project not affiliated with HoYoverse.
+- [x] Add a persistent footer in zh-HK. It says that game numbers come from the user or from cited stat tables (with a link to the data credits from D4), that formulas marked UNVERIFIED in docs/FORMULAS.md may differ from the game, and that this is a fan project not affiliated with HoYoverse.
 
 ### F10. Account import UI — `src/ui/components/ImportPanel.tsx` (after I1–I2)
 
 - **Ready 2026-11-07 (I1–I3 done).** Flow: `JSON.parse` the file → `parseArchive(json)` from `src/import` (show `errors` on `ok: false`, `warnings` otherwise) → `importArchive(archive, DATA_TABLES)` with `DATA_TABLES` from `src/data`. Per build, `report.builds[i]` has `lookedUp`, `toEnter` and `problems`. Each item has a `kind` for zh-HK text and an English `message` as a fallback. `report.dropped` counts the unequipped items the parser discarded.
 
-- [ ] Add a file picker for a Reliquary Archiver `.json` export. The file is read **in the browser only**, with no upload or network request.
-- [ ] Call `importArchive()` (I2) and list the imported characters with level, eidolon, light cone and superimposition, and relic summary. The user picks which ones to add to Team A or Team B.
-- [ ] For each imported build, show what was **looked up** (base stats, main stats, 2-piece sets, traces) and what **must still be entered** (kit effects, 4-piece sets, LC passive), using `ImportReport` (I2).
-- [ ] Keep the raw export in memory only. Never persist it to `localStorage` and never put it in a share link.
+- [x] Add a file picker for a Reliquary Archiver `.json` export. The file is read **in the browser only**, with no upload or network request.
+- [x] Call `importArchive()` (I2) and list the imported characters with level, eidolon, light cone and superimposition, and relic summary. The user picks which ones to add to Team A or Team B.
+- [x] For each imported build, show what was **looked up** (base stats, main stats, 2-piece sets, traces) and what **must still be entered** (kit effects, 4-piece sets, LC passive), using `ImportReport` (I2).
+- [x] Keep the raw export in memory only. Never persist it to `localStorage` and never put it in a share link.
 - **Acceptance:** importing the synthetic fixture from I3 adds a build whose final stats match the I3 expected values. An unsupported file shows a zh-HK error and doesn't crash.
 
 ### F11. Traditional Chinese (Hong Kong) UI — `src/ui/i18n/` (start alongside F1)
@@ -117,9 +117,9 @@ Rules for every task:
 
 ### F13. Share by link — `src/ui/share/`
 
-- [ ] Encode the current `Scenario` as `#s=<version>.<base64url(compressed JSON)>` in the URL hash, with a "copy link" button. On load, decode it, validate it with `validateRotationInput`, and show any issues.
-- [ ] Include the scenario only. **Strip** anything from an account import except the resulting builds: no UID, no inventory.
-- [ ] Version the format, so that old links either still decode or show a clear "link from an older version" message.
+- [x] Encode the current `Scenario` as `#s=<version>.<base64url(compressed JSON)>` in the URL hash, with a "copy link" button. On load, decode it, validate it with `validateRotationInput`, and show any issues.
+- [x] Include the scenario only. **Strip** anything from an account import except the resulting builds: no UID, no inventory.
+- [x] Version the format, so that old links either still decode or show a clear "link from an older version" message.
 - Note: decode through `importScenario()` so the link reuses its field allowlist, which already drops `uid` and other unknown keys. Still keep the UID test, and also cover the encode side.
 - **Acceptance:** encode → decode gives a deep-equal result (unit test). A tampered link shows a validation error and doesn't crash. A test asserts that a link built from an imported scenario does not contain the UID.
 

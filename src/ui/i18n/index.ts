@@ -25,6 +25,9 @@ export function formatMultiplier(value: number): string {
 const issuePatterns: readonly (readonly [RegExp, TranslationKey])[] = [
   [/^invalid JSON$/, 'issue.invalidJson'],
   [/^invalid structure$/, 'issue.invalidStructure'],
+  [/^unreadable file$/, 'issue.unreadableFile'],
+  [/^invalid link$/, 'share.invalidLink'],
+  [/^unsupported link version$/, 'share.unsupportedVersion'],
   [/^must contain 1 to 4 characters$/, 'issue.teamSize'],
   [/^at least one enemy is required$/, 'issue.enemyRequired'],
   [/^character and enemy IDs must be unique$/, 'issue.uniqueIds'],

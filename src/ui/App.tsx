@@ -1,14 +1,21 @@
-import { useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import type { CritMode } from '../engine/index';
 import { CharacterEditor } from './components/CharacterEditor';
+import { DataFooter } from './components/DataFooter';
 import { EffectEditor } from './components/EffectEditor';
 import { EnemyEditor } from './components/EnemyEditor';
+import { ImportPanel } from './components/ImportPanel';
+import { IssueList } from './components/IssueList';
 import { Results } from './components/Results';
 import { RotationEditor } from './components/RotationEditor';
 import { t } from './i18n';
+import { decodeScenarioLink, isScenarioLink } from './share/scenario-link';
+import { ShareButton } from './share/ShareButton';
 import { suggestedBreakLevelMultiplier } from './state/break-level';
 import { scenarioReducer } from './state/reducer';
 import { editorIssues, scenarioIssues } from './state/scenario-issues';
+import { importScenario, type ScenarioImportResult } from './state/scenario-json';
+import { restoreScenario, saveScenario } from './state/scenario-storage';
 import type { Scenario, TeamIndex } from './state/scenario';
 
 const initialScenario: Scenario = {
@@ -22,11 +29,68 @@ const initialScenario: Scenario = {
 const critModes = ['expected', 'crit', 'nonCrit'] as const;
 
 export default function App() {
-  const [scenario, dispatch] = useReducer(scenarioReducer, initialScenario);
+  const [restored] = useState(restoreScenario);
+  const [loaded, setLoaded] = useState(restored?.ok ? restored : undefined);
+  const [loadErrors, setLoadErrors] = useState(restored?.ok === false ? restored.issues : undefined);
+  const [scenario, dispatch] = useReducer(scenarioReducer, loaded?.scenario ?? initialScenario);
   const [showResults, setShowResults] = useState(false);
-  const issues = editorIssues(scenario, showResults ? scenarioIssues(scenario) : []);
+  const issues = editorIssues(scenario, loaded?.scenario === scenario
+    ? loaded.issues
+    : showResults || loaded ? scenarioIssues(scenario) : []);
+  const fileRead = useRef(0);
   const nextCharacterNumber = useRef(1);
   const nextEnemyNumber = useRef(1);
+
+  const loadScenario = useCallback((result: ScenarioImportResult) => {
+    setLoadErrors(result.ok ? undefined : result.issues);
+    if (result.ok) {
+      setLoaded(result);
+      dispatch({ type: 'replaceScenario', scenario: result.scenario });
+    }
+  }, []);
+
+  useEffect(() => saveScenario(scenario), [scenario]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadLink() {
+      const { hash } = window.location;
+      if (!isScenarioLink(hash)) return;
+      const read = ++fileRead.current;
+      const result = await decodeScenarioLink(hash);
+      if (controller.signal.aborted || read !== fileRead.current || window.location.hash !== hash) return;
+      // Consume the link so subsequent reloads restore the latest local edits.
+      const url = new URL(window.location.href);
+      url.hash = '';
+      window.history.replaceState(window.history.state, '', url);
+      loadScenario(result);
+    }
+    function onHashChange() { void loadLink(); }
+    onHashChange();
+    window.addEventListener('hashchange', onHashChange, { signal: controller.signal });
+    return () => controller.abort();
+  }, [loadScenario]);
+
+  function resetScenario() {
+    fileRead.current++;
+    setLoaded(undefined);
+    setLoadErrors(undefined);
+    setShowResults(false);
+    nextCharacterNumber.current = 1;
+    nextEnemyNumber.current = 1;
+    dispatch({ type: 'replaceScenario', scenario: initialScenario });
+  }
+
+  async function readScenarioFile(file: File) {
+    const read = ++fileRead.current;
+    let result: ScenarioImportResult;
+    try {
+      result = importScenario(await file.text());
+    } catch {
+      result = { ok: false, issues: ['Scenario: unreadable file'] };
+    }
+    if (read === fileRead.current) loadScenario(result);
+  }
 
   function addEnemy() {
     const units = [...scenario.enemies, ...scenario.teams.flatMap(({ team }) => team)];
@@ -84,8 +148,23 @@ export default function App() {
   return (
     <main>
       <h1>{t('app.title')}</h1>
+      <label>
+        {t('scenario.import')}
+        <input type="file" accept=".json,application/json" onChange={({ currentTarget }) => {
+          const file = currentTarget.files?.[0];
+          currentTarget.value = '';
+          if (file) void readScenarioFile(file);
+        }} />
+      </label>
+      <button type="button" onClick={resetScenario}>{t('scenario.reset')}</button>
+      <ShareButton scenario={scenario} />
+      {loadErrors && <div role="alert"><IssueList issues={loadErrors} /></div>}
+      <ImportPanel scenario={scenario} onAdd={(teamIndex, value) => dispatch({
+        type: 'editCharacters', teamIndex, edit: { type: 'add', value },
+      })} />
       <section aria-label={t('enemy.shared')}>
         <h2>{t('enemy.shared')}</h2>
+        <IssueList issues={issues.get('enemies')} />
         {scenario.enemies.map((enemy, index) => (
           <EnemyEditor
             key={index}
@@ -102,9 +181,10 @@ export default function App() {
         return (
           <section key={teamIndex} aria-label={label}>
             <h2>{label}</h2>
+            <IssueList issues={issues.get(`teams[${teamIndex}]`)} />
             {team.map((build, index) => (
               <CharacterEditor
-                key={build.id}
+                key={index}
                 build={build}
                 issues={issues.get(`teams[${teamIndex}].team[${index}]`)}
                 onChange={(value) => dispatch({ type: 'editCharacters', teamIndex, edit: { type: 'update', index, value } })}
@@ -147,6 +227,7 @@ export default function App() {
       </label>
       {!showResults && <button type="button" onClick={() => setShowResults(true)}>{t('results.calculate')}</button>}
       {showResults && <Results scenario={scenario} />}
+      <DataFooter />
     </main>
   );
 }

@@ -63,7 +63,10 @@ function teamDetails(team: string) {
   return within(screen.getByRole('region', { name: t('results.teamDetails').replace('{team}', team) }));
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  localStorage.clear();
+});
 
 it('shows both kinds of break details from the engine and damage by their break tags', () => {
   const draft: Scenario = {
