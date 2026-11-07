@@ -38,8 +38,9 @@ English: *"I want a website that compares the damage of two Honkai: Star Rail te
 - **D7 (Q3). The site is reachable and shareable by link.** It is deployed as a static site at a public URL, and a comparison can be shared as a URL. *Interpretation of "部署 in link", to be confirmed. The hosting platform is not yet chosen; any static host works, because the app has no server.*
   - A shared link contains **only the scenario** (builds, effects, rotations, enemies). It never contains the account export, UID, or unequipped inventory.
 - **D8 (Q5). Stat tables come from source A, cross-checked against source B.** A is `DimbreathBot/TurnBasedGameData`, the raw game tables, pinned to a commit (`74a7b96`, game build 4.6.0). B is `fribbels/hsr-optimizer` (MIT), pinned to `dd0c4af`, and is used only in tests to check A's numbers. Released content only. Details and the update procedure: `docs/DATA_SOURCES.md § Decision`.
+- **D9 (Q4). Host on GitHub Pages**, deployed by GitHub Actions. The site is served from the repository sub-path, so the build needs Vite `base`. See F12.
 
 ## Open questions
 
-- **Q4. Hosting platform**, e.g. GitHub Pages, Vercel or Cloudflare Pages. This only matters for F12.
+- ~~Q4. Hosting platform.~~ Answered 2026-11-07: see D9.
 - ~~Q5. Which stat-table source to use.~~ Answered 2026-11-07: see D8.

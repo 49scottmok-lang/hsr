@@ -109,7 +109,9 @@ Rules for every task:
 - [x] Set `<html lang="zh-HK">`.
 - **Acceptance:** a test fails if any component renders a string literal that isn't from `t()`, which can be checked with a simple lint/test scan.
 
-### F12. Static deployment (needs SPEC Q4)
+### F12. Static deployment (GitHub Pages, SPEC D9)
+
+- **Ready 2026-11-07:** the owner chose GitHub Pages. Deploy with GitHub Actions (`actions/deploy-pages`), set Vite `base` to the repository sub-path, and make sure share links (`#s=…` in the hash) still work under that path.
 
 - [ ] Make the production build work from a sub-path (Vite `base`) and add a deploy workflow for the chosen host.
 - [ ] Add a CI step that runs `pnpm check` and `pnpm build` before deploying.
