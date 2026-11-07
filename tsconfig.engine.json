@@ -1,0 +1,24 @@
+{
+  "//": "Type-checks src/engine WITHOUT DOM or React types, so any browser/UI dependency fails the build.",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.engine.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023"],
+    "module": "esnext",
+    "types": [],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src/engine"],
+  "exclude": ["src/engine/**/__tests__"]
+}
