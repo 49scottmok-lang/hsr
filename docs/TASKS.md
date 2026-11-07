@@ -31,6 +31,7 @@ Rules for every task:
 - [x] Add a reducer for `useReducer` that adds, updates, removes and reorders characters, enemies, events and steps, and sets crit mode and cycles.
 - [x] Add JSON export and import of a `Scenario`. On import, run `validateRotationInput` for each team and return issues for display.
 - **Acceptance:** the reducer and `toRotationInput` are unit-tested (node env). A round-trip export → import gives a deep-equal result.
+- **Import contract (002be3f, for F7 / F8 / F13).** `importScenario()` returns `ok: false` only for invalid JSON or an invalid structure. `ok: true` can still carry `issues`. For example, an empty Team B is still a valid draft: load it and then show the issues so the user can fix them. Team issues use the `teams[0].…` / `teams[1].…` path. Shared enemy issues use the `enemies…` path and are listed once. Import rebuilds the scenario from known fields only, so extra keys (including `uid`) are dropped.
 
 ### F2. Character build editor — `src/ui/components/CharacterEditor.tsx`
 
@@ -73,11 +74,13 @@ Rules for every task:
 
 - [ ] Catch `EngineValidationError` and list its `issues`. Map each `events[i].steps[j]` path to the matching editor row where possible.
 - **Acceptance:** an invalid target shows a visible error and does not crash the app.
+- Note: also show the `issues` from an `ok: true` import (see F1 import contract). Route `enemies…` paths to the shared enemy editor, not to a team.
 
 ### F8. Local persistence
 
 - [ ] Autosave the current scenario to `localStorage`, wrapping access in try/catch. Add a "Reset" button.
 - **Acceptance:** the app still works when `localStorage` throws.
+- Note: restore through `importScenario()`. A saved draft with issues (`ok: true`) must still load. Fall back to the default scenario only on `ok: false`.
 
 ### F9. Disclaimers
 
@@ -111,6 +114,7 @@ Rules for every task:
 - [ ] Encode the current `Scenario` as `#s=<version>.<base64url(compressed JSON)>` in the URL hash, with a "copy link" button. On load, decode it, validate it with `validateRotationInput`, and show any issues.
 - [ ] Include the scenario only. **Strip** anything from an account import except the resulting builds: no UID, no inventory.
 - [ ] Version the format, so that old links either still decode or show a clear "link from an older version" message.
+- Note: decode through `importScenario()` so the link reuses its field allowlist, which already drops `uid` and other unknown keys. Still keep the UID test, and also cover the encode side.
 - **Acceptance:** encode → decode gives a deep-equal result (unit test). A tampered link shows a validation error and doesn't crash. A test asserts that a link built from an imported scenario does not contain the UID.
 
 ### Suggested order
