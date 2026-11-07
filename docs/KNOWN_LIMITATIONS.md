@@ -24,15 +24,28 @@ Details are in `FORMULAS.md`. On 2026-11-07, these items were cross-checked agai
 | Vulnerability is additive with **no cap** | ❌ **R1 caps it at +250% and floors it at 0. The engine is now fixed to match.** |
 | Final DMG and True DMG multipliers | ➕ **R1 has them and our engine didn't. Both are now added.** |
 
-These are still **unverified** (not in R1, and no source read):
+Also on 2026-11-07, these were confirmed by the Fandom wiki Damage page (S3):
 
-1. Weaken multiplier.
-2. Enemy-side DMG mitigation, where each source multiplies separately.
-3. Base CRIT Rate 5% and base CRIT DMG 50% for every character.
-4. Flat Extra DMG term in Base DMG.
-5. Enemy DEF% bonus and flat DEF.
-6. Stat formula `(char + LC base) × (1 + %) + flat`.
-7. Whether the game itself rounds values.
+| Item | Result |
+|---|---|
+| Overall formula and the order of its multipliers | ✅ Matches S3 |
+| Weaken multiplier `1 − Weaken` | ✅ Matches S3 |
+| Enemy DMG mitigation, each source multiplying separately | ✅ Matches S3 |
+| Flat Extra DMG and the DMG Multiplier Increase in Base DMG | ✅ Matches S3 |
+| Enemy DEF% bonus in the same pool as DEF reduction and ignore | ✅ Matches S3 |
+| DMG Boost and Vulnerability additive across type, element and all-type | ✅ Matches S3 |
+| Final DMG zone | ✅ Matches S3's "Original DMG Multiplier" (e.g. The Abyss) |
+
+These are still **unverified**, because no read source covers them:
+
+1. Base CRIT Rate 5% and base CRIT DMG 50% for every character.
+2. Stat formula `(char + LC base) × (1 + %) + flat`.
+3. Whether the game itself rounds values.
+4. Whether several Weaken sources add together.
+5. How several Final DMG (Original DMG) sources stack. R1 multiplies them, and S3 doesn't say.
+6. RES clamp [10%, 200%] and the vulnerability cap of +250%. These rest on R1 alone, because S3's Damage page states no bounds. The Damage RES and Vulnerability sub-pages couldn't be read.
+
+The enemy flat DEF term is an engine extension with no source behind it. It defaults to 0.
 
 R1 is a widely used optimizer, but it is not the game. If game testing contradicts R1, the game wins.
 
@@ -55,6 +68,7 @@ R1 is a widely used optimizer, but it is not the game. If game testing contradic
 - **Toughness simulation.** Weakness break is a manual toggle (`setBroken`).
 - **SPD/AV timeline simulation.** Rotations are manual. `actionValue` exists as a utility only.
 - **Energy and skill points.** Neither is tracked or validated, so a rotation can be "illegal" in-game.
+- **Standalone True DMG** (based on tallied DMG, Max HP, etc.). Not supported. Only "True DMG equal to X% of this hit" is modelled, via `trueDmg`.
 - **Stat-conversion buffs** (e.g. "ATK increases by X% of another stat"). Callers must precompute a flat value. The value doesn't update if the source stat changes mid-rotation.
 - **Effect hit rate / effect RES and debuff application chance.** All debuffs land. R1 weights DoT damage by its application chance (`baseChance × (1 + EHR) × (1 − enemyEffectRES + effectResPen)`); we don't.
 - **Attacker level.** Our DEF formula supports any attacker level. R1 always assumes Lv80, so results only match R1 at Lv80.

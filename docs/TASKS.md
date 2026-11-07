@@ -84,7 +84,8 @@ Rules for every task:
 
 - [~] E1. Verify the [UNVERIFIED] items in `FORMULAS.md`.
   - **Done 2026-11-07:** cross-checked against Fribbels HSR Optimizer (`ac5e9d6`). This added the vulnerability cap and the Final/True DMG multipliers.
-  - **Remaining:** Weaken, enemy mitigation, base CRIT, flat Extra DMG, enemy DEF%, and game rounding. Check them against the Fandom wiki, datamined data or in-game tests.
+  - **Done 2026-11-07:** the Fandom wiki Damage page confirmed Weaken, mitigation, flat Extra DMG, enemy DEF% and the Original/Final DMG zone. No engine change was needed.
+  - **Remaining:** base CRIT, the stat formula, game rounding, Weaken and Final DMG stacking, and the RES clamp and vulnerability cap (wiki sub-pages). See KNOWN_LIMITATIONS for the list.
 - [ ] E8. DoT application-chance weighting (EHR vs effect RES), as R1 does. This needs `effectHitRate` plumbing and an enemy effect RES field.
 - [ ] E9. Evaluate Nous StarRailSim's APL model (`action on target if condition`) as the design for E6. Its source is closed, so use it for design only.
 - [ ] E2. Reconcile the architecture with the master specification once it is added to `docs/`.
