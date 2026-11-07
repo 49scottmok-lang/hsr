@@ -125,7 +125,8 @@ F1 + F11 → F2 → F3 → F4 → F5 → F6 → F7 → F8 → F10 (once I1–I2 
 
 ## Data tasks (owner: engine owner) — `src/data/`
 
-- [ ] **D1. Choose the stat-table source** (SPEC Q5).
+- [~] **D1. Choose the stat-table source** (SPEC Q5).
+  - **Candidates listed 2026-11-07** in `docs/DATA_SOURCES.md`. The recommendation is the DimbreathBot/TurnBasedGameData raw tables, pinned to a commit, cross-checked against Fribbels (MIT). Mar-7th StarRailRes is AGPL-3.0, and the Enka store has been deprecated since 3.8. **Waiting on the owner's answer to Q5.**
   - List candidates with their licence and update cadence, e.g. datamined resource repositories, or Fribbels' MIT-licensed data files.
   - Record the chosen source, its version and the date checked.
   - **Do not add numbers before this is decided.**
