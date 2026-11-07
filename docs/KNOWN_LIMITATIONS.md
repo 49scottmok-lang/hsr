@@ -7,20 +7,34 @@ Status is as of 2026-11-07. Formula-level verification status is tracked inline 
 - The repository ships **no** character, light cone, relic, or enemy data. Every base stat, skill multiplier, buff value, and enemy RES must be entered by the user, or added to `src/data/` with a source citation (`src/data/README.md`).
 - Test fixtures (`src/engine/__tests__/fixtures.ts`) are synthetic and are **not** game data.
 
-## Unverified formula details
+## Formula verification status
 
-These are repeated here so they are easy to find. Details are in `FORMULAS.md`.
+Details are in `FORMULAS.md`. On 2026-11-07, these items were cross-checked against the Fribbels HSR Optimizer source code (R1, commit `ac5e9d6`):
 
-1. RES multiplier clamp to [10%, 200%].
-2. Enemy base DEF = 200 + 10 × level.
-3. DEF reduction and DEF ignore combine additively in one pool, floored at 0.
-4. RES PEN (attacker) and RES reduction (target) combine additively.
-5. Vulnerability is additive with no cap.
-6. Each DMG mitigation source multiplies separately.
-7. Base CRIT Rate is 5% and base CRIT DMG is 50% for every character.
-8. DoT cannot crit.
-9. The Extra Multiplier / flat Extra DMG terms in Base DMG.
-10. No rounding anywhere.
+| Item | Result |
+|---|---|
+| RES multiplier clamp to [10%, 200%] | ✅ Matches R1 |
+| Enemy base DEF = 200 + 10 × level | ✅ Matches R1 (R1 fixes attacker Lv80) |
+| DEF reduction + DEF ignore in one pool, floored at 0 | ✅ Matches R1 |
+| RES PEN + RES reduction in one pool | ✅ Matches R1 |
+| CRIT Rate capped at 100% in expected value | ✅ Matches R1 |
+| DoT cannot crit | ✅ Matches R1 |
+| Broken multiplier 0.9 / 1.0 | ✅ Matches R1 |
+| No rounding of damage | ✅ Matches R1 |
+| Vulnerability is additive with **no cap** | ❌ **R1 caps it at +250% and floors it at 0. The engine is now fixed to match.** |
+| Final DMG and True DMG multipliers | ➕ **R1 has them and our engine didn't. Both are now added.** |
+
+These are still **unverified** (not in R1, and no source read):
+
+1. Weaken multiplier.
+2. Enemy-side DMG mitigation, where each source multiplies separately.
+3. Base CRIT Rate 5% and base CRIT DMG 50% for every character.
+4. Flat Extra DMG term in Base DMG.
+5. Enemy DEF% bonus and flat DEF.
+6. Stat formula `(char + LC base) × (1 + %) + flat`.
+7. Whether the game itself rounds values.
+
+R1 is a widely used optimizer, but it is not the game. If game testing contradicts R1, the game wins.
 
 ## Engine assumptions (modelling choices)
 
@@ -42,7 +56,8 @@ These are repeated here so they are easy to find. Details are in `FORMULAS.md`.
 - **SPD/AV timeline simulation.** Rotations are manual. `actionValue` exists as a utility only.
 - **Energy and skill points.** Neither is tracked or validated, so a rotation can be "illegal" in-game.
 - **Stat-conversion buffs** (e.g. "ATK increases by X% of another stat"). Callers must precompute a flat value. The value doesn't update if the source stat changes mid-rotation.
-- **Effect hit rate / effect RES and debuff application chance.** All debuffs land.
+- **Effect hit rate / effect RES and debuff application chance.** All debuffs land. R1 weights DoT damage by its application chance (`baseChance × (1 + EHR) × (1 − enemyEffectRES + effectResPen)`); we don't.
+- **Attacker level.** Our DEF formula supports any attacker level. R1 always assumes Lv80, so results only match R1 at Lv80.
 - **Enemy actions against allies, shields, healing, HP thresholds, and kill or overkill.** Damage isn't capped by enemy HP.
 - **Multiple enemies.** Supported for targeting, but there is no blast/AoE helper. Each hit lists its target explicitly.
 - **Allies as damage targets.** Not supported.

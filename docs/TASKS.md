@@ -8,6 +8,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done. Owners are defined
 - [x] Engine types, formulas, stats, damage, effects, manual rotation, comparison, and validation.
 - [x] Engine independence guards: typecheck, lint, and test.
 - [x] 63 unit tests, including the hand-computed worked example.
+- [x] Cross-checked the formulas against Fribbels HSR Optimizer. Added the vulnerability cap and the Final/True DMG multipliers, bringing the total to 66 tests.
 
 ---
 
@@ -58,7 +59,7 @@ Rules for every task:
 - [ ] Call `runRotation` on each team, then `compareTeams`.
 - [ ] Show totals, damage per cycle, the B−A difference and the B/A ratio.
 - [ ] Show tables of damage by attacker and by tag. Add a footnote that multi-tag hits are counted under each tag (A5).
-- [ ] Add a hit-by-hit table: event, label, attacker, target, element, tags, and **every** `DamageBreakdown` factor plus damage. Each row expands to show `ResolvedHitStats`.
+- [ ] Add a hit-by-hit table: event, label, attacker, target, element, tags, and **every** `DamageBreakdown` factor plus damage. Include `finalDmgMultiplier` and `trueDmgMultiplier`. Each row expands to show `ResolvedHitStats`.
 - [ ] Show the per-event log, including expired effects.
 - [ ] Round only for display: integers for damage, 4 decimals for multipliers.
 - **Acceptance:** the numbers match the engine output exactly before display rounding. A test renders the worked example from `FORMULAS.md` and finds `4386` (4385.83 rounded).
@@ -81,7 +82,11 @@ Rules for every task:
 
 ## Engine backlog (owner: engine)
 
-- [ ] E1. Verify the [UNVERIFIED] items in `FORMULAS.md` against a primary community source (Fandom wiki Damage page, Prydwen, datamined references) and update the tags.
+- [~] E1. Verify the [UNVERIFIED] items in `FORMULAS.md`.
+  - **Done 2026-11-07:** cross-checked against Fribbels HSR Optimizer (`ac5e9d6`). This added the vulnerability cap and the Final/True DMG multipliers.
+  - **Remaining:** Weaken, enemy mitigation, base CRIT, flat Extra DMG, enemy DEF%, and game rounding. Check them against the Fandom wiki, datamined data or in-game tests.
+- [ ] E8. DoT application-chance weighting (EHR vs effect RES), as R1 does. This needs `effectHitRate` plumbing and an enemy effect RES field.
+- [ ] E9. Evaluate Nous StarRailSim's APL model (`action on target if condition`) as the design for E6. Its source is closed, so use it for design only.
 - [ ] E2. Reconcile the architecture with the master specification once it is added to `docs/`.
 - [ ] E3. Data layer: a schema plus a validator for `src/data` entries that requires a `source` on every number-bearing record.
 - [ ] E4. Break / Super Break DMG. This needs the sourced level multiplier table.

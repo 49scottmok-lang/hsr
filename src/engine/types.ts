@@ -70,6 +70,10 @@ export const STAT_KEYS = [
   'resPen',
   /** Weaken: holder deals less DMG. Read from the attacker. */
   'weaken',
+  /** Separate "Final DMG" multiplier zone. Each modifier multiplies: Π(1 + v). Read from the attacker. */
+  'finalDmgBoost',
+  /** "True DMG" multiplier, 1 + Σ. Read from the attacker. */
+  'trueDmg',
   // --- target (defender) stats ---
   /** Subtracts from the holder's DEF% pool. Read from the target. */
   'defReduction',
@@ -278,6 +282,8 @@ export interface ResolvedHitStats {
   critDmg: number;
   dmgBoost: number;
   weaken: number;
+  finalDmgBoosts: readonly number[];
+  trueDmg: number;
   defIgnore: number;
   resPen: number;
   targetBaseDef: number;
@@ -302,6 +308,8 @@ export interface DamageBreakdown {
   vulnerabilityMultiplier: number;
   mitigationMultiplier: number;
   brokenMultiplier: number;
+  finalDmgMultiplier: number;
+  trueDmgMultiplier: number;
   /** Product of all of the above. Unrounded. */
   total: number;
 }

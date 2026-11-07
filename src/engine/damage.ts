@@ -4,9 +4,11 @@ import {
   critMultiplier,
   defMultiplier,
   dmgBoostMultiplier,
+  finalDmgMultiplier,
   mitigationMultiplier,
   resMultiplier,
   targetDef,
+  trueDmgMultiplier,
   vulnerabilityMultiplier,
   weakenMultiplier,
 } from './formulas';
@@ -47,6 +49,8 @@ export function computeBreakdown(input: DamageInput): DamageBreakdown {
     vulnerabilityMultiplier: vulnerabilityMultiplier(s.vulnerability),
     mitigationMultiplier: mitigationMultiplier(s.mitigations),
     brokenMultiplier: brokenMultiplier(s.targetBroken),
+    finalDmgMultiplier: finalDmgMultiplier(s.finalDmgBoosts),
+    trueDmgMultiplier: trueDmgMultiplier(s.trueDmg),
   };
   const total =
     parts.baseDmg *
@@ -57,7 +61,9 @@ export function computeBreakdown(input: DamageInput): DamageBreakdown {
     parts.resMultiplier *
     parts.vulnerabilityMultiplier *
     parts.mitigationMultiplier *
-    parts.brokenMultiplier;
+    parts.brokenMultiplier *
+    parts.finalDmgMultiplier *
+    parts.trueDmgMultiplier;
   return { ...parts, total };
 }
 
@@ -88,6 +94,8 @@ export function resolveHitStats(
     critDmg: a.critDmg,
     dmgBoost: a.dmgBoost,
     weaken: sumStat(state, attackerId, 'weaken', aCtx),
+    finalDmgBoosts: collectStat(state, attackerId, 'finalDmgBoost', aCtx),
+    trueDmg: sumStat(state, attackerId, 'trueDmg', aCtx),
     defIgnore: sumStat(state, attackerId, 'defIgnore', aCtx),
     resPen: sumStat(state, attackerId, 'resPen', aCtx),
     targetBaseDef: unitBaseStats(target).def,

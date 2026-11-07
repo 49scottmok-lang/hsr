@@ -116,6 +116,33 @@ describe('calculateHit', () => {
     ).toBe(1.5);
   });
 
+  it('final DMG sources multiply separately and respect conditions; true DMG adds', () => {
+    const fin: EffectDef = {
+      id: 'final',
+      name: 'Fixture final DMG',
+      kind: 'buff',
+      modifiers: [
+        { stat: 'finalDmgBoost', value: 0.3, condition: { damageTags: ['ultimate'] } },
+        { stat: 'finalDmgBoost', value: 0.2 },
+        { stat: 'trueDmg', value: 0.1 },
+        { stat: 'trueDmg', value: 0.15 },
+      ],
+    };
+    const s = applyEffect(stateWithSkillBuff(), fin, 'dps', 'dps');
+    const skillB = calculateHit(s, skillHit, 'dps', 'expected').breakdown;
+    expect(skillB.finalDmgMultiplier).toBeCloseTo(1.2, 12);
+    expect(skillB.trueDmgMultiplier).toBeCloseTo(1.25, 12);
+    expect(skillB.total).toBeCloseTo(EXPECTED_SKILL_HIT * 1.2 * 1.25, 6);
+    const ultB = calculateHit(s, { ...skillHit, tags: ['ultimate'] }, 'dps', 'expected').breakdown;
+    expect(ultB.finalDmgMultiplier).toBeCloseTo(1.3 * 1.2, 12);
+  });
+
+  it('vulnerability is capped at +250%', () => {
+    const big: EffectDef = { id: 'v', name: 'Fixture vuln', kind: 'debuff', modifiers: [{ stat: 'vulnerability', value: 3 }] };
+    const s = applyEffect(stateWithSkillBuff(), big, 'e1', 'sup');
+    expect(calculateHit(s, skillHit, 'dps', 'expected').breakdown.vulnerabilityMultiplier).toBe(3.5);
+  });
+
   it('HP scaling uses final HP', () => {
     const r = calculateHit(stateWithSkillBuff(), { ...skillHit, attackerId: 'sup', scaling: 'hp', multiplier: 1 }, 'dps', 'nonCrit');
     expect(r.stats.scalingValue).toBe(2000);
@@ -145,6 +172,8 @@ describe('calculateHit', () => {
         critDmg: 0,
         dmgBoost: 0,
         weaken: 0,
+        finalDmgBoosts: [],
+        trueDmg: 0,
         defIgnore: 0,
         resPen: 0,
         targetBaseDef: 1000,

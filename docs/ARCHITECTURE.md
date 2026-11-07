@@ -61,7 +61,7 @@ Full definitions are in `src/engine/types.ts`.
 
 A modifier always belongs to the unit that **holds** the effect. During a hit:
 
-- **Attacker-held keys** are `atk*`, `hp*`, `def*` (scaling), `critRate`, `critDmg`, `dmgBoost`, `defIgnore`, `resPen` and `weaken`.
+- **Attacker-held keys** are `atk*`, `hp*`, `def*` (scaling), `critRate`, `critDmg`, `dmgBoost`, `defIgnore`, `resPen`, `weaken`, `finalDmgBoost` (each modifier multiplies) and `trueDmg`.
 - **Target-held keys** are `defPct`, `defFlat`, `defReduction`, `resReduction`, `vulnerability` and `dmgMitigation`.
 
 So a "DEF reduction" debuff is an effect applied **to the enemy**, and a "DMG +X%" team buff is applied **to each ally**.

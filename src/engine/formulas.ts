@@ -84,9 +84,23 @@ export function resMultiplier(baseRes: number, resPen: number, resReduction: num
   return Math.min(RES_MULTIPLIER_MAX, Math.max(RES_MULTIPLIER_MIN, raw));
 }
 
-/** §Vulnerability. No cap applied (UNVERIFIED whether the game caps it). */
+/** §Vulnerability clamp bounds on the summed vulnerability (cross-checked, docs/FORMULAS.md). */
+export const VULNERABILITY_MIN = 0;
+export const VULNERABILITY_MAX = 2.5;
+
+/** §Vulnerability: 1 + clamp(Σ vulnerability, 0, 2.5). */
 export function vulnerabilityMultiplier(vulnerability: number): number {
-  return 1 + vulnerability;
+  return 1 + Math.min(VULNERABILITY_MAX, Math.max(VULNERABILITY_MIN, vulnerability));
+}
+
+/** §Final DMG: each source multiplies separately, Π(1 + v_i). */
+export function finalDmgMultiplier(boosts: readonly number[]): number {
+  return boosts.reduce((acc, v) => acc * (1 + v), 1);
+}
+
+/** §True DMG: 1 + Σ trueDmg. */
+export function trueDmgMultiplier(trueDmg: number): number {
+  return 1 + trueDmg;
 }
 
 /** §Mitigation: each instance multiplies separately. */

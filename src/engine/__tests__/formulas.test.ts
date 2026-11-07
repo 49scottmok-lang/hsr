@@ -69,8 +69,17 @@ describe('formulas', () => {
     expect(f.weakenMultiplier(1.5)).toBe(0);
   });
 
-  it('vulnerability multiplier is additive and uncapped', () => {
+  it('vulnerability multiplier is additive, clamped to [0, 2.5]', () => {
     expect(f.vulnerabilityMultiplier(0.35)).toBeCloseTo(1.35, 12);
+    expect(f.vulnerabilityMultiplier(2.5)).toBe(3.5);
+    expect(f.vulnerabilityMultiplier(3.0)).toBe(3.5);
+    expect(f.vulnerabilityMultiplier(-0.2)).toBe(1);
+  });
+
+  it('final DMG multiplies each source; true DMG adds', () => {
+    expect(f.finalDmgMultiplier([0.3, 0.2])).toBeCloseTo(1.3 * 1.2, 12);
+    expect(f.finalDmgMultiplier([])).toBe(1);
+    expect(f.trueDmgMultiplier(0.25)).toBe(1.25);
   });
 
   it('mitigation multiplies each instance', () => {
