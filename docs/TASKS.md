@@ -58,18 +58,18 @@ Rules for every task:
 
 - [x] Show an ordered list of events. Add a Turn or an Extra event, choose the actor, add a label, and reorder with up/down buttons (no drag-and-drop needed).
 - [x] Each event has an ordered step list: `hit` (target, scaling, multiplier %, element override, tags multi-select, canCrit override, label), `apply` (effect from the library, target or allAllies/allEnemies, stacks), `remove`, and `setBroken`. Every step has an optional "Requires Eidolon ≥ N" field (`step.requires`).
-- [ ] In the results view (F6), show steps skipped by eidolon gating (`log[].skippedSteps`) so users can see why a hit didn't happen.
+- [x] In the results view (F6), show steps skipped by eidolon gating (`log[].skippedSteps`) so users can see why a hit didn't happen.
 - [x] Add a "duplicate event" button to make repeating cycles quick.
 - **Acceptance:** you can build both `rotation.test.ts` scenarios ("buff applied earlier" and "enemy debuff ticking") in the UI, and they give the same totals as the tests.
 
 ### F6. Results & comparison view — `src/ui/components/Results.tsx`
 
-- [ ] Call `runRotation` on each team, then `compareTeams`.
-- [ ] Show totals, damage per cycle, the B−A difference and the B/A ratio.
-- [ ] Show tables of damage by attacker and by tag. Add a footnote that multi-tag hits are counted under each tag (A5).
-- [ ] Add a hit-by-hit table: event, label, attacker, target, element, tags, and **every** `DamageBreakdown` factor plus damage. Include `finalDmgMultiplier` and `trueDmgMultiplier`. Each row expands to show `ResolvedHitStats`.
-- [ ] Show the per-event log, including expired effects.
-- [ ] Round only for display: integers for damage, 4 decimals for multipliers.
+- [x] Call `runRotation` on each team, then `compareTeams`.
+- [x] Show totals, damage per cycle, the B−A difference and the B/A ratio.
+- [x] Show tables of damage by attacker and by tag. Add a footnote that multi-tag hits are counted under each tag (A5).
+- [x] Add a hit-by-hit table: event, label, attacker, target, element, tags, and **every** `DamageBreakdown` factor plus damage. Include `finalDmgMultiplier` and `trueDmgMultiplier`. Each row expands to show `ResolvedHitStats`.
+- [x] Show the per-event log, including expired effects.
+- [x] Round only for display: integers for damage, 4 decimals for multipliers.
 - **Acceptance:** the numbers match the engine output exactly before display rounding. A test renders the worked example from `FORMULAS.md` and finds `4386` (4385.83 rounded).
 
 ### F7. Validation UX
@@ -182,3 +182,5 @@ F1 + F11 → F2 → F3 → F4 → F5 → F6 → F7 → F8 → F10 (once I1–I2 
 ## Engine change requests (from frontend)
 
 _Append requests here: what you need, why, and the proposed API._
+
+- **Unit ID validation for editable enemies (F3–F6).** Please have `validateRotationInput` report per-unit issues for IDs `allAllies`, `allEnemies`, and `__proto__`. The first two are group references in apply/remove steps, and assigning the last to the plain object in `createInitialState` changes its prototype, omitting the unit from group targeting. The results view rejects these IDs before running the engine. Engine validation would provide the same protection to imports and other callers through the existing API.

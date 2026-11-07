@@ -14,6 +14,14 @@ export function formatPercent(fraction: number, options?: Intl.NumberFormatOptio
   return formatNumber(fraction, { ...options, style: 'percent' });
 }
 
+export function formatDamage(value: number): string {
+  return formatNumber(value, { maximumFractionDigits: 0, useGrouping: false, signDisplay: 'negative' });
+}
+
+export function formatMultiplier(value: number): string {
+  return formatNumber(value, { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+}
+
 const issuePatterns: readonly (readonly [RegExp, TranslationKey])[] = [
   [/^invalid JSON$/, 'issue.invalidJson'],
   [/^invalid structure$/, 'issue.invalidStructure'],

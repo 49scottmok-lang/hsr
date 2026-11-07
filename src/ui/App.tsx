@@ -1,7 +1,9 @@
-import { useReducer, useRef } from 'react';
+import { useReducer, useRef, useState } from 'react';
+import type { CritMode } from '../engine/index';
 import { CharacterEditor } from './components/CharacterEditor';
 import { EffectEditor } from './components/EffectEditor';
 import { EnemyEditor } from './components/EnemyEditor';
+import { Results } from './components/Results';
 import { RotationEditor } from './components/RotationEditor';
 import { t } from './i18n';
 import { scenarioReducer } from './state/reducer';
@@ -15,9 +17,11 @@ const initialScenario: Scenario = {
     { label: t('team.b'), team: [], events: [] },
   ],
 };
+const critModes = ['expected', 'crit', 'nonCrit'] as const;
 
 export default function App() {
   const [scenario, dispatch] = useReducer(scenarioReducer, initialScenario);
+  const [showResults, setShowResults] = useState(false);
   const nextCharacterNumber = useRef(1);
   const nextEnemyNumber = useRef(1);
 
@@ -126,6 +130,16 @@ export default function App() {
           </section>
         );
       })}
+      <label>
+        {t('results.critMode')}
+        <select value={scenario.critMode} onChange={({ currentTarget }) => dispatch({
+          type: 'setCritMode', critMode: currentTarget.value as CritMode,
+        })}>
+          {critModes.map((mode) => <option key={mode} value={mode}>{t(`results.critMode.${mode}`)}</option>)}
+        </select>
+      </label>
+      {!showResults && <button type="button" onClick={() => setShowResults(true)}>{t('results.calculate')}</button>}
+      {showResults && <Results scenario={scenario} />}
     </main>
   );
 }
