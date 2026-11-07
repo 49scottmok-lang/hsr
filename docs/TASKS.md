@@ -35,11 +35,12 @@ Rules for every task:
 
 ### F2. Character build editor — `src/ui/components/CharacterEditor.tsx`
 
-- [ ] Add an eidolon selector (E0–E6) and a light cone superimposition selector (S1–S5). Superimposition is a label only (SPEC D4).
-- [ ] Add numeric inputs for level, element, base HP/ATK/DEF/SPD, optional base CRIT, LC base HP/ATK/DEF, and relic stat totals as a `StatModifier` list editor. Each row picks a `STAT_KEYS` stat, a value, and an optional condition (elements and damage tags).
-- [ ] Enter percentages in the UI as `%`, and divide by 100 when storing.
-- [ ] Show live final stats via `resolveUnitStats(createInitialState([build], [anyEnemy]), build.id)`.
+- [x] Add an eidolon selector (E0–E6) and a light cone superimposition selector (S1–S5). Superimposition is a label only (SPEC D4).
+- [x] Add inputs for level, element, base HP/ATK/DEF/SPD, optional base CRIT, LC base HP/ATK/DEF, and relic stat totals as a `StatModifier` list editor. Each row picks a `STAT_KEYS` stat, a value, and an optional condition (elements and damage tags).
+- [x] Enter percentages in the UI as `%`, and divide by 100 when storing.
+- [x] Show live final stats via `resolveUnitStats(createInitialState([build], [anyEnemy]), build.id)`.
 - **Acceptance:** typing ATK% 50 stores `0.5`. The displayed final ATK matches the engine.
+- The editor is connected to both team drafts. The component tests use Testing Library and jsdom.
 
 ### F3. Enemy editor — `src/ui/components/EnemyEditor.tsx`
 

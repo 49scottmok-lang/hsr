@@ -69,7 +69,7 @@ it('detects literal text, label attributes and conditional copy while allowing t
   const sample = `const demo = <>
     <label htmlFor="input">Raw text</label>
     <input id="input" aria-label="Raw label" placeholder={t('app.title')} />
-    <p>{value === 'crit' ? 'Raw branch' : t('app.status')}</p>
+    <p>{value === 'crit' ? 'Raw branch' : t('character.title')}</p>
     <p>{'Raw expression'}</p>
   </>;`;
   expect(rawUiText(sample, 'sample.tsx')).toEqual(['Raw text', 'Raw label', 'Raw branch', 'Raw expression']);
