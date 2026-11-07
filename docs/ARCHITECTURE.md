@@ -13,21 +13,23 @@ The HSR Team Damage Comparator compares the damage of two teams. Each team gets 
 │ src/ui/       React UI (frontend agent)    │  forms, rotation editor, results
 │   └─ imports ONLY from 'src/engine' index  │
 ├────────────────────────────────────────────┤
-│ src/import/   account import (planned)     │  Reliquary Archiver → CharacterBuild
+│ src/import/   account import (I1 done)     │  Reliquary Archiver → CharacterBuild
 ├────────────────────────────────────────────┤
-│ src/data/     sourced stat tables (planned)│  cited, validated, no kit logic
+│ src/data/     sourced stat tables (D2–D3)  │  cited, validated, no kit logic
 ├────────────────────────────────────────────┤
 │ src/engine/   pure TypeScript engine       │  no React, no DOM, no I/O
 └────────────────────────────────────────────┘
 ```
 
-Dependency direction: `ui → engine`, `ui → import`, `ui → data`, `import → data`, `import → engine (types only)`, `data → engine (types only)`. **The engine never imports from `ui`, `import` or `data`.** `src/import` follows the same framework-free rules as the engine: no React, no DOM, and it receives the file contents as a parsed object.
+Dependency direction: `ui → engine`, `ui → import`, `ui → data`, `import → data`, `import → engine`, `data → engine`. `data` and `import` use the engine's types and its pure `formulas` (e.g. the level-scaling formulas), never its rotation state. **The engine never imports from `ui`, `import` or `data`.** `src/data` and `src/import` follow the same framework-free rules as the engine: no React, no DOM, no I/O, and the import receives the file contents as a parsed object.
 
-Engine independence is enforced three ways:
+`scripts/data/` holds the Node generator scripts that write `src/data/generated/` (TASKS D3). They are the only code that touches the network, and they run by hand, never in the app or in tests.
 
-1. **Typecheck.** `tsconfig.engine.json` compiles `src/engine` with `lib: ["ES2023"]` and no DOM, so any use of `document`, `window`, etc. fails `pnpm typecheck` and `pnpm build`.
-2. **Lint.** In `.oxlintrc.json`, `no-restricted-imports` blocks `react`, `react-dom`, `**/ui/**` and `**/data/**` inside `src/engine/**`.
-3. **Test.** `src/engine/__tests__/architecture.test.ts` scans engine sources for React, UI or DOM references.
+Engine independence is enforced three ways (and the same three cover `src/data` and `src/import`):
+
+1. **Typecheck.** `tsconfig.engine.json` compiles `src/engine`, `src/data` and `src/import` with `lib: ["ES2023"]` and no DOM, so any use of `document`, `window`, etc. fails `pnpm typecheck` and `pnpm build`. `tsconfig.scripts.json` type-checks `scripts/` with Node types.
+2. **Lint.** In `.oxlintrc.json`, `no-restricted-imports` blocks `react`, `react-dom`, `**/ui/**`, `**/data/**` and `**/import/**` inside `src/engine/**`, and React and `**/ui/**` inside `src/data/**` and `src/import/**`.
+3. **Test.** `src/engine/__tests__/architecture.test.ts` scans engine sources for React, UI or DOM references. `src/data/__tests__/architecture.test.ts` does the same for `src/data` and `src/import`, and also rejects `node:` imports, `fetch`, `Date.now` and `Math.random`.
 
 ## Engine modules
 
@@ -42,6 +44,15 @@ Engine independence is enforced three ways:
 | `compare.ts` | `compareTeams`. | yes |
 | `validate.ts` | `validateRotationInput`, `EngineValidationError`. | yes |
 | `index.ts` | **Public API.** The only import path for UI code. | — |
+
+`formulas` (exported as a namespace) also holds the stat-table level formulas `promotedBaseStat` and `relicMainStatValue` (added 2026-11-07, `FORMULAS.md § Level scaling`).
+
+## Data and import modules
+
+| Module | Public API (`index.ts`) |
+|---|---|
+| `src/data` | `DATA_TABLES`, record types (`CharacterRecord`, `LightConeRecord`, `RelicMainStatRecord`, `SetBonusRecord`, `TraceRecord`), `validateDataTables`, lookups `characterBase`, `lightConeBase`, `relicMainStat`, `setBonus2pc`, `statTrace` (each returns `{ ok: true, value } \| { ok: false, reason }` or `undefined`), and the pinned `DATA_COMMIT` / `DATA_GAME_VERSION`. |
+| `src/import` | `parseArchive(json)` (I1): checks and normalises a Reliquary Archiver export, drops the UID, gacha and materials, and returns `{ ok: true, archive, warnings } \| { ok: false, errors }`. `importArchive()` (I2) comes next. |
 
 All engine functions are deterministic. None mutates its inputs, and this is tested. `CombatState` is treated as immutable.
 
@@ -112,7 +123,8 @@ runRotation(input):
 | `src/engine/**` (including `__tests__`) | **Engine owner** (Claude / lead architect) | Read and import via `src/engine/index.ts` only. Request changes in `docs/TASKS.md § Engine change requests`. |
 | `src/ui/**`, `src/main.tsx`, `src/index.css`, `index.html`, `public/**` | **Frontend agent** (Codex) | — |
 | `src/data/**` | **Engine owner** (tasks D1–D4; citations required) | Frontend may read. |
-| `src/import/**` | **Engine owner** (tasks I1–I3) | Frontend calls `importArchive()` only. |
+| `src/import/**` | **Engine owner** (tasks I1–I3) | Frontend calls `parseArchive()` / `importArchive()` only. |
+| `scripts/**` | **Engine owner** (D3 generators) | — |
 | `src/ui/i18n/**`, `src/ui/share/**` | **Frontend agent** (F11, F13) | — |
 | `docs/ARCHITECTURE.md`, `docs/FORMULAS.md` | Engine owner | Propose edits via TASKS.md. |
 | `docs/TASKS.md`, `docs/KNOWN_LIMITATIONS.md` | Shared | Append. Don't delete others' items. |

@@ -4,7 +4,11 @@ Status is as of 2026-11-07. Formula-level verification status is tracked inline 
 
 ## Game data
 
-- The repository currently ships **no** game data. v1 (SPEC D5) will add **stat tables only**, with citations: base stats, main stat values, unconditional 2-piece sets, and trace stats.
+- The repository ships **stat tables only** (SPEC D5, TASKS D3), generated from source A at a pinned commit (`DATA_SOURCES.md § Decision`): character and light cone base stats per ascension, relic main stats, the stat part of 2-piece sets, and stat traces.
+- **Table coverage is game build 4.6.0.** Characters 1014, 1015, 1508 and 1509 are released (per source B) but missing from A's 4.6.0 build, so an import of them reports a table miss. Newer content needs A re-pinned.
+- **2-piece sets: only the source's `PropertyList` is tabulated**, and it is treated as the unconditional part. Every tabulated value also appears in B's set description text (`crosscheck-b.test.ts`). That check confirms the number, not that it is unconditional. **[UNVERIFIED]** Sets whose 2-piece also has an ability part (`hasAbilityPart`, e.g. most planar ornaments) need that part entered by the user. Sets whose 2-piece is ability-only are not tabulated at all.
+- **Enhanced trace trees.** Ten characters have a second ("enhanced") skill tree; only one of them (1004) has different stat traces. Which tree an account uses (probably the export's `ability_version`) is **[UNVERIFIED]**; both trees are tabulated.
+- Outgoing Healing Boost and Elation DMG are tabulated as `unsupported`: the engine doesn't model them.
 - Kit behaviour is still entered by the user: skill multipliers, talents, eidolon effects, 4-piece sets, light cone passives, and enemy RES.
 - Account import (planned) supports **only** the Reliquary Archiver format, at the version documented in `IMPORT_FORMAT.md`. Other tools' formats (Kel-Z HSR Scanner, HoYoLAB, UID lookup) are not supported in v1.
 - Imported relic data reflects the export's moment in time. Re-import after changing gear in game.
@@ -41,12 +45,14 @@ Also on 2026-11-07, these were confirmed by the Fandom wiki Damage page (S3):
 
 These are still **unverified**, because no read source covers them:
 
-1. Base CRIT Rate 5% and base CRIT DMG 50% for every character.
-2. Stat formula `(char + LC base) × (1 + %) + flat`.
-3. Whether the game itself rounds values.
-4. Whether several Weaken sources add together.
-5. How several Final DMG (Original DMG) sources stack. R1 multiplies them, and S3 doesn't say.
+1. Stat formula `(char + LC base) × (1 + %) + flat`.
+2. Whether the game itself rounds values.
+3. Whether several Weaken sources add together.
+4. How several Final DMG (Original DMG) sources stack. R1 multiplies them, and S3 doesn't say.
+5. Level scaling below level 80 (base stats) and below max level (relic main stats). The formulas are checked only at those levels (`FORMULAS.md § Level scaling`).
 6. RES clamp [10%, 200%] and the vulnerability cap of +250%. These rest on R1 alone, because S3's Damage page states no bounds. The Damage RES and Vulnerability sub-pages couldn't be read.
+
+*Resolved 2026-11-07:* base CRIT Rate 5% / CRIT DMG 50% is in source A's `AvatarPromotionConfig` for every character and ascension, and matches B (`FORMULAS.md § Base CRIT`).
 
 The enemy flat DEF term is an engine extension with no source behind it. It defaults to 0.
 
@@ -84,4 +90,4 @@ R1 is a widely used optimizer, but it is not the game. If game testing contradic
 
 ## Environment notes
 
-- Node.js was not on the system PATH on the development machine. A bundled Node 24 / pnpm 11 was used. Use Node ≥ 20 and pnpm (the lockfile is `pnpm-lock.yaml`).
+- Node.js was not on the system PATH on the development machine. A bundled Node 24 / pnpm 11 was used. The data scripts (`pnpm data:extract`, `pnpm data:crosscheck`) run TypeScript directly and need Node ≥ 22.18. Use Node ≥ 20 and pnpm (the lockfile is `pnpm-lock.yaml`).

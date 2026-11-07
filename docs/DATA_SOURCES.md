@@ -1,6 +1,24 @@
-# Stat-table source candidates (task D1)
+# Stat-table sources (task D1)
 
-This page answers TASKS D1 and gives the owner what they need to decide **SPEC Q5**. It lists candidate sources for the `src/data` stat tables (D3), with their licences and how often they update. Everything was checked on **2026-11-07** by reading each repository through the GitHub API and raw files. **No game numbers are added to `src/data` until Q5 is decided.** The few numbers on this page are only there as evidence when comparing sources.
+## Decision (SPEC Q5, owner, 2026-11-07)
+
+**A is the source, B is the cross-check.** The owner confirmed the recommendation below.
+
+| Role | Repository | Pinned commit | Version |
+|---|---|---|---|
+| **Source** of every number in `src/data/generated/` | `DimbreathBot/TurnBasedGameData` (A) | `74a7b96fba32f00cf495a5c00b0311bd02207aaf` (2026-10-19) | Game build `OSPRODWin4.6.0_D16854589_A16781679_L16781679`, recorded as `gameVersion: "4.6.0"` |
+| **Cross-check** only (tests, nothing copied into the tables) | `fribbels/hsr-optimizer` (B), MIT | `dd0c4af98ea95ddde2abe38cb9a4443cc8b2f13d` (2026-10-17, "4.7v3") | `src/data/game_data.json`, `src/lib/relics/statCalculator.ts` |
+| Export field names (`stat_N` anchors, main-stat names, relic rarity) | `IceDynamix/reliquary-archiver` | `5e50dcbf980afe77463f9ad357001f2afa3c66fb` (2026-09-29) | `src/export/fribbels/converters.rs`, `utils.rs` |
+
+How the decision is applied (D2–D3):
+
+- `scripts/data/extract.ts` fetches only the needed `ExcelOutput/*.json` files from A **at the pinned commit** and writes `src/data/generated/*.ts`. Every record carries `source` (repo, commit, files) and `gameVersion`. Re-running the script at the same commit gives the same output.
+- **Released content only.** The generator keeps a record only if A marks it `Release: true` (characters, light cones, relic sets). The cross-check test then fails if B flags any kept record `unreleased: true`. At the pinned commits nothing is dropped and the test passes: B's unreleased entries (character 1511, light cones 22009 and 23065) are not in A.
+- **Coverage gap.** B lists four released characters that A's 4.6.0 build does not have: 1014, 1015, 1508, 1509. Importing them reports a table miss until A is re-pinned to a newer build.
+- `scripts/data/crosscheck-b.ts` writes `src/data/__tests__/reference-b.json` from B at its pinned commit, and `crosscheck-b.test.ts` compares the tables with it (see "Cross-check performed").
+- To update: change the commit constants in `scripts/data/extract.ts` (and B's in `crosscheck-b.ts`), re-run both scripts, run `pnpm check`, and update this table.
+
+The rest of this page is the D1 comparison that led to the decision, kept as the record. It was checked on **2026-11-07** by reading each repository through the GitHub API and raw files.
 
 ## What D3 needs
 
@@ -62,8 +80,24 @@ This means the `(level − 1)` form is **[CROSS-CHECKED]** against R1 (Fribbels)
 
 **Fallback, if the owner prefers a source with a licence over a raw dump:** B as the primary source, with character and light cone base stats rebuilt per level from A. B alone only covers level 80, which isn't enough for I2.
 
-## Still open for D3 (after Q5)
+## D3 results (2026-11-07)
 
-- Confirm which `RelicMainAffixConfig` `GroupID` maps to which rarity and slot, and check the flat-vs-percent warning in `IMPORT_FORMAT.md` against it.
-- Map the obfuscated `RelicSetSkillConfig.PropertyList` keys, or take 2-piece stat values from B's or A's set skill text, whichever can be cited reliably.
-- Record the exact commit SHAs in `src/data` and in the D4 credits.
+The open points from D1 were settled as follows.
+
+- **Main-stat groups.** Slot and rarity map to a group through A's `RelicConfig` (`Type`, `MaxLevel / 3`, `MainAffixGroup`, ordinary `BASIC` relics only). Each slot and rarity has exactly one group (21–26 for 2★ … 51–56 for 5★). The flat-vs-percent question is settled: Head and Hands groups hold only `HPDelta`/`AttackDelta` (flat), and the other slots hold only `…AddedRatio` (percent). Reliquary Archiver writes both as `"HP"`/`"ATK"` (`utils.rs@5e50dcb`), so the slot decides.
+- **2-piece sets.** `PropertyList` entries are read by shape (one string = the property, one `{ Value }` = the value), so the obfuscated key names don't matter. 54 sets have a 2-piece `PropertyList`. The 8 sets whose 2-piece is ability-only are not tabulated.
+- **Traces.** Export `stat_N` = A skill-tree anchor `Point(N + 8)` with `PointType 1`, per Reliquary Archiver `export_skill_tree` (`converters.rs@5e50dcb`). Every released character has exactly these ten anchors.
+- **Commit SHAs** are in `src/data/generated/source.ts` and on every record. The D4 credits list still needs to be written.
+
+Generated tables: 94 characters, 170 light cones, 112 main-stat rows (24 groups), 54 two-piece bonuses, and 1040 stat traces (94 base trees and 10 enhanced trees). Re-running the generator against GitHub at the pinned commit reproduces them byte for byte.
+
+Cross-check against B (`crosscheck-b.test.ts`, all passing):
+
+| Check | Scope |
+|---|---|
+| Level-80 HP/ATK/DEF/SPD/CRIT | all 94 characters and 170 light cones |
+| Main-stat `base`/`step` pairs | all 112 rows, exact equality with `relic_main_affixes.json` |
+| Main stat at max level | 19 stats × rarity 2–5, against `statCalculator.ts` (3 decimals) |
+| Trace stat and value | all 1040 traces, against `traceTree` (enhanced trees against B's `…b1` entries) |
+| 2-piece value appears in B's set text | all 54 sets |
+| Nothing B flags unreleased; known coverage gap | see Decision |

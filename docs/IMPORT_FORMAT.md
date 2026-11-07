@@ -5,6 +5,14 @@ This page documents the structure of a Reliquary Archiver export as observed on 
 - It describes **structure only**. No values from the owner's account are recorded here, and the real export must never be committed.
 - The format is defined by the Reliquary Archiver tool (`github.com/IceDynamix/reliquary-archiver`), not by this project. Re-check this page against the tool whenever `version` changes.
 
+## How `parseArchive` (I1) reads it
+
+- It rejects the file if `source` is not `"reliquary_archiver"`, `version` is not a supported version (`4`), or `characters`, `light_cones` or `relics` is not an array.
+- It rebuilds the result from the fields marked "use" below, so `metadata`, `gacha`, `materials`, `_uid`, `lock`, `discard` and `preview_substats` never reach the rest of the app.
+- It keeps **equipped** light cones and relics only, and counts the unequipped ones it dropped.
+- An entry with a bad field (wrong type, out of range, unknown slot or substat key, equipped by an unknown character, a second item in the same place) is skipped with a warning naming its path.
+- Substat values stay in the export's units. I2 converts them with the key map below.
+
 ## Top level
 
 | Key | Type | Use in v1 |
@@ -28,9 +36,9 @@ This page documents the structure of a Reliquary Archiver export as observed on 
 | `level`, `ascension` | Used to look up base stats in D3. |
 | `eidolon` | 0–6, maps to `CharacterBuild.eidolon`. |
 | `skills` | `{ basic, skill, ult, talent, elation? }` skill levels. Shown to the user, because v1 kit multipliers are entered manually. |
-| `traces` | `{ ability_1..3, stat_1..10, special }` booleans. Unlocked `stat_N` traces map to D3 trace bonuses. |
+| `traces` | `{ ability_1..3, stat_1..10, special }` booleans. Unlocked `stat_N` traces map to D3 trace bonuses. `stat_N` is the skill-tree point at anchor `Point(N + 8)` (Reliquary Archiver `converters.rs@5e50dcb`). |
 | `memosprite` | optional `{ skill, talent }` levels. Display only in v1. |
-| `ability_version` | Unknown meaning. Ignore. |
+| `ability_version` | Copied from the game's `skilltree_version` (Archiver `handlers.rs@5e50dcb`). Probably selects the "enhanced" trace tree that ten characters have; **[UNVERIFIED]**. D3 tabulates both trees. |
 
 ## `light_cones[]`
 
@@ -87,4 +95,4 @@ The value always comes from the D3 table, never from the export.
 | `<Element> DMG Boost` | `dmgBoost` with `condition.elements: [<element>]` | |
 | `Outgoing Healing Boost` | (not modelled) | Report it as unsupported. |
 
-> ⚠️ The HP/ATK/DEF flat-vs-percent mapping by slot is an inference from how the game works. It is **not stated by the export**, and must be confirmed against the D3 source before I2 ships.
+> ✅ *Confirmed 2026-11-07 (D3).* In source A, Head and Hands main-stat groups contain only flat HP/ATK, and every other slot contains only percentage HP/ATK/DEF. Reliquary Archiver maps both to the same text (`utils.rs@5e50dcb`). The lookup `relicMainStat(slot, rarity, mainstat, level)` uses the slot, so this is handled by the table.
