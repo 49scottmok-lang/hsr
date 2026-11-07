@@ -23,3 +23,5 @@ export const DATA_TABLES: DataTables = {
   setBonuses: SET_BONUSES,
   traces: TRACES,
 };
+export { DATA_CREDITS, GAME_DATA_NOTICE } from './credits';
+export type { DataCredit, CreditRole } from './credits';
