@@ -137,6 +137,30 @@ describe('scenario JSON', () => {
     expect(importScenario(exportScenario(scenario))).toStrictEqual({ ok: true, scenario, issues: [] });
   });
 
+  it('round-trips stacking, break inputs and both break step kinds', () => {
+    const apply = event.steps.find((step) => step.op === 'apply')!;
+    const effect = { ...apply.effect, stacking: 'independent' as const, maxStacks: 3 };
+    const commonHit = { targetId: enemy.id, attackerId: character.id, element: 'ice' as const, multiplier: 1.25 };
+    const draft: Scenario = {
+      ...scenario,
+      enemies: [{ ...enemy, maxToughness: 80 }],
+      teams: [{
+        ...scenario.teams[0],
+        team: [{ ...character, breakLevelMultiplier: 100 }],
+        effectLibrary: [effect],
+        events: [{ ...event, steps: [
+          { ...apply, effect },
+          { op: 'break', hit: { ...commonHit, kind: 'break', label: 'Break' }, requires: { minEidolon: 1 } },
+          { op: 'break', hit: {
+            ...commonHit, kind: 'superBreak', label: 'Super Break',
+            toughnessReduction: 20, breakEfficiency: 0.5, fixedToughnessReduction: 5,
+          } },
+        ] }],
+      }, scenario.teams[1]],
+    };
+    expect(importScenario(exportScenario(draft))).toStrictEqual({ ok: true, scenario: draft, issues: [] });
+  });
+
   it('returns engine issues from both teams with their editor paths', () => {
     const invalid: Scenario = { ...scenario, teams: [
       { ...scenario.teams[0], cycles: -1 },

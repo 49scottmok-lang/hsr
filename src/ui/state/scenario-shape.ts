@@ -1,3 +1,4 @@
+import { STACKING_POLICIES } from '../../engine/index';
 import type { Scenario } from './scenario';
 
 const invalid = Symbol('invalid scenario shape');
@@ -59,6 +60,7 @@ const effect = shape({
   modifiers: list(modifier),
   duration: optional(duration),
   maxStacks: optional(number),
+  stacking: optional(oneOf(...STACKING_POLICIES)),
   requires: requirement,
   source: optional(string),
 });
@@ -71,6 +73,7 @@ const character = shape({
   base: shape({ ...baseStats, spd: number }),
   baseCritRate: optional(number),
   baseCritDmg: optional(number),
+  breakLevelMultiplier: optional(number),
   lightCone: optional(shape({
     name: string, superimposition: optional(number), base: shape(baseStats), effects: list(effect),
   })),
@@ -80,6 +83,7 @@ const character = shape({
 const enemy = shape({
   ...unit,
   baseDef: optional(number),
+  maxToughness: optional(number),
   broken: optional(boolean),
   res: (value) => isRecord(value) && Object.values(value).every(isNumber) ? { ...value } : invalid,
 });
@@ -97,6 +101,25 @@ const hit = shape({
 });
 const stepFields = { op: string, requires: requirement };
 const hitStep = shape({ ...stepFields, hit });
+const breakFields = {
+  targetId: string,
+  attackerId: optional(string),
+  element: optional(string),
+  label: optional(string),
+};
+const breakHit = shape({ ...breakFields, kind: oneOf('break'), multiplier: optional(number) });
+const superBreakHit = shape({
+  ...breakFields,
+  kind: oneOf('superBreak'),
+  multiplier: number,
+  toughnessReduction: number,
+  breakEfficiency: optional(number),
+  fixedToughnessReduction: optional(number),
+});
+const breakStep = shape({
+  ...stepFields,
+  hit: (value) => isRecord(value) && value.kind === 'superBreak' ? superBreakHit(value) : breakHit(value),
+});
 const applyStep = shape({ ...stepFields, effect, to: string, sourceId: optional(string), stacks: optional(number) });
 const removeStep = shape({ ...stepFields, effectId: string, from: string });
 const brokenStep = shape({ ...stepFields, enemyId: string, broken: boolean });
@@ -105,6 +128,7 @@ function step(value: unknown): unknown {
   if (!isRecord(value)) return invalid;
   switch (value.op) {
     case 'hit': return hitStep(value);
+    case 'break': return breakStep(value);
     case 'apply': return applyStep(value);
     case 'remove': return removeStep(value);
     case 'setBroken': return brokenStep(value);
