@@ -11,7 +11,9 @@
     "test:watch": "vitest",
     "lint": "oxlint",
     "preview": "vite preview",
-    "check": "tsc -b && vitest run && oxlint"
+    "check": "tsc -b && vitest run && oxlint",
+    "data:extract": "node scripts/data/extract.ts",
+    "data:crosscheck": "node scripts/data/crosscheck-b.ts"
   },
   "dependencies": {
     "react": "^19.3.1",

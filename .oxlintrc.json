@@ -13,7 +13,19 @@
           "error",
           {
             "paths": ["react", "react-dom", "react-dom/client"],
-            "patterns": ["react/*", "react-dom/*", "**/ui/**", "**/data/**"]
+            "patterns": ["react/*", "react-dom/*", "**/ui/**", "**/data/**", "**/import/**"]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/data/**", "src/import/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": ["react", "react-dom", "react-dom/client"],
+            "patterns": ["react/*", "react-dom/*", "**/ui/**"]
           }
         ]
       }
