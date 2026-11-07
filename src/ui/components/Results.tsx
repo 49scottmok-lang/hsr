@@ -6,15 +6,7 @@ import { formatDamage, formatMultiplier, formatNumber, t, translateIssue } from 
 import { toRotationInput, type Scenario } from '../state/scenario';
 import { HitResults } from './HitResults';
 
-// Unit references in the current engine share a namespace with group tokens
-// and the plain object backing combat state.
-const reservedUnitIds = new Set(['allAllies', 'allEnemies', '__proto__']);
-
 function runTeam(input: RotationInput) {
-  const reserved = [...input.team, ...input.enemies].filter(({ id }) => reservedUnitIds.has(id));
-  if (reserved.length) {
-    return { issues: reserved.map(({ id }) => t('results.reservedUnitId').replace('{id}', () => id)) };
-  }
   try {
     return { result: runRotation(input) };
   } catch (error) {

@@ -170,10 +170,12 @@ it('reports engine errors for one team while keeping the other team result visib
   expect(screen.queryByRole('table', { name: t('results.comparison') })).toBeNull();
 });
 
-it('opens results from the app and rejects reserved unit IDs before calculation', () => {
+it.each(['allAllies', 'allEnemies', '__proto__'])('shows the engine issue for reserved unit ID %s', (id) => {
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: t('enemy.add') }));
-  fireEvent.change(screen.getByLabelText(t('enemy.id')), { target: { value: '__proto__' } });
+  fireEvent.change(screen.getByLabelText(t('enemy.id')), { target: { value: id } });
   fireEvent.click(screen.getByRole('button', { name: t('results.calculate') }));
-  expect(teamDetails(t('team.a')).getByRole('alert').textContent).toContain(t('results.reservedUnitId').replace('{id}', '__proto__'));
+  expect(teamDetails(t('team.a')).getByRole('alert').textContent).toContain(
+    `enemies[0]：${t('issue.reservedUnitId').replace('{value}', id)}`,
+  );
 });

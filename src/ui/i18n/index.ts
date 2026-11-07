@@ -28,6 +28,7 @@ const issuePatterns: readonly (readonly [RegExp, TranslationKey])[] = [
   [/^must contain 1 to 4 characters$/, 'issue.teamSize'],
   [/^at least one enemy is required$/, 'issue.enemyRequired'],
   [/^character and enemy IDs must be unique$/, 'issue.uniqueIds'],
+  [/^id "(.*)" is reserved$/s, 'issue.reservedUnitId'],
   [/^must be a positive number$/, 'issue.positiveNumber'],
   [/^level must be an integer >= 1$/, 'issue.level'],
   [/^eidolon must be an integer 0–6$/, 'issue.eidolon'],
