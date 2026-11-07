@@ -45,7 +45,7 @@ Rules for every task:
 ### F3. Enemy editor — `src/ui/components/EnemyEditor.tsx`
 
 - [x] Add inputs for id, name, level, optional base DEF override, per-element RES (%), and the initial broken toggle.
-- **Acceptance:** when base DEF is empty, the UI shows "200 + 10 × level (unverified)" as a hint.
+- **Acceptance:** when base DEF is empty, the UI shows "200 + 10 × level" as a hint.
 
 ### F4. Effect editor — `src/ui/components/EffectEditor.tsx`
 

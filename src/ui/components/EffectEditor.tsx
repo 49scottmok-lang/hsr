@@ -1,5 +1,5 @@
 import limitationsUrl from '../../../docs/KNOWN_LIMITATIONS.md?url&no-inline';
-import type { DurationSpec, EffectDef } from '../../engine/index';
+import { STACKING_POLICIES, type DurationSpec, type EffectDef, type StackingPolicy } from '../../engine/index';
 import { t } from '../i18n';
 import { EidolonRequirement } from './EidolonRequirement';
 import { ModifierList } from './ModifierList';
@@ -54,6 +54,15 @@ export function EffectEditor({ effect, units, reservedIds, onChange, onRemove }:
         integer
         onChange={(maxStacks) => onChange({ ...effect, maxStacks })}
       />
+      <label>
+        {t('effect.stacking')}
+        <select value={effect.stacking ?? 'refresh'} onChange={({ currentTarget }) => onChange({
+          ...effect, stacking: currentTarget.value as StackingPolicy,
+        })}>
+          {STACKING_POLICIES.map((policy) => <option key={policy} value={policy}>{t(`effect.stacking.${policy}`)}</option>)}
+        </select>
+      </label>
+      <p>{t(`effect.stackingHint.${effect.stacking ?? 'refresh'}`)}</p>
       <EidolonRequirement value={effect.requires} onChange={(requires) => onChange({ ...effect, requires })} />
       <label>
         {t('effect.source')}

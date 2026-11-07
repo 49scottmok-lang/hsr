@@ -1,14 +1,16 @@
 import { ELEMENTS, type EnemyConfig, type Element } from '../../engine/index';
 import { t } from '../i18n';
+import { IssueList } from './IssueList';
 import { NumberField } from './NumberField';
 
 interface EnemyEditorProps {
   enemy: EnemyConfig;
+  issues?: readonly string[];
   onChange: (enemy: EnemyConfig) => void;
   onRemove: () => void;
 }
 
-export function EnemyEditor({ enemy, onChange, onRemove }: EnemyEditorProps) {
+export function EnemyEditor({ enemy, issues, onChange, onRemove }: EnemyEditorProps) {
   function updateResistance(element: Element, value: number | undefined) {
     const res = { ...enemy.res };
     if (value === undefined) delete res[element];
@@ -19,6 +21,7 @@ export function EnemyEditor({ enemy, onChange, onRemove }: EnemyEditorProps) {
   return (
     <fieldset>
       <legend>{enemy.name || enemy.id || t('enemy.title')}</legend>
+      <IssueList issues={issues} />
       <label>
         {t('enemy.id')}
         <input value={enemy.id} onChange={({ currentTarget }) => onChange({ ...enemy, id: currentTarget.value })} />
@@ -41,6 +44,9 @@ export function EnemyEditor({ enemy, onChange, onRemove }: EnemyEditorProps) {
         onChange={(baseDef) => onChange({ ...enemy, baseDef })}
       />
       {enemy.baseDef === undefined && <p>{t('enemy.baseDefHint')}</p>}
+      <NumberField label={t('enemy.maxToughness')} value={enemy.maxToughness} min={0}
+        onChange={(maxToughness) => onChange({ ...enemy, maxToughness })} />
+      <p>{t('enemy.toughnessHint')}</p>
       <fieldset>
         <legend>{t('enemy.res')}</legend>
         <p>{t('enemy.resHint')}</p>

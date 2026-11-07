@@ -73,6 +73,30 @@ function addSkillHit(number: number) {
 
 afterEach(cleanup);
 
+it('adds a Break step and edits all Super Break inputs including a fractional efficiency', () => {
+  const input = renderRotation();
+  click('rotation.addTurn');
+  click('rotation.add.break', event(1));
+  const row = within(event(1).getByRole('group', { name: t('rotation.step.break') }));
+  expect(input().events[0]?.steps).toEqual([{ op: 'break', hit: { kind: 'break', targetId: 'e1' } }]);
+  change('rotation.breakKind', 'superBreak', row);
+  change('results.attacker', 'sup', row);
+  change('rotation.elementOverride', 'lightning', row);
+  change('rotation.hitLabel', 'Test hit', row);
+  change('rotation.multiplier', '125', row);
+  change('rotation.toughnessReduction', '20', row);
+  change('rotation.breakEfficiency', '50', row);
+  change('rotation.fixedToughnessReduction', '5', row);
+  expect(input().events[0]?.steps).toEqual([{ op: 'break', hit: {
+    kind: 'superBreak', targetId: 'e1', attackerId: 'sup', element: 'lightning', label: 'Test hit',
+    multiplier: 1.25, toughnessReduction: 20, breakEfficiency: 0.5, fixedToughnessReduction: 5,
+  } }]);
+  change('rotation.breakKind', 'break', row);
+  expect(input().events[0]?.steps).toEqual([{ op: 'break', hit: {
+    kind: 'break', targetId: 'e1', attackerId: 'sup', element: 'lightning', label: 'Test hit', multiplier: 1.25,
+  } }]);
+});
+
 it('builds the earlier-buff rotation and matches the engine worked example', () => {
   const input = renderRotation();
   click('rotation.addTurn');

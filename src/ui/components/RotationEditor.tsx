@@ -2,6 +2,7 @@ import type { ActionStep, EnemyConfig, RotationEvent } from '../../engine/index'
 import { formatNumber, t } from '../i18n';
 import type { ScenarioAction } from '../state/reducer';
 import type { TeamDraft, TeamIndex } from '../state/scenario';
+import { IssueList } from './IssueList';
 import { NumberField } from './NumberField';
 import { StepEditor } from './StepEditor';
 import { UnitSelect } from './UnitSelect';
@@ -10,6 +11,7 @@ interface RotationEditorProps {
   draft: TeamDraft;
   enemies: readonly EnemyConfig[];
   teamIndex: TeamIndex;
+  issues?: ReadonlyMap<string, readonly string[]>;
   dispatch: (action: ScenarioAction) => void;
 }
 
@@ -30,9 +32,9 @@ function OrderButtons({ index, length, onMove, onRemove }: OrderButtonsProps) {
   );
 }
 
-const stepOps = ['hit', 'apply', 'remove', 'setBroken'] as const;
+const stepOps = ['hit', 'break', 'apply', 'remove', 'setBroken'] as const;
 
-export function RotationEditor({ draft, enemies, teamIndex, dispatch }: RotationEditorProps) {
+export function RotationEditor({ draft, enemies, teamIndex, issues, dispatch }: RotationEditorProps) {
   const { team, events, cycles, effectLibrary = [] } = draft;
   const units = [...team, ...enemies];
   const editEvent = (edit: Extract<ScenarioAction, { type: 'editEvents' }>['edit']) =>
@@ -67,7 +69,9 @@ export function RotationEditor({ draft, enemies, teamIndex, dispatch }: Rotation
       case 'setBroken':
         value = { op, enemyId, broken: true };
         break;
-      case 'break': return; // TODO(frontend): break step editor; engine stub, see TASKS.md E4
+      case 'break':
+        value = { op, hit: { kind: 'break', targetId: enemyId } };
+        break;
     }
     editStep(eventIndex, { type: 'add', value });
   }
@@ -112,7 +116,8 @@ export function RotationEditor({ draft, enemies, teamIndex, dispatch }: Rotation
                   <li key={stepIndex}>
                     <fieldset>
                       <legend>{t(`rotation.step.${step.op}`)}</legend>
-                      <StepEditor step={step} units={units} enemies={enemies} effects={effectLibrary}
+                      <IssueList issues={issues?.get(`teams[${teamIndex}].events[${index}].steps[${stepIndex}]`)} />
+                      <StepEditor step={step} units={units} allies={team} enemies={enemies} effects={effectLibrary}
                         onChange={(value) => editStep(index, { type: 'update', index: stepIndex, value })} />
                       <OrderButtons index={stepIndex} length={event.steps.length}
                         onMove={(toIndex) => editStep(index, { type: 'reorder', index: stepIndex, toIndex })}

@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterEach, expect, it } from 'vitest';
 import { runRotation, type CharacterBuild, type HitSpec } from '../../engine/index';
 import App from '../App';
-import { t } from '../i18n';
+import { formatMultiplier, t } from '../i18n';
 import { toRotationInput, type Scenario } from '../state/scenario';
 import { Results } from './Results';
 
@@ -64,6 +64,60 @@ function teamDetails(team: string) {
 }
 
 afterEach(cleanup);
+
+it('shows both kinds of break details from the engine without adding damage by tag', () => {
+  const draft: Scenario = {
+    ...scenario,
+    enemies: scenario.enemies.map((enemy) => ({ ...enemy, maxToughness: 120 })),
+    teams: [{
+      ...scenario.teams[0],
+      team: [{ ...attacker, breakLevelMultiplier: 4000 }],
+      events: [{ id: 'break-event', kind: 'extra', actorId: 'dps', steps: [
+        { op: 'break', hit: { kind: 'break', targetId: 'enemy', label: 'Test Break' } },
+        { op: 'break', hit: {
+          kind: 'superBreak', targetId: 'enemy', label: 'Test Super Break',
+          toughnessReduction: 20, breakEfficiency: 0.5, multiplier: 1.5,
+        } },
+      ] }],
+    }, scenario.teams[1]],
+  };
+  render(<Results scenario={draft} />);
+  const team = teamDetails(t('team.a'));
+  const byTag = within(team.getByRole('table', { name: t('results.byTag') }));
+  expect(byTag.queryByRole('cell')).toBeNull();
+  const rows = runRotation(toRotationInput(draft, 0)).hits;
+  for (const hit of rows) {
+    const row = within(team.getByText(hit.label!).closest('tr')!);
+    const details = hit.break!;
+    const summary = row.getByText(t(`rotation.breakKind.${details.kind}`));
+    fireEvent.click(summary);
+    expect(row.getAllByRole('cell').slice(7, 9).map(({ textContent }) => textContent)).toEqual(['1.0000', '1.0000']);
+    expect(row.getByText(t('results.breakBaseNote'))).toBeTruthy();
+    const key = details.kind === 'break' ? 'enemy.maxToughness' : 'results.effectiveToughness';
+    expect(row.getByText(t(key)).nextElementSibling?.textContent).toBe(formatMultiplier(details.maxToughness ?? details.toughness!));
+  }
+});
+
+it('routes missing Break inputs to the break step and both unit editors', () => {
+  render(<App />);
+  const team = within(screen.getByRole('region', { name: t('team.a') }));
+  const enemies = within(screen.getByRole('region', { name: t('enemy.shared') }));
+  fireEvent.click(enemies.getByRole('button', { name: t('enemy.add') }));
+  fireEvent.click(team.getByRole('button', { name: t('character.add') }));
+  fireEvent.change(team.getByLabelText(t('character.breakLevelMultiplier')), { target: { value: '' } });
+  fireEvent.click(team.getByRole('button', { name: t('rotation.addTurn') }));
+  fireEvent.click(team.getByRole('button', { name: t('rotation.add.break') }));
+  fireEvent.click(screen.getByRole('button', { name: t('results.calculate') }));
+  const step = within(team.getByRole('group', { name: t('rotation.step.break') }));
+  const characterIssue = t('issue.breakLevelMultiplier').replace('{value}', 'character-1');
+  const enemyIssue = t('issue.maxToughness').replace('{value}', 'enemy-1');
+  expect(step.getByText(characterIssue)).toBeTruthy();
+  expect(step.getByText(enemyIssue)).toBeTruthy();
+  expect(within(team.getByRole('group', { name: t('character.title') })).getByText(characterIssue)).toBeTruthy();
+  expect(within(enemies.getByRole('group', { name: 'enemy-1' })).getByText(enemyIssue)).toBeTruthy();
+  fireEvent.change(enemies.getByLabelText(t('enemy.maxToughness')), { target: { value: '120' } });
+  expect(step.queryByText(enemyIssue)).toBeNull();
+});
 
 it('renders the worked example and compares unrounded damage before display formatting', () => {
   const result = runRotation(toRotationInput(scenario, 0));

@@ -23,6 +23,12 @@ it('edits a sourced, timed, eidolon-gated effect using the modifier list', () =>
     />;
   }
   render(<Editor />);
+  const stacking = screen.getByLabelText<HTMLSelectElement>(t('effect.stacking'));
+  expect(stacking.value).toBe('refresh');
+  fireEvent.change(stacking, { target: { value: 'noRefresh' } });
+  expect(screen.getByText(t('effect.stackingHint.noRefresh'))).toBeTruthy();
+  fireEvent.change(stacking, { target: { value: 'independent' } });
+  expect(screen.getByText(t('effect.stackingHint.independent'))).toBeTruthy();
   fireEvent.change(screen.getByLabelText(t('effect.id')), { target: { value: 'test-vuln' } });
   fireEvent.change(screen.getByLabelText(t('effect.name')), { target: { value: 'Test vulnerability' } });
   fireEvent.change(screen.getByLabelText(t('effect.kind')), { target: { value: 'debuff' } });
@@ -40,7 +46,7 @@ it('edits a sourced, timed, eidolon-gated effect using the modifier list', () =>
   expect(screen.getByText(t('effect.tickHint'))).toBeTruthy();
   expect(screen.getByRole('link', { name: t('effect.limitationsLink') }).getAttribute('href')).toContain('#:~:text=A2');
   expect(change.mock.lastCall?.[0]).toEqual({
-    id: 'test-vuln', name: 'Test vulnerability', kind: 'debuff', maxStacks: 3, requires: { minEidolon: 2 },
+    id: 'test-vuln', name: 'Test vulnerability', kind: 'debuff', maxStacks: 3, stacking: 'independent', requires: { minEidolon: 2 },
     source: 'Synthetic fixture', modifiers: [{ stat: 'vulnerability', value: 0.5 }],
     duration: { turns: 2, tickUnit: { unitId: 'enemy' }, tickPhase: 'turnStart', tickOnApplyTurn: true },
   });

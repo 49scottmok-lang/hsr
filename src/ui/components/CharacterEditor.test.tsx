@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { useState } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createInitialState, resolveUnitStats, type CharacterBuild } from '../../engine/index';
+import { breakLevelMultiplier, DATA_TABLES } from '../../data';
 import App from '../App';
 import { formatNumber, t } from '../i18n';
 import { CharacterEditor } from './CharacterEditor';
@@ -36,6 +37,20 @@ function displayedAttack(): string | null | undefined {
 }
 
 afterEach(cleanup);
+
+it('prefills a sourced multiplier on level change and permits manual entry for missing levels', () => {
+  const updated = renderEditor();
+  const level = screen.getByLabelText(t('character.level'));
+  const multiplier = screen.getByLabelText<HTMLInputElement>(t('character.breakLevelMultiplier'));
+  const lookup = breakLevelMultiplier(DATA_TABLES, 80);
+  if (!lookup.ok) throw new Error('Expected a level 80 table row');
+  fireEvent.change(level, { target: { value: '80' } });
+  expect(multiplier.valueAsNumber).toBe(lookup.value);
+  fireEvent.change(level, { target: { value: '121' } });
+  expect(multiplier.value).toBe('');
+  fireEvent.change(multiplier, { target: { value: '123.5' } });
+  expect(updated().breakLevelMultiplier).toBe(123.5);
+});
 
 it('stores 50% as 0.5 and shows the engine final ATK', () => {
   const updatedBuild = renderEditor();

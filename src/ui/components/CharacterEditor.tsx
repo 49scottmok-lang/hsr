@@ -1,10 +1,13 @@
 import { createInitialState, ELEMENTS, resolveUnitStats, type CharacterBuild, type LightCone } from '../../engine/index';
 import { formatNumber, formatPercent, t } from '../i18n';
+import { suggestedBreakLevelMultiplier } from '../state/break-level';
+import { IssueList } from './IssueList';
 import { ModifierList } from './ModifierList';
 import { NumberField } from './NumberField';
 
 interface CharacterEditorProps {
   build: CharacterBuild;
+  issues?: readonly string[];
   onChange: (build: CharacterBuild) => void;
   onRemove: () => void;
 }
@@ -15,16 +18,18 @@ const percentStats = ['critRate', 'critDmg', 'dmgBoost', 'breakEffect', 'effectH
 const eidolons = [0, 1, 2, 3, 4, 5, 6];
 const superimpositions = [1, 2, 3, 4, 5];
 
-export function CharacterEditor({ build, onChange, onRemove }: CharacterEditorProps) {
+export function CharacterEditor({ build, issues, onChange, onRemove }: CharacterEditorProps) {
   const { lightCone, relics } = build;
   const updateCone = (value: LightCone | undefined) => onChange({ ...build, lightCone: value });
   // The preview needs no scenario enemy or hit context.
   const previewEnemy = { id: `${build.id}:preview`, name: '', level: 1, res: {} };
   const stats = resolveUnitStats(createInitialState([build], [previewEnemy]), build.id);
+  const tableMultiplier = suggestedBreakLevelMultiplier(build.level);
 
   return (
     <fieldset>
       <legend>{build.name || t('character.title')}</legend>
+      <IssueList issues={issues} />
       <label>
         {t('character.name')}
         <input value={build.name} onChange={({ currentTarget }) => onChange({ ...build, name: currentTarget.value })} />
@@ -34,8 +39,23 @@ export function CharacterEditor({ build, onChange, onRemove }: CharacterEditorPr
         value={build.level}
         min={1}
         integer
-        onChange={(level) => onChange({ ...build, level: level ?? 1 })}
+        onChange={(value) => {
+          const level = value ?? 1;
+          const current = build.breakLevelMultiplier;
+          onChange({
+            ...build, level,
+            breakLevelMultiplier: current === undefined || current === tableMultiplier
+              ? suggestedBreakLevelMultiplier(level) : current,
+          });
+        }}
       />
+      <NumberField label={t('character.breakLevelMultiplier')} value={build.breakLevelMultiplier} min={0}
+        onChange={(breakLevelMultiplier) => onChange({ ...build, breakLevelMultiplier })} />
+      {build.breakLevelMultiplier === undefined && tableMultiplier !== undefined && (
+        <button type="button" onClick={() => onChange({ ...build, breakLevelMultiplier: tableMultiplier })}>
+          {t('character.useBreakTable').replace('{value}', formatNumber(tableMultiplier, { maximumFractionDigits: 8 }))}
+        </button>
+      )}
       <label>
         {t('character.element')}
         <select

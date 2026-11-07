@@ -1,5 +1,6 @@
-import { ELEMENTS, validateRotationInput } from '../../engine/index';
-import { toRotationInput, type Scenario } from './scenario';
+import { ELEMENTS } from '../../engine/index';
+import type { Scenario } from './scenario';
+import { scenarioIssues } from './scenario-issues';
 import { readScenario } from './scenario-shape';
 
 export type ScenarioImportResult =
@@ -20,13 +21,7 @@ export function importScenario(json: string): ScenarioImportResult {
   const scenario = readScenario(data);
   if (!scenario) return { ok: false, issues: ['Scenario: invalid structure'] };
 
-  const issues = new Set<string>();
-  for (const index of [0, 1] as const) {
-    for (const issue of validateRotationInput(toRotationInput(scenario, index))) {
-      const shared = issue.startsWith('enemies:') || issue.startsWith('enemies[');
-      issues.add(shared ? issue : `teams[${index}].${issue}`);
-    }
-  }
+  const issues = scenarioIssues(scenario);
 
   // Let validation report unknown RES elements before dropping their keys.
   const enemies = scenario.enemies.map((enemy) => ({
@@ -34,5 +29,5 @@ export function importScenario(json: string): ScenarioImportResult {
     res: Object.fromEntries(ELEMENTS.filter((element) => Object.hasOwn(enemy.res, element))
       .map((element) => [element, enemy.res[element]])),
   }));
-  return { ok: true, scenario: { ...scenario, enemies }, issues: [...issues] };
+  return { ok: true, scenario: { ...scenario, enemies }, issues };
 }

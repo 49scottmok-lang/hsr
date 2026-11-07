@@ -23,6 +23,11 @@ it('keeps DEF optional and stores signed elemental RES as a fraction', () => {
   const baseDef = screen.getByLabelText(t('enemy.baseDef'));
   const fireRes = screen.getByLabelText(t('enemy.resElement').replace('{element}', t('element.fire')));
   expect(screen.getByText(t('enemy.baseDefHint'))).toBeTruthy();
+  const toughness = screen.getByLabelText(t('enemy.maxToughness'));
+  fireEvent.change(toughness, { target: { value: '40.5' } });
+  expect(change.mock.lastCall?.[0].maxToughness).toBe(40.5);
+  fireEvent.change(toughness, { target: { value: '' } });
+  expect(change.mock.lastCall?.[0].maxToughness).toBeUndefined();
   fireEvent.change(baseDef, { target: { value: '0' } });
   expect(change.mock.lastCall?.[0].baseDef).toBe(0);
   expect(screen.queryByText(t('enemy.baseDefHint'))).toBeNull();

@@ -6,7 +6,9 @@ import { EnemyEditor } from './components/EnemyEditor';
 import { Results } from './components/Results';
 import { RotationEditor } from './components/RotationEditor';
 import { t } from './i18n';
+import { suggestedBreakLevelMultiplier } from './state/break-level';
 import { scenarioReducer } from './state/reducer';
+import { editorIssues, scenarioIssues } from './state/scenario-issues';
 import type { Scenario, TeamIndex } from './state/scenario';
 
 const initialScenario: Scenario = {
@@ -22,6 +24,7 @@ const critModes = ['expected', 'crit', 'nonCrit'] as const;
 export default function App() {
   const [scenario, dispatch] = useReducer(scenarioReducer, initialScenario);
   const [showResults, setShowResults] = useState(false);
+  const issues = editorIssues(scenario, showResults ? scenarioIssues(scenario) : []);
   const nextCharacterNumber = useRef(1);
   const nextEnemyNumber = useRef(1);
 
@@ -52,6 +55,7 @@ export default function App() {
           id,
           name: '',
           level: 1,
+          breakLevelMultiplier: suggestedBreakLevelMultiplier(1),
           element: 'physical',
           base: { hp: 0, atk: 0, def: 0, spd: 0 },
         },
@@ -86,6 +90,7 @@ export default function App() {
           <EnemyEditor
             key={index}
             enemy={enemy}
+            issues={issues.get(`enemies[${index}]`)}
             onChange={(value) => dispatch({ type: 'editEnemies', edit: { type: 'update', index, value } })}
             onRemove={() => dispatch({ type: 'editEnemies', edit: { type: 'remove', index } })}
           />
@@ -101,6 +106,7 @@ export default function App() {
               <CharacterEditor
                 key={build.id}
                 build={build}
+                issues={issues.get(`teams[${teamIndex}].team[${index}]`)}
                 onChange={(value) => dispatch({ type: 'editCharacters', teamIndex, edit: { type: 'update', index, value } })}
                 onRemove={() => dispatch({ type: 'editCharacters', teamIndex, edit: { type: 'remove', index } })}
               />
@@ -126,7 +132,8 @@ export default function App() {
               ))}
               <button type="button" onClick={() => addEffect(teamIndex)}>{t('effect.add')}</button>
             </fieldset>
-            <RotationEditor draft={scenario.teams[teamIndex]} enemies={scenario.enemies} teamIndex={teamIndex} dispatch={dispatch} />
+            <RotationEditor draft={scenario.teams[teamIndex]} enemies={scenario.enemies} teamIndex={teamIndex}
+              issues={issues} dispatch={dispatch} />
           </section>
         );
       })}

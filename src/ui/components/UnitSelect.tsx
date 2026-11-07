@@ -11,15 +11,17 @@ interface UnitSelectProps {
   units: readonly UnitOption[];
   onChange: (id: string) => void;
   groups?: boolean;
+  emptyLabel?: string;
 }
 
-export function UnitSelect({ label, value, units, onChange, groups }: UnitSelectProps) {
+export function UnitSelect({ label, value, units, onChange, groups, emptyLabel }: UnitSelectProps) {
   const isGroup = groups && (value === 'allAllies' || value === 'allEnemies');
   return (
     <label>
       {label}
       <select value={value} onChange={({ currentTarget }) => onChange(currentTarget.value)}>
-        {!isGroup && !units.some(({ id }) => id === value) && (
+        {emptyLabel && <option value="">{emptyLabel}</option>}
+        {!isGroup && (value !== '' || !emptyLabel) && !units.some(({ id }) => id === value) && (
           <option value={value}>{value || t('rotation.selectUnit')}</option>
         )}
         {groups && (

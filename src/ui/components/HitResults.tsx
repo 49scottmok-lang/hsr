@@ -1,4 +1,4 @@
-import type { DamageBreakdown, HitResult, ResolvedHitStats } from '../../engine/index';
+import type { BreakDetails, DamageBreakdown, HitResult, ResolvedHitStats } from '../../engine/index';
 import { formatDamage, formatMultiplier, formatNumber, formatPercent, t, type TranslationKey } from '../i18n';
 
 const multiplierLabels = {
@@ -54,6 +54,29 @@ interface HitResultsProps {
   unitName: (id: string) => string;
 }
 
+function BreakResult({ details }: { details: BreakDetails }) {
+  const factors = [
+    ['character.breakLevelMultiplier', details.levelMultiplier],
+    ['results.elementFactor', details.elementFactor],
+    ['enemy.maxToughness', details.maxToughness],
+    ['results.effectiveToughness', details.toughness],
+    ['results.hitMultiplier', details.multiplier],
+    ['results.breakEffectMultiplier', details.breakEffectMultiplier],
+  ] as const;
+  return (
+    <details>
+      <summary>{t(`rotation.breakKind.${details.kind}`)}</summary>
+      <p>{t('results.breakBaseNote')}</p>
+      <dl>
+        {factors.map(([label, value]) => value === undefined ? null : (
+          <div key={label}><dt>{t(label)}</dt><dd>{formatMultiplier(value)}</dd></div>
+        ))}
+        <div><dt>{t('stat.breakEffect')}</dt><dd>{formatPercent(details.breakEffect, { maximumFractionDigits: 4 })}</dd></div>
+      </dl>
+    </details>
+  );
+}
+
 export function HitResults({ hits, unitName }: HitResultsProps) {
   return (
     <div style={{ overflowX: 'auto' }}>
@@ -81,11 +104,12 @@ export function HitResults({ hits, unitName }: HitResultsProps) {
               <td>{unitName(hit.attackerId)}</td>
               <td>{unitName(hit.targetId)}</td>
               <td>{t(`element.${hit.element}`)}</td>
-              <td>{hit.tags.map((tag) => t(`tag.${tag}`)).join(t('results.separator'))}</td>
+              <td>{hit.tags.map((tag) => t(`tag.${tag}`)).join(t('results.separator')) || t('results.none')}</td>
               <td>{formatDamage(hit.breakdown.baseDmg)}</td>
               {multipliers.map((key) => <td key={key}>{formatMultiplier(hit.breakdown[key])}</td>)}
               <td>{formatDamage(hit.damage)}</td>
               <td>
+                {hit.break && <BreakResult details={hit.break} />}
                 <details>
                   <summary>{t('results.resolvedStats')}</summary>
                   <dl>

@@ -1,5 +1,6 @@
 import type { ActionStep, EffectDef } from '../../engine/index';
 import { t } from '../i18n';
+import { BreakEditor } from './BreakEditor';
 import { EidolonRequirement } from './EidolonRequirement';
 import { HitEditor } from './HitEditor';
 import { NumberField } from './NumberField';
@@ -8,15 +9,19 @@ import { UnitSelect, type UnitOption } from './UnitSelect';
 interface StepEditorProps {
   step: ActionStep;
   units: readonly UnitOption[];
+  allies: readonly UnitOption[];
   enemies: readonly UnitOption[];
   effects: readonly EffectDef[];
   onChange: (step: ActionStep) => void;
 }
 
-export function StepEditor({ step, units, enemies, effects, onChange }: StepEditorProps) {
+export function StepEditor({ step, units, allies, enemies, effects, onChange }: StepEditorProps) {
   return (
     <>
       {step.op === 'hit' && <HitEditor hit={step.hit} enemies={enemies} onChange={(hit) => onChange({ ...step, hit })} />}
+      {step.op === 'break' && (
+        <BreakEditor hit={step.hit} allies={allies} enemies={enemies} onChange={(hit) => onChange({ ...step, hit })} />
+      )}
       {step.op === 'apply' && (
         <>
           <label>
