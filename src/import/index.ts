@@ -14,3 +14,5 @@ export type {
   SubstatKey,
   TraceKey,
 } from './archive';
+export { importArchive, SUBSTAT_TARGETS } from './importArchive';
+export type { BuildReport, ImportReport, ImportResult, LookedUpItem, ProblemItem, ToEnterItem } from './importArchive';
