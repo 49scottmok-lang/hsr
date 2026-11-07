@@ -60,6 +60,9 @@ export function EnemyEditor({ enemy, issues, onChange, onRemove }: EnemyEditorPr
           />
         ))}
       </fieldset>
+      <NumberField label={t('enemy.effectRes')} value={enemy.effectRes} percent
+        onChange={(effectRes) => onChange({ ...enemy, effectRes })} />
+      <p>{t('enemy.effectResHint')}</p>
       <label>
         <input
           type="checkbox"

@@ -48,11 +48,22 @@ export function HitEditor({ hit, enemies, onChange }: HitEditorProps) {
         {t('modifier.tags')}
         <select multiple value={hit.tags} onChange={({ currentTarget }) => {
           const selected = new Set(Array.from(currentTarget.selectedOptions, ({ value }) => value));
-          onChange({ ...hit, tags: HIT_DAMAGE_TAGS.filter((tag) => selected.has(tag)) });
+          const { baseChance, ...unweighted } = hit;
+          const tags = HIT_DAMAGE_TAGS.filter((tag) => selected.has(tag));
+          onChange(tags.includes('dot') && baseChance !== undefined
+            ? { ...unweighted, tags, baseChance }
+            : { ...unweighted, tags });
         }}>
           {HIT_DAMAGE_TAGS.map((tag) => <option key={tag} value={tag}>{t(`tag.${tag}`)}</option>)}
         </select>
       </label>
+      {hit.tags.includes('dot') && (
+        <>
+          <NumberField label={t('rotation.baseChance')} value={hit.baseChance} min={0} percent
+            onChange={(baseChance) => onChange({ ...hit, baseChance })} />
+          <p>{t('rotation.baseChanceHint')}</p>
+        </>
+      )}
       <label>
         {t('rotation.canCrit')}
         <select value={hit.canCrit === undefined ? '' : String(hit.canCrit)} onChange={({ currentTarget }) => onChange({

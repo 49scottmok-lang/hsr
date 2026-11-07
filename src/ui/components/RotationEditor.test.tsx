@@ -73,6 +73,26 @@ function addSkillHit(number: number) {
 
 afterEach(cleanup);
 
+it('edits an optional DoT chance above 100% and clears it when the DoT tag is removed', () => {
+  const input = renderRotation();
+  click('rotation.addTurn');
+  addSkillHit(1);
+  const row = within(event(1).getByRole('group', { name: t('rotation.step.hit') }));
+  expect(row.queryByLabelText(t('rotation.baseChance'))).toBeNull();
+  change('modifier.tags', 'dot', row);
+  change('rotation.baseChance', '125', row);
+  expect(input().events[0]?.steps[0]).toMatchObject({ hit: { tags: ['dot'], baseChance: 1.25 } });
+  change('rotation.baseChance', '0', row);
+  expect(runRotation(input()).hits[0]?.breakdown.dotChanceMultiplier).toBe(0);
+  change('rotation.baseChance', '', row);
+  expect(runRotation(input()).hits[0]?.breakdown.dotChanceMultiplier).toBe(1);
+  change('rotation.baseChance', '75', row);
+  change('modifier.tags', 'skill', row);
+  expect(row.queryByLabelText(t('rotation.baseChance'))).toBeNull();
+  const step = input().events[0]?.steps[0];
+  expect(step?.op === 'hit' && Object.hasOwn(step.hit, 'baseChance')).toBe(false);
+});
+
 it('adds a Break step and edits all Super Break inputs including a fractional efficiency', () => {
   const input = renderRotation();
   click('rotation.addTurn');

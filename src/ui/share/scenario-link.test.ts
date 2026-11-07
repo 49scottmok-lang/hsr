@@ -12,12 +12,17 @@ if (!archive.ok) throw new Error('Expected a valid synthetic archive');
 const { builds } = importArchive(archive.archive, IMPORT_TABLES);
 const scenario: Scenario = {
   critMode: 'expected',
-  enemies: [{ id: 'target', name: '測試敵人', level: 1, res: {}, maxToughness: 40 }],
+  enemies: [{ id: 'target', name: '測試敵人', level: 1, res: {}, maxToughness: 40, effectRes: 0.25 }],
   teams: [{
     label: '測試隊伍甲', team: builds,
+    effectLibrary: [{
+      id: 'conversion', name: '測試轉換', kind: 'buff', modifiers: [],
+      conversions: [{ from: 'breakEffect', to: 'atkFlat', ratio: 0.5 }],
+    }],
     events: [{ id: 'test', actorId: builds[0]!.id, kind: 'turn', steps: [
       { op: 'break', hit: { kind: 'break', targetId: 'target' } },
       { op: 'break', hit: { kind: 'superBreak', targetId: 'target', toughnessReduction: 10, multiplier: 1 } },
+      { op: 'hit', hit: { targetId: 'target', scaling: 'atk', multiplier: 1, tags: ['dot'], baseChance: 1.2 } },
     ] }],
   }, { label: '測試隊伍乙', team: builds, events: [] }],
 };

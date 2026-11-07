@@ -37,14 +37,24 @@ const list = (read: Read): Read => (value) => {
 // The engine validator expects typed inputs. Check the JSON shape before handing it
 // numbers, enums and references for domain validation.
 const requirement = optional(shape({ minEidolon: optional(number) }));
+const condition = optional(shape({
+  elements: optional(list(string)),
+  damageTags: optional(list(string)),
+  counterpartIds: optional(list(string)),
+}));
 const modifier = shape({
   stat: string,
   value: number,
-  condition: optional(shape({
-    elements: optional(list(string)),
-    damageTags: optional(list(string)),
-    counterpartIds: optional(list(string)),
-  })),
+  condition,
+});
+const conversion = shape({
+  from: string,
+  fromUnit: optional(string),
+  to: string,
+  ratio: number,
+  threshold: optional(number),
+  cap: optional(number),
+  condition,
 });
 const unitRef = shape({ unitId: string });
 const duration = shape({
@@ -58,6 +68,7 @@ const effect = shape({
   name: string,
   kind: oneOf('buff', 'debuff'),
   modifiers: list(modifier),
+  conversions: optional(list(conversion)),
   duration: optional(duration),
   maxStacks: optional(number),
   stacking: optional(oneOf(...STACKING_POLICIES)),
@@ -83,6 +94,7 @@ const character = shape({
 const enemy = shape({
   ...unit,
   baseDef: optional(number),
+  effectRes: optional(number),
   maxToughness: optional(number),
   broken: optional(boolean),
   res: (value) => isRecord(value) && Object.values(value).every(isNumber) ? { ...value } : invalid,
@@ -97,6 +109,7 @@ const hit = shape({
   element: optional(string),
   tags: list(string),
   canCrit: optional(boolean),
+  baseChance: optional(number),
   label: optional(string),
 });
 const stepFields = { op: string, requires: requirement };

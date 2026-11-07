@@ -1,6 +1,7 @@
 import limitationsUrl from '../../../docs/KNOWN_LIMITATIONS.md?url&no-inline';
 import { STACKING_POLICIES, type DurationSpec, type EffectDef, type StackingPolicy } from '../../engine/index';
 import { t } from '../i18n';
+import { ConversionList } from './ConversionList';
 import { EidolonRequirement } from './EidolonRequirement';
 import { ModifierList } from './ModifierList';
 import { NumberField } from './NumberField';
@@ -79,6 +80,8 @@ export function EffectEditor({ effect, units, reservedIds, onChange, onRemove }:
           addLabel="effect.addModifier"
         />
       </fieldset>
+      <ConversionList conversions={effect.conversions ?? []} units={units}
+        onChange={(conversions) => onChange({ ...effect, conversions })} />
       <fieldset>
         <legend>{t('effect.duration')}</legend>
         <label>

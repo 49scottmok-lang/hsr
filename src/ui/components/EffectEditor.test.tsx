@@ -52,6 +52,26 @@ it('edits a sourced, timed, eidolon-gated effect using the modifier list', () =>
   });
   fireEvent.click(screen.getByLabelText(t('effect.enableDuration')));
   expect(change.mock.lastCall?.[0].duration).toBeUndefined();
+
+  fireEvent.click(screen.getByRole('button', { name: t('conversion.add') }));
+  const conversion = within(screen.getByRole('group', { name: t('conversion.title') }));
+  fireEvent.change(conversion.getByLabelText(t('conversion.from')), { target: { value: 'breakEffect' } });
+  fireEvent.change(conversion.getByLabelText(t('conversion.fromUnit')), { target: { value: 'source' } });
+  fireEvent.change(conversion.getByLabelText(t('conversion.to')), { target: { value: 'critDmg' } });
+  fireEvent.change(conversion.getByLabelText(t('conversion.ratio')), { target: { value: '25' } });
+  fireEvent.change(conversion.getByLabelText(t('conversion.thresholdPercent')), { target: { value: '150' } });
+  fireEvent.change(conversion.getByLabelText(t('conversion.capPercent')), { target: { value: '30' } });
+  fireEvent.change(conversion.getByLabelText(t('modifier.elements')), { target: { value: 'ice' } });
+  fireEvent.change(conversion.getByLabelText(t('modifier.tags')), { target: { value: 'dot' } });
+  fireEvent.change(conversion.getByLabelText(t('conversion.counterparts')), { target: { value: 'enemy' } });
+  expect(change.mock.lastCall?.[0].conversions).toEqual([{
+    from: 'breakEffect', fromUnit: 'source', to: 'critDmg', ratio: 0.25, threshold: 1.5, cap: 0.3,
+    condition: { elements: ['ice'], damageTags: ['dot'], counterpartIds: ['enemy'] },
+  }]);
+  fireEvent.change(conversion.getByLabelText(t('conversion.capPercent')), { target: { value: '' } });
+  expect(change.mock.lastCall?.[0].conversions?.[0]?.cap).toBeUndefined();
+  fireEvent.click(conversion.getByRole('button', { name: t('conversion.remove') }));
+  expect(change.mock.lastCall?.[0].conversions).toEqual([]);
 });
 
 it('edits and removes effects in independent team libraries', () => {

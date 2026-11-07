@@ -11,8 +11,8 @@ const character: CharacterBuild = {
   base: { hp: 11, atk: 12, def: 13, spd: 14 },
   lightCone: { name: 'Test cone', superimposition: 3, base: { hp: 2, atk: 3, def: 4 }, effects: [] },
 };
-const enemy: EnemyConfig = { id: 'e', name: 'Enemy', level: 3, res: { fire: 0.12 } };
-const hit: ActionStep = { op: 'hit', hit: { targetId: enemy.id, scaling: 'atk', multiplier: 1.25, tags: ['skill'] } };
+const enemy: EnemyConfig = { id: 'e', name: 'Enemy', level: 3, res: { fire: 0.12 }, effectRes: 0.2 };
+const hit: ActionStep = { op: 'hit', hit: { targetId: enemy.id, scaling: 'atk', multiplier: 1.25, tags: ['dot'], baseChance: 0 } };
 const event: RotationEvent = {
   id: 'ev', kind: 'turn', actorId: character.id, steps: [{
     op: 'apply', to: character.id,
@@ -20,6 +20,10 @@ const event: RotationEvent = {
       id: 'effect', name: 'Test effect', kind: 'buff', requires: { minEidolon: 2 },
       duration: { turns: 1, tickUnit: { unitId: character.id }, tickPhase: 'turnEnd' },
       modifiers: [{ stat: 'dmgBoost', value: 0.15, condition: { damageTags: ['skill'] } }],
+      conversions: [{
+        from: 'atk', fromUnit: 'source', to: 'effectHitRate', ratio: 0.01, threshold: 10, cap: 0.3,
+        condition: { elements: ['fire'], damageTags: ['dot'], counterpartIds: [enemy.id] },
+      }],
     },
   }, hit],
 };
@@ -202,7 +206,15 @@ describe('scenario JSON', () => {
         events: [{ ...event, steps: event.steps.map((step) => step.op === 'apply' ? {
           ...step,
           extraStep: true,
-          effect: { ...step.effect, extraEffect: true },
+          effect: {
+            ...step.effect,
+            extraEffect: true,
+            conversions: step.effect.conversions?.map((conversion) => ({
+              ...conversion,
+              extraConversion: true,
+              condition: { ...conversion.condition, extraCondition: true },
+            })),
+          },
         } : step) }],
       }, scenario.teams[1]],
     };

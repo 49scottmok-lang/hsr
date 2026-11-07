@@ -33,6 +33,11 @@ it('keeps DEF optional and stores signed elemental RES as a fraction', () => {
   expect(screen.queryByText(t('enemy.baseDefHint'))).toBeNull();
   fireEvent.change(fireRes, { target: { value: '-12.5' } });
   expect(change.mock.lastCall?.[0].res).toEqual({ fire: -0.125 });
+  const effectRes = screen.getByLabelText(t('enemy.effectRes'));
+  fireEvent.change(effectRes, { target: { value: '25.5' } });
+  expect(change.mock.lastCall?.[0].effectRes).toBe(0.255);
+  fireEvent.change(effectRes, { target: { value: '' } });
+  expect(change.mock.lastCall?.[0].effectRes).toBeUndefined();
   fireEvent.change(baseDef, { target: { value: '' } });
   fireEvent.change(fireRes, { target: { value: '' } });
   fireEvent.click(screen.getByLabelText(t('enemy.initialBroken')));

@@ -6,17 +6,21 @@ import App from './App';
 import { t } from './i18n';
 import { decodeScenarioLink, encodeScenarioLink } from './share/scenario-link';
 import type { Scenario } from './state/scenario';
-import { SCENARIO_STORAGE_KEY } from './state/scenario-storage';
+import { restoreScenario, SCENARIO_STORAGE_KEY } from './state/scenario-storage';
 
 // TEST FIXTURE — NOT GAME DATA
 const draft: Scenario = {
   critMode: 'expected',
-  enemies: [{ id: 'target', name: 'Test target', level: 0, res: {} }],
+  enemies: [{ id: 'target', name: 'Test target', level: 0, res: {}, effectRes: 0 }],
   teams: [{
     label: 'Test Team A',
     team: [{ id: 'attacker', name: 'Test attacker', level: 1, element: 'ice', base: { hp: 10, atk: 10, def: 10, spd: 10 } }],
+    effectLibrary: [{
+      id: 'conversion', name: 'Test conversion', kind: 'buff', modifiers: [],
+      conversions: [{ from: 'atk', to: 'critRate', ratio: 0.01 }],
+    }],
     events: [{ id: 'event', actorId: 'attacker', kind: 'turn', steps: [
-      { op: 'hit', hit: { targetId: 'target', multiplier: 1, scaling: 'atk', tags: ['basic'] } },
+      { op: 'hit', hit: { targetId: 'target', multiplier: 1, scaling: 'atk', tags: ['dot'], baseChance: 0.75 } },
       { op: 'hit', hit: { targetId: 'missing', multiplier: 1, scaling: 'atk', tags: ['basic'] } },
     ] }],
   }, { label: 'Test Team B', team: [], events: [] }],
@@ -53,6 +57,10 @@ it('restores an invalid draft, autosaves edits and resets to the default scenari
   expect(screen.getByRole('region', { name: 'Test Team A' })).toBeTruthy();
   expect(screen.getByText(t('issue.level'))).toBeTruthy();
   fireEvent.change(screen.getByLabelText(t('enemy.name')), { target: { value: 'Edited target' } });
+  expect(restoreScenario()).toMatchObject({
+    ok: true,
+    scenario: { ...draft, enemies: [{ ...draft.enemies[0], name: 'Edited target' }] },
+  });
   unmount();
   render(<App />);
   expect(screen.getByRole('group', { name: 'Edited target' })).toBeTruthy();
