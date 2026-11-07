@@ -17,9 +17,18 @@ import type {
 } from './types';
 import { EngineValidationError, validateRotationInput } from './validate';
 
+/**
+ * Unit records have no prototype, so no unit ID (e.g. `__proto__`, `toString`)
+ * can hit an inherited property. Validation still rejects reserved IDs; this
+ * guards direct callers of `createInitialState`.
+ */
+function unitRecord(): Record<string, UnitState> {
+  return Object.create(null) as Record<string, UnitState>;
+}
+
 /** Build the initial CombatState: units plus all always-on effects (LC, relic sets, passives). */
 export function createInitialState(team: readonly CharacterBuild[], enemies: readonly EnemyConfig[]): CombatState {
-  const units: Record<string, UnitState> = {};
+  const units = unitRecord();
   for (const b of team) units[b.id] = { id: b.id, side: 'ally', level: b.level, build: b, broken: false };
   for (const e of enemies) {
     units[e.id] = { id: e.id, side: 'enemy', level: e.level, enemy: e, broken: e.broken ?? false };
@@ -79,7 +88,7 @@ function runSteps(
         break;
       case 'setBroken': {
         const u = state.units[step.enemyId]!;
-        state = { ...state, units: { ...state.units, [u.id]: { ...u, broken: step.broken } } };
+        state = { ...state, units: Object.assign(unitRecord(), state.units, { [u.id]: { ...u, broken: step.broken } }) };
         break;
       }
       case 'hit': {
