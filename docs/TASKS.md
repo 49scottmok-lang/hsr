@@ -93,11 +93,11 @@ Rules for every task:
 
 ### F11. Traditional Chinese (Hong Kong) UI — `src/ui/i18n/` (start alongside F1)
 
-- [ ] Put every UI string in `src/ui/i18n/zh-HK.ts`, as a typed key → string map, behind a `t(key)` helper. Hard-coded UI text is not allowed. This leaves room for other languages later.
-- [ ] Use zh-HK game terms consistently: 星魂, 光錐, 疊影, 遺器, 行跡, 暴擊率, 暴擊傷害, 增傷, 易傷, 減防, 抗性穿透, 擊破, 持續傷害, 追加攻擊, 終結技, 戰技, 普攻, 天賦. Keep a glossary at the top of the file.
-- [ ] Translate `EngineValidationError.issues` for display by pattern, and fall back to the English text.
-- [ ] Format numbers with `Intl.NumberFormat('zh-HK')`.
-- [ ] Set `<html lang="zh-HK">`.
+- [x] Put every UI string in `src/ui/i18n/zh-HK.ts`, as a typed key → string map, behind a `t(key)` helper. Hard-coded UI text is not allowed. This leaves room for other languages later.
+- [x] Use zh-HK game terms consistently: 星魂, 光錐, 疊影, 遺器, 行跡, 暴擊率, 暴擊傷害, 增傷, 易傷, 減防, 抗性穿透, 擊破, 持續傷害, 追加攻擊, 終結技, 戰技, 普攻, 天賦. Keep a glossary at the top of the file.
+- [x] Translate `EngineValidationError.issues` for display by pattern, and fall back to the English text.
+- [x] Format numbers with `Intl.NumberFormat('zh-HK')`.
+- [x] Set `<html lang="zh-HK">`.
 - **Acceptance:** a test fails if any component renders a string literal that isn't from `t()`, which can be checked with a simple lint/test scan.
 
 ### F12. Static deployment (needs SPEC Q4)
