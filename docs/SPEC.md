@@ -17,7 +17,7 @@ English: *"I want a website that compares the damage of two Honkai: Star Rail te
 | R5 | Eidolons (星魂) | `CharacterBuild.eidolon` 0–6, plus `requires.minEidolon` on `EffectDef` and on each `ActionStep`. One kit definition and one rotation serve E0–E6. | ✅ Engine done 2026-11-07 |
 | R6 | Skill rotation (技能循環) | Manual ordered `RotationEvent`s (`turn` / `extra`) with ordered steps. | ✅ Engine done. Editor is F5. |
 | R7 | Import the user's own account (decided 2026-11-07, Q1) | `src/import/` turns a Reliquary Archiver export into `CharacterBuild`s, using the stat tables in R8. The file picker is F10. | ⬜ Planned: I1–I3, F10 |
-| R8 | Sourced stat tables (decided 2026-11-07, Q1) | `src/data/`: tabular game numbers only, each with a citation. | ⬜ Planned: D1–D4 |
+| R8 | Sourced stat tables (decided 2026-11-07, Q1) | `src/data/`: tabular game numbers only, each with a citation. Source decided in D8. | ✅ D1–D3 done 2026-11-07. D4 (credits) planned. |
 | R9 | UI language: Traditional Chinese (Hong Kong) (decided 2026-11-07, Q2) | All UI strings in `zh-HK`, collected in one module so another language can be added later. | ⬜ Planned: F11 |
 | R10 | Reachable and shareable by link (decided 2026-11-07, Q3) | Static deploy at a public URL, and a comparison encoded into the URL so it can be shared. | ⬜ Planned: F12, F13 |
 
@@ -37,8 +37,9 @@ English: *"I want a website that compares the damage of two Honkai: Star Rail te
 - **D6 (Q2). The UI language is Traditional Chinese (Hong Kong).** Code, docs and engine messages stay in English. The UI translates engine validation messages for display.
 - **D7 (Q3). The site is reachable and shareable by link.** It is deployed as a static site at a public URL, and a comparison can be shared as a URL. *Interpretation of "部署 in link", to be confirmed. The hosting platform is not yet chosen; any static host works, because the app has no server.*
   - A shared link contains **only the scenario** (builds, effects, rotations, enemies). It never contains the account export, UID, or unequipped inventory.
+- **D8 (Q5). Stat tables come from source A, cross-checked against source B.** A is `DimbreathBot/TurnBasedGameData`, the raw game tables, pinned to a commit (`74a7b96`, game build 4.6.0). B is `fribbels/hsr-optimizer` (MIT), pinned to `dd0c4af`, and is used only in tests to check A's numbers. Released content only. Details and the update procedure: `docs/DATA_SOURCES.md § Decision`.
 
 ## Open questions
 
 - **Q4. Hosting platform**, e.g. GitHub Pages, Vercel or Cloudflare Pages. This only matters for F12.
-- **Q5. Which stat-table source to use**, once D1 has listed the candidates and their licences.
+- ~~Q5. Which stat-table source to use.~~ Answered 2026-11-07: see D8.
