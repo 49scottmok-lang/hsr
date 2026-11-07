@@ -127,18 +127,19 @@ describe('break steps in a rotation', () => {
     ...overrides,
   });
 
-  it('adds break hits to the totals, never crits, has no tags, and gates on the attacker eidolon', () => {
+  it('adds break hits to the totals, never crits, tags them by kind, and gates on the attacker eidolon', () => {
     const r = runRotation(input());
     const breakHit = 70000 * DEF * RES; // as above
     const superBreak = 4000 * (10 / 10) * 1 * 2.5 * DEF * RES; // 10000 × DEF × RES
     expect(r.hits.map((h) => [h.break?.kind, h.canCrit, h.tags])).toEqual([
-      ['break', false, []],
-      ['superBreak', false, []],
+      ['break', false, ['break']],
+      ['superBreak', false, ['superBreak']],
     ]);
     expect(r.hits[0]!.label).toBe('break');
     expect(r.totalDamage).toBeCloseTo(breakHit + superBreak, 6);
     expect(r.damageByAttacker['dps']).toBeCloseTo(breakHit + superBreak, 6);
-    expect(r.damageByTag).toEqual({});
+    expect(r.damageByTag.break).toBeCloseTo(breakHit, 6);
+    expect(r.damageByTag.superBreak).toBeCloseTo(superBreak, 6);
     expect(r.log[0]!.skippedSteps).toEqual([2]);
   });
 

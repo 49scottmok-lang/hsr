@@ -1,7 +1,8 @@
 /**
  * Break and Super Break DMG (TASKS E4, docs/FORMULAS.md § Break DMG and
  * § Super Break DMG). They share the target-side multipliers with ordinary
- * hits but have their own base, cannot crit, and ignore ordinary DMG Boost.
+ * hits but have their own base, cannot crit, and take only DMG Boost that
+ * explicitly names their tag (`break` / `superBreak`).
  */
 import { resolveHitStats } from './damage';
 import {
@@ -10,6 +11,7 @@ import {
   breakEffectMultiplier,
   brokenMultiplier,
   defMultiplier,
+  dmgBoostMultiplier,
   finalDmgMultiplier,
   mitigationMultiplier,
   resMultiplier,
@@ -20,8 +22,16 @@ import {
   vulnerabilityMultiplier,
   weakenMultiplier,
 } from './formulas';
-import { resolveUnitStats } from './stats';
-import type { BreakDetails, BreakHitSpec, CombatState, DamageBreakdown, Element, ResolvedHitStats } from './types';
+import { namesTag, resolveUnitStats, sumStat, type HitContext } from './stats';
+import type {
+  BreakDetails,
+  BreakHitSpec,
+  CombatState,
+  DamageBreakdown,
+  DamageTag,
+  Element,
+  ResolvedHitStats,
+} from './types';
 
 /** Inputs for one break hit, independent of CombatState. */
 export interface BreakDamageInput {
@@ -34,15 +44,16 @@ export interface BreakDamageInput {
 /**
  * Pure formula application for Break and Super Break DMG. The breakdown has
  * the same factors as an ordinary hit, so `baseDmg` is the break base × (1 +
- * Break Effect), with CRIT and DMG Boost fixed at 1.
+ * Break Effect), CRIT is fixed at 1, and `stats.dmgBoost` must already hold
+ * only the break-specific DMG Boost.
  */
 export function computeBreakBreakdown(input: BreakDamageInput): DamageBreakdown {
   const s = input.stats;
   const parts = {
     baseDmg: input.breakBase * breakEffectMultiplier(input.breakEffect),
-    // Break DMG cannot crit, and ordinary DMG Boost does not apply (R1).
+    // Break DMG cannot crit (R1). DMG Boost is the break-specific part only, see calculateBreakHit.
     critMultiplier: 1,
-    dmgBoostMultiplier: 1,
+    dmgBoostMultiplier: dmgBoostMultiplier(s.dmgBoost),
     weakenMultiplier: weakenMultiplier(s.weaken),
     defMultiplier: defMultiplier(
       targetDef(s.targetBaseDef, s.targetDefPct, s.targetDefFlat, s.targetDefReduction, s.defIgnore),
@@ -54,9 +65,11 @@ export function computeBreakBreakdown(input: BreakDamageInput): DamageBreakdown 
     brokenMultiplier: brokenMultiplier(s.targetBroken),
     finalDmgMultiplier: finalDmgMultiplier(s.finalDmgBoosts),
     trueDmgMultiplier: trueDmgMultiplier(s.trueDmg),
+    dotChanceMultiplier: 1,
   };
   const total =
     parts.baseDmg *
+    parts.dmgBoostMultiplier *
     parts.weakenMultiplier *
     parts.defMultiplier *
     parts.resMultiplier *
@@ -71,6 +84,8 @@ export function computeBreakBreakdown(input: BreakDamageInput): DamageBreakdown 
 export interface CalculatedBreakHit {
   attackerId: string;
   element: Element;
+  /** `[hit.kind]`: `break` or `superBreak`. */
+  tags: readonly DamageTag[];
   stats: ResolvedHitStats;
   breakdown: DamageBreakdown;
   details: BreakDetails;
@@ -85,11 +100,15 @@ export function calculateBreakHit(state: CombatState, hit: BreakHitSpec, default
   if (levelMultiplier === undefined) throw new Error(`Attacker ${attackerId} has no breakLevelMultiplier`);
   const element = hit.element ?? build.element;
 
-  // Break hits carry no damage tags, so tag-conditioned modifiers never apply.
-  const ctx = { element, tags: [], counterpartId: hit.targetId };
-  const resolved = resolveHitStats(state, attackerId, hit.targetId, element, { scaling: 'atk', tags: [] });
-  // Not applied to break hits; zeroed so a breakdown display doesn't suggest otherwise.
-  const stats: ResolvedHitStats = { ...resolved, dmgBoost: 0 };
+  // A break hit carries exactly one tag, its kind, so modifiers conditioned on
+  // `break` / `superBreak` apply to it and those on other tags never do.
+  const tags: readonly DamageTag[] = [hit.kind];
+  const ctx: HitContext = { element, tags, counterpartId: hit.targetId };
+  const resolved = resolveHitStats(state, attackerId, hit.targetId, element, { scaling: 'atk', tags });
+  // Ordinary DMG Boost does not apply (R1: "hit-level" boost only); only
+  // modifiers that name this hit's tag count.
+  const breakDmgBoost = sumStat(state, attackerId, 'dmgBoost', ctx, namesTag(tags));
+  const stats: ResolvedHitStats = { ...resolved, dmgBoost: breakDmgBoost };
   const breakEffect = resolveUnitStats(state, attackerId, ctx).breakEffect;
 
   const breakEffectMultiplierValue = breakEffectMultiplier(breakEffect);
@@ -111,21 +130,21 @@ export function calculateBreakHit(state: CombatState, hit: BreakHitSpec, default
       breakEffectMultiplier: breakEffectMultiplierValue,
     };
   } else {
-    const toughness = superBreakToughness(
-      hit.toughnessReduction,
-      hit.breakEfficiency ?? 0,
-      hit.fixedToughnessReduction ?? 0,
-    );
-    breakBase = superBreakBaseDmg(levelMultiplier, toughness, hit.multiplier);
+    // The step's own values plus the attacker's buff stats (sources add, as in R1).
+    const breakEfficiency = (hit.breakEfficiency ?? 0) + sumStat(state, attackerId, 'breakEfficiency', ctx);
+    const multiplier = hit.multiplier + sumStat(state, attackerId, 'superBreakDmg', ctx);
+    const toughness = superBreakToughness(hit.toughnessReduction, breakEfficiency, hit.fixedToughnessReduction ?? 0);
+    breakBase = superBreakBaseDmg(levelMultiplier, toughness, multiplier);
     details = {
       kind: 'superBreak',
       levelMultiplier,
       toughness,
-      multiplier: hit.multiplier,
+      breakEfficiency,
+      multiplier,
       breakEffect,
       breakEffectMultiplier: breakEffectMultiplierValue,
     };
   }
   const breakdown = computeBreakBreakdown({ breakBase, breakEffect, stats });
-  return { attackerId, element, stats, breakdown, details };
+  return { attackerId, element, tags, stats, breakdown, details };
 }

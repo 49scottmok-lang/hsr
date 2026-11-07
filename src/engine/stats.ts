@@ -7,9 +7,12 @@ import {
 } from './formulas';
 import type {
   CombatState,
+  ConversionSource,
   DamageTag,
+  EffectInstance,
   Element,
   ModifierCondition,
+  StatConversion,
   StatKey,
   StatModifier,
   UnitState,
@@ -53,32 +56,92 @@ function staticModifiers(unit: UnitState): readonly StatModifier[] {
   return [...(b.relics?.stats ?? []), ...(b.traces ?? [])];
 }
 
+/** Optional filter on a modifier's or conversion's condition, applied after `conditionMatches`. */
+export type ConditionFilter = (cond: ModifierCondition | undefined) => boolean;
+
 /**
- * Every applicable modifier value for `stat` on `unitId`, one entry per
- * modifier, with effect values multiplied by stack count.
+ * Only modifiers that explicitly name one of `tags` in their `damageTags`
+ * condition. Break hits read DMG Boost this way: ordinary DMG Boost does not
+ * apply to them, but a "Break DMG +X%" modifier (tagged `break`) does.
+ */
+export function namesTag(tags: readonly DamageTag[]): ConditionFilter {
+  return (cond) => cond?.damageTags?.some((t) => tags.includes(t)) ?? false;
+}
+
+/** Plain modifier values (static and effect modifiers), with no conversions. */
+function collectModifiers(
+  state: CombatState,
+  unit: UnitState,
+  stat: StatKey,
+  ctx: HitContext | undefined,
+  filter: ConditionFilter | undefined,
+): number[] {
+  const ok = (cond: ModifierCondition | undefined) => conditionMatches(cond, ctx) && (!filter || filter(cond));
+  const out: number[] = [];
+  for (const m of staticModifiers(unit)) {
+    if (m.stat === stat && ok(m.condition)) out.push(m.value);
+  }
+  for (const inst of state.effects) {
+    if (inst.holderId !== unit.id) continue;
+    for (const m of inst.def.modifiers) {
+      if (m.stat === stat && ok(m.condition)) out.push(m.value * inst.stacks);
+    }
+  }
+  return out;
+}
+
+/**
+ * §Stat conversion (E7): one conversion's contribution,
+ * min(cap, ratio × stacks × max(0, from − threshold)). The `from` stat is read
+ * without conversions, so conversions never chain.
+ */
+function conversionValue(
+  state: CombatState,
+  inst: EffectInstance,
+  conv: StatConversion,
+  ctx: HitContext | undefined,
+): number {
+  const fromSource = conv.fromUnit === 'source';
+  const from = fromSource
+    ? unconvertedStat(state, inst.sourceId, conv.from, undefined)
+    : unconvertedStat(state, inst.holderId, conv.from, ctx);
+  const raw = conv.ratio * inst.stacks * Math.max(0, from - (conv.threshold ?? 0));
+  return conv.cap === undefined ? raw : Math.min(conv.cap, raw);
+}
+
+/**
+ * Every applicable value for `stat` on `unitId`, one entry per modifier or
+ * conversion, with effect values multiplied by stack count. Conversion
+ * entries come after modifier entries.
  */
 export function collectStat(
   state: CombatState,
   unitId: string,
   stat: StatKey,
   ctx?: HitContext,
+  filter?: ConditionFilter,
 ): number[] {
   const unit = getUnit(state, unitId);
-  const out: number[] = [];
-  for (const m of staticModifiers(unit)) {
-    if (m.stat === stat && conditionMatches(m.condition, ctx)) out.push(m.value);
-  }
+  const out = collectModifiers(state, unit, stat, ctx, filter);
   for (const inst of state.effects) {
     if (inst.holderId !== unitId) continue;
-    for (const m of inst.def.modifiers) {
-      if (m.stat === stat && conditionMatches(m.condition, ctx)) out.push(m.value * inst.stacks);
+    for (const conv of inst.def.conversions ?? []) {
+      if (conv.to !== stat || !conditionMatches(conv.condition, ctx)) continue;
+      if (filter && !filter(conv.condition)) continue;
+      out.push(conversionValue(state, inst, conv, ctx));
     }
   }
   return out;
 }
 
-export function sumStat(state: CombatState, unitId: string, stat: StatKey, ctx?: HitContext): number {
-  return collectStat(state, unitId, stat, ctx).reduce((a, b) => a + b, 0);
+export function sumStat(
+  state: CombatState,
+  unitId: string,
+  stat: StatKey,
+  ctx?: HitContext,
+  filter?: ConditionFilter,
+): number {
+  return collectStat(state, unitId, stat, ctx, filter).reduce((a, b) => a + b, 0);
 }
 
 export interface UnitBaseStats {
@@ -116,13 +179,22 @@ export interface ResolvedUnitStats {
 }
 
 /**
- * Final stats of a unit in the current state. Pass a HitContext to include
- * conditional modifiers for that hit.
+ * Final stats of a unit in the current state, including stat conversions.
+ * Pass a HitContext to include conditional modifiers for that hit.
  */
 export function resolveUnitStats(state: CombatState, unitId: string, ctx?: HitContext): ResolvedUnitStats {
+  return unitStatsFrom(getUnit(state, unitId), (k) => sumStat(state, unitId, k, ctx));
+}
+
+/** One final stat with modifiers only, no conversions: the input of a conversion. */
+function unconvertedStat(state: CombatState, unitId: string, stat: ConversionSource, ctx: HitContext | undefined): number {
   const unit = getUnit(state, unitId);
+  const s = (k: StatKey) => collectModifiers(state, unit, k, ctx, undefined).reduce((a, b) => a + b, 0);
+  return unitStatsFrom(unit, s)[stat];
+}
+
+function unitStatsFrom(unit: UnitState, s: (k: StatKey) => number): ResolvedUnitStats {
   const base = unitBaseStats(unit);
-  const s = (k: StatKey) => sumStat(state, unitId, k, ctx);
   const baseCritRate = unit.build ? (unit.build.baseCritRate ?? DEFAULT_BASE_CRIT_RATE) : 0;
   const baseCritDmg = unit.build ? (unit.build.baseCritDmg ?? DEFAULT_BASE_CRIT_DMG) : 0;
   return {

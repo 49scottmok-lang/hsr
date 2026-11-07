@@ -119,7 +119,7 @@ function runSteps(
           attackerId: c.attackerId,
           targetId: step.hit.targetId,
           element: c.element,
-          tags: [],
+          tags: c.tags,
           critMode,
           canCrit: false,
           stats: c.stats,

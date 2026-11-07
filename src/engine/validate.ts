@@ -1,4 +1,6 @@
 import {
+  BREAK_DAMAGE_TAGS,
+  CONVERSION_SOURCES,
   DAMAGE_TAGS,
   ELEMENTS,
   STACKING_POLICIES,
@@ -7,9 +9,12 @@ import {
   type EffectDef,
   type EnemyConfig,
   type BreakHitSpec,
+  type DamageTag,
   type HitSpec,
+  type ModifierCondition,
   type Requirement,
   type RotationInput,
+  type StatConversion,
   type StatModifier,
 } from './types';
 
@@ -34,15 +39,33 @@ const isPosInt = (v: unknown): v is number => Number.isInteger(v) && (v as numbe
 const isPosNum = (v: unknown): v is number => isFiniteNum(v) && v > 0;
 const isNonNeg = (v: unknown): v is number => isFiniteNum(v) && v >= 0;
 
+function checkCondition(cond: ModifierCondition | undefined, path: string, out: string[]): void {
+  for (const el of cond?.elements ?? []) {
+    if (!(ELEMENTS as readonly string[]).includes(el)) out.push(`${path}: unknown element "${el}"`);
+  }
+  for (const t of cond?.damageTags ?? []) {
+    if (!(DAMAGE_TAGS as readonly string[]).includes(t)) out.push(`${path}: unknown damage tag "${t}"`);
+  }
+}
+
 function checkModifier(m: StatModifier, path: string, out: string[]): void {
   if (!(STAT_KEYS as readonly string[]).includes(m.stat)) out.push(`${path}: unknown stat "${m.stat}"`);
   if (!isFiniteNum(m.value)) out.push(`${path}: value must be a finite number`);
-  for (const el of m.condition?.elements ?? []) {
-    if (!(ELEMENTS as readonly string[]).includes(el)) out.push(`${path}: unknown element "${el}"`);
+  checkCondition(m.condition, path, out);
+}
+
+function checkConversion(c: StatConversion, path: string, out: string[]): void {
+  if (!(CONVERSION_SOURCES as readonly string[]).includes(c.from)) {
+    out.push(`${path}: unknown conversion source "${String(c.from)}"`);
   }
-  for (const t of m.condition?.damageTags ?? []) {
-    if (!(DAMAGE_TAGS as readonly string[]).includes(t)) out.push(`${path}: unknown damage tag "${t}"`);
+  if (c.fromUnit !== undefined && c.fromUnit !== 'holder' && c.fromUnit !== 'source') {
+    out.push(`${path}: fromUnit must be "holder" or "source"`);
   }
+  if (!(STAT_KEYS as readonly string[]).includes(c.to)) out.push(`${path}: unknown stat "${c.to}"`);
+  if (!isFiniteNum(c.ratio)) out.push(`${path}: ratio must be a finite number`);
+  if (c.threshold !== undefined && !isFiniteNum(c.threshold)) out.push(`${path}: threshold must be a finite number`);
+  if (c.cap !== undefined && !isFiniteNum(c.cap)) out.push(`${path}: cap must be a finite number`);
+  checkCondition(c.condition, path, out);
 }
 
 const isIntIn = (v: unknown, lo: number, hi: number): boolean =>
@@ -58,6 +81,7 @@ function checkEffect(def: EffectDef, path: string, unitIds: Set<string>, out: st
   if (!def.id) out.push(`${path}: effect id is required`);
   checkRequirement(def.requires, path, out);
   def.modifiers.forEach((m, i) => checkModifier(m, `${path}.modifiers[${i}]`, out));
+  def.conversions?.forEach((c, i) => checkConversion(c, `${path}.conversions[${i}]`, out));
   if (def.maxStacks !== undefined && !isPosInt(def.maxStacks)) {
     out.push(`${path}: maxStacks must be an integer >= 1`);
   }
@@ -105,6 +129,7 @@ function checkEnemy(e: EnemyConfig, path: string, unitIds: Set<string>, out: str
     out.push(`${path}.baseDef: must be a finite number >= 0`);
   }
   if (e.maxToughness !== undefined && !isPosNum(e.maxToughness)) out.push(`${path}.maxToughness: must be a positive number`);
+  if (e.effectRes !== undefined && !isFiniteNum(e.effectRes)) out.push(`${path}.effectRes: must be a finite number`);
   for (const [el, v] of Object.entries(e.res)) {
     if (!(ELEMENTS as readonly string[]).includes(el)) out.push(`${path}.res: unknown element "${el}"`);
     if (!isFiniteNum(v)) out.push(`${path}.res.${el}: must be a finite number`);
@@ -134,6 +159,11 @@ function checkHit(
   if (h.tags.length === 0) out.push(`${path}: at least one damage tag is required`);
   for (const t of h.tags) {
     if (!(DAMAGE_TAGS as readonly string[]).includes(t)) out.push(`${path}: unknown damage tag "${t}"`);
+    else if ((BREAK_DAMAGE_TAGS as readonly DamageTag[]).includes(t)) out.push(`${path}: damage tag "${t}" is only for break steps`);
+  }
+  if (h.baseChance !== undefined) {
+    if (!isNonNeg(h.baseChance)) out.push(`${path}: baseChance must be a finite number >= 0`);
+    if (!h.tags.includes('dot')) out.push(`${path}: baseChance needs the "dot" tag`);
   }
 }
 

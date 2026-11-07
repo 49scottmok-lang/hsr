@@ -4,6 +4,7 @@ import {
   critMultiplier,
   defMultiplier,
   dmgBoostMultiplier,
+  dotApplicationChance,
   finalDmgMultiplier,
   mitigationMultiplier,
   resMultiplier,
@@ -30,6 +31,8 @@ export interface DamageInput {
   flatDmg?: number;
   canCrit: boolean;
   critMode: CritMode;
+  /** DoT base chance (E8). Absent: no application-chance weighting. */
+  baseChance?: number;
   stats: ResolvedHitStats;
 }
 
@@ -51,6 +54,10 @@ export function computeBreakdown(input: DamageInput): DamageBreakdown {
     brokenMultiplier: brokenMultiplier(s.targetBroken),
     finalDmgMultiplier: finalDmgMultiplier(s.finalDmgBoosts),
     trueDmgMultiplier: trueDmgMultiplier(s.trueDmg),
+    dotChanceMultiplier:
+      input.baseChance === undefined
+        ? 1
+        : dotApplicationChance(input.baseChance, s.effectHitRate, s.targetEffectRes, s.effectResPen),
   };
   const total =
     parts.baseDmg *
@@ -63,7 +70,8 @@ export function computeBreakdown(input: DamageInput): DamageBreakdown {
     parts.mitigationMultiplier *
     parts.brokenMultiplier *
     parts.finalDmgMultiplier *
-    parts.trueDmgMultiplier;
+    parts.trueDmgMultiplier *
+    parts.dotChanceMultiplier;
   return { ...parts, total };
 }
 
@@ -108,6 +116,9 @@ export function resolveHitStats(
     mitigations: collectStat(state, targetId, 'dmgMitigation', tCtx),
     attackerLevel: attacker.level,
     targetBroken: target.broken,
+    effectHitRate: a.effectHitRate,
+    effectResPen: sumStat(state, attackerId, 'effectResPen', aCtx),
+    targetEffectRes: (target.enemy?.effectRes ?? 0) + sumStat(state, targetId, 'effectRes', tCtx),
   };
 }
 
@@ -138,6 +149,7 @@ export function calculateHit(
     flatDmg: hit.flatDmg,
     canCrit,
     critMode,
+    baseChance: hit.baseChance,
     stats,
   });
   return { attackerId, element, canCrit, stats, breakdown };

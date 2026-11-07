@@ -12,6 +12,7 @@ const multiplierLabels = {
   brokenMultiplier: 'results.brokenMultiplier',
   finalDmgMultiplier: 'results.finalDmgMultiplier',
   trueDmgMultiplier: 'results.trueDmgMultiplier',
+  dotChanceMultiplier: 'results.dotChanceMultiplier', // TODO(frontend): engine stub, see TASKS.md E8
 } satisfies Record<Exclude<keyof DamageBreakdown, 'baseDmg' | 'total'>, TranslationKey>;
 const multipliers = Object.keys(multiplierLabels) as (keyof typeof multiplierLabels)[];
 
@@ -35,6 +36,10 @@ const resolvedLabels = {
   mitigations: 'stat.dmgMitigation',
   attackerLevel: 'results.attackerLevel',
   targetBroken: 'results.targetBroken',
+  // TODO(frontend): engine stubs, see TASKS.md E8.
+  effectHitRate: 'stat.effectHitRate',
+  effectResPen: 'stat.effectResPen',
+  targetEffectRes: 'results.targetEffectRes',
 } satisfies Record<keyof ResolvedHitStats, TranslationKey>;
 const resolvedKeys = Object.keys(resolvedLabels) as (keyof ResolvedHitStats)[];
 const absoluteStats: ReadonlySet<keyof ResolvedHitStats> = new Set([

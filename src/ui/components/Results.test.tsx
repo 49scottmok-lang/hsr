@@ -65,7 +65,7 @@ function teamDetails(team: string) {
 
 afterEach(cleanup);
 
-it('shows both kinds of break details from the engine without adding damage by tag', () => {
+it('shows both kinds of break details from the engine and damage by their break tags', () => {
   const draft: Scenario = {
     ...scenario,
     enemies: scenario.enemies.map((enemy) => ({ ...enemy, maxToughness: 120 })),
@@ -84,12 +84,14 @@ it('shows both kinds of break details from the engine without adding damage by t
   render(<Results scenario={draft} />);
   const team = teamDetails(t('team.a'));
   const byTag = within(team.getByRole('table', { name: t('results.byTag') }));
-  expect(byTag.queryByRole('cell')).toBeNull();
+  // Engine E4 follow-up: break hits carry the tag of their kind.
+  expect(byTag.getAllByRole('rowheader').map(({ textContent }) => textContent)).toEqual([t('tag.break'), t('tag.superBreak')]);
   const rows = runRotation(toRotationInput(draft, 0)).hits;
   for (const hit of rows) {
     const row = within(team.getByText(hit.label!).closest('tr')!);
     const details = hit.break!;
-    const summary = row.getByText(t(`rotation.breakKind.${details.kind}`));
+    // The tags cell shows the same words, so match the summary only.
+    const summary = row.getByText(t(`rotation.breakKind.${details.kind}`), { selector: 'summary' });
     fireEvent.click(summary);
     expect(row.getAllByRole('cell').slice(7, 9).map(({ textContent }) => textContent)).toEqual(['1.0000', '1.0000']);
     expect(row.getByText(t('results.breakBaseNote'))).toBeTruthy();
@@ -135,17 +137,17 @@ it('shows every hit factor, expandable stats, multi-tag totals and engine log en
   render(<Results scenario={scenario} />);
   const team = teamDetails(t('team.a'));
   const hits = within(team.getByRole('table', { name: t('results.hits') }));
-  expect(hits.getAllByRole('columnheader')).toHaveLength(19);
+  expect(hits.getAllByRole('columnheader')).toHaveLength(20);
   expect(hits.getByRole('columnheader', { name: t('results.finalDmgMultiplier') })).toBeTruthy();
   expect(hits.getByRole('columnheader', { name: t('results.trueDmgMultiplier') })).toBeTruthy();
-  expect(hits.getAllByRole('cell').slice(6, 18).map((cell) => cell.textContent)).toEqual([
-    '3900', '2.0500', '1.6000', '1.0000', '0.4762', '0.8000', '1.0000', '1.0000', '0.9000', '1.0000', '1.0000', '4386',
+  expect(hits.getAllByRole('cell').slice(6, 19).map((cell) => cell.textContent)).toEqual([
+    '3900', '2.0500', '1.6000', '1.0000', '0.4762', '0.8000', '1.0000', '1.0000', '0.9000', '1.0000', '1.0000', '1.0000', '4386',
   ]);
   const summary = hits.getByText(t('results.resolvedStats'));
   fireEvent.click(summary);
   const details = summary.closest('details')!;
   expect(details.open).toBe(true);
-  expect(details.querySelectorAll('dt')).toHaveLength(19);
+  expect(details.querySelectorAll('dt')).toHaveLength(22);
   expect(within(details).getByText('70%')).toBeTruthy();
   const byTag = within(team.getByRole('table', { name: t('results.byTag') }));
   expect(byTag.getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['4386', '4386']);

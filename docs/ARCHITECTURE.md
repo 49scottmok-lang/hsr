@@ -35,9 +35,9 @@ Engine independence is enforced three ways (and the same three cover `src/data` 
 
 | File | Responsibility | Pure? |
 |---|---|---|
-| `types.ts` | All domain interfaces and enumerations (`ELEMENTS`, `DAMAGE_TAGS`, `STAT_KEYS`). | types only |
+| `types.ts` | All domain interfaces and enumerations (`ELEMENTS`, `DAMAGE_TAGS` with its subsets `HIT_DAMAGE_TAGS` / `BREAK_DAMAGE_TAGS`, `STAT_KEYS`, `CONVERSION_SOURCES`, `STACKING_POLICIES`). | types only |
 | `formulas.ts` | One function per formula in `FORMULAS.md`, plus the documented constants. | yes |
-| `stats.ts` | Modifier collection, condition matching, final unit stats. | yes |
+| `stats.ts` | Modifier and stat-conversion collection (E7), condition matching, final unit stats. | yes |
 | `damage.ts` | `resolveHitStats` → `computeBreakdown` → `calculateHit`. | yes |
 | `breakDamage.ts` | Break and Super Break DMG (E4): `computeBreakBreakdown`, `calculateBreakHit`. | yes |
 | `effects.ts` | Buff/debuff lifecycle: `applyEffect`, `removeEffect`, `tickEffects`. | yes (returns new state) |
@@ -46,7 +46,7 @@ Engine independence is enforced three ways (and the same three cover `src/data` 
 | `validate.ts` | `validateRotationInput`, `EngineValidationError`, `RESERVED_UNIT_IDS` (unit IDs that validation rejects). | yes |
 | `index.ts` | **Public API.** The only import path for UI code. | — |
 
-`formulas` (exported as a namespace) also holds the stat-table level formulas `promotedBaseStat` and `relicMainStatValue` (added 2026-11-07, `FORMULAS.md § Level scaling`), and the break formulas `BREAK_ELEMENT_FACTOR`, `breakToughnessFactor`, `breakBaseDmg`, `superBreakToughness`, `superBreakBaseDmg` and `breakEffectMultiplier` (E4, `FORMULAS.md § Break DMG`).
+`formulas` (exported as a namespace) also holds the stat-table level formulas `promotedBaseStat` and `relicMainStatValue` (added 2026-11-07, `FORMULAS.md § Level scaling`), the break formulas `BREAK_ELEMENT_FACTOR`, `breakToughnessFactor`, `breakBaseDmg`, `superBreakToughness`, `superBreakBaseDmg` and `breakEffectMultiplier` (E4, `FORMULAS.md § Break DMG`), and `dotApplicationChance` (E8, `FORMULAS.md § DoT application chance`).
 
 ## Data and import modules
 
@@ -64,22 +64,24 @@ All engine functions are deterministic. None mutates its inputs, and this is tes
 Full definitions are in `src/engine/types.ts`.
 
 - **`CharacterBuild`**: id, level, element, base HP/ATK/DEF/SPD, optional base CRIT, optional `breakLevelMultiplier` (E4), `lightCone` (base stats plus passive `EffectDef[]`), `relics` (summed `StatModifier[]` plus set-bonus `EffectDef[]`), `traces`, `passiveEffects`.
-- **`EnemyConfig`**: id, level, optional `baseDef`, per-element `res`, initial `broken`, optional `maxToughness` (displayed units, E4), `passiveEffects`.
+- **`EnemyConfig`**: id, level, optional `baseDef`, per-element `res`, initial `broken`, optional `maxToughness` (displayed units, E4), optional `effectRes` (E8), `passiveEffects`.
 - **`StatModifier`**: `{ stat, value, condition? }`. The condition can filter on hit element, damage tags (any-of), or counterpart unit IDs.
-- **`EffectDef`** (buff or debuff): id, kind, modifiers, optional `DurationSpec`, `maxStacks`, `stacking` (E5), `source`.
+- **`EffectDef`** (buff or debuff): id, kind, modifiers, optional `conversions` (`StatConversion[]`, E7), `DurationSpec`, `maxStacks`, `stacking` (E5), `source`.
+- **`StatConversion`** (E7): `to` += min(`cap`, `ratio` × stacks × max(0, `from` − `threshold`)), with `from` one of `CONVERSION_SOURCES`, read from the holder (default, in the hit context) or the effect's source (`fromUnit: 'source'`, context-free), without other conversions.
 - **`EffectInstance`**: a live effect on a holder, with stacks, remaining turns, resolved tick unit, and the skip flag.
 - **`CombatState`**: units by ID, effect instances, and the active turn unit.
-- **`HitSpec`**: attacker, target, scaling stat, multiplier, element, tags, and `canCrit`.
+- **`HitSpec`**: attacker, target, scaling stat, multiplier, element, tags (`HIT_DAMAGE_TAGS` only), `canCrit`, and for DoT an optional `baseChance` (E8).
 - **`RotationEvent`**: either `turn` (ticks durations at the start and end) or `extra` (no ticking). Each holds ordered `ActionStep`s: `apply`, `remove`, `hit`, `break` or `setBroken`.
-- **`BreakHitSpec`** (E4, the `break` step): `kind: 'break'` (Break DMG, optional `multiplier`) or `kind: 'superBreak'` (`toughnessReduction`, optional `breakEfficiency` and `fixedToughnessReduction`, `multiplier`). Its `HitResult` has `break: BreakDetails`, no tags, `canCrit: false`, and `breakdown.baseDmg` that already includes 1 + Break Effect.
+- **`BreakHitSpec`** (E4, the `break` step): `kind: 'break'` (Break DMG, optional `multiplier`) or `kind: 'superBreak'` (`toughnessReduction`, optional `breakEfficiency` and `fixedToughnessReduction`, `multiplier`). Its `HitResult` has `break: BreakDetails`, the single tag `break` or `superBreak` (E4 follow-up), `canCrit: false`, and `breakdown.baseDmg` that already includes 1 + Break Effect. `BreakDetails.breakEfficiency` and `multiplier` for Super Break include the attacker's `breakEfficiency` / `superBreakDmg` stats.
+- **`DamageBreakdown`** has `dotChanceMultiplier` (E8; 1 unless a DoT sets `baseChance`), and `ResolvedHitStats` has `effectHitRate`, `effectResPen` and `targetEffectRes`. Both are required fields, added 2026-11-07: code that builds these objects by hand must add them.
 - **`RotationResult`**: per-hit `HitResult` (stats and breakdown), per-event log, totals by attacker and tag, per-cycle damage, and final state.
 
 ### Holder-side modifier semantics
 
 A modifier always belongs to the unit that **holds** the effect. During a hit:
 
-- **Attacker-held keys** are `atk*`, `hp*`, `def*` (scaling), `critRate`, `critDmg`, `dmgBoost`, `defIgnore`, `resPen`, `weaken`, `finalDmgBoost` (each modifier multiplies) and `trueDmg`.
-- **Target-held keys** are `defPct`, `defFlat`, `defReduction`, `resReduction`, `vulnerability` and `dmgMitigation`.
+- **Attacker-held keys** are `atk*`, `hp*`, `def*` (scaling), `critRate`, `critDmg`, `dmgBoost`, `defIgnore`, `resPen`, `weaken`, `finalDmgBoost` (each modifier multiplies), `trueDmg`, `breakEffect`, `breakEfficiency` and `superBreakDmg` (break hits), and `effectHitRate` and `effectResPen` (DoT chance).
+- **Target-held keys** are `defPct`, `defFlat`, `defReduction`, `resReduction`, `vulnerability`, `dmgMitigation` and `effectRes`.
 
 So a "DEF reduction" debuff is an effect applied **to the enemy**, and a "DMG +X%" team buff is applied **to each ally**.
 
@@ -92,7 +94,7 @@ So a "DEF reduction" debuff is an effect applied **to the enemy**, and a "DMG +X
 
 ### Conditional modifiers
 
-A modifier with a condition only applies during a hit whose context matches: the element, at least one of the damage tags, and the counterpart ID. `resolveUnitStats(state, id)` without a context shows unconditional stats only, which suits a character sheet.
+A modifier with a condition only applies during a hit whose context matches: the element, at least one of the damage tags, and the counterpart ID. Break hits are the exception for DMG Boost: only `dmgBoost` modifiers whose condition names `break` / `superBreak` apply to them (`FORMULAS.md § Break DMG`). `resolveUnitStats(state, id)` without a context shows unconditional stats only, which suits a character sheet.
 
 ## Manual rotation engine
 

@@ -1,4 +1,4 @@
-import { DAMAGE_TAGS, ELEMENTS, type HitSpec } from '../../engine/index';
+import { ELEMENTS, HIT_DAMAGE_TAGS, type HitSpec } from '../../engine/index';
 import { t } from '../i18n';
 import { NumberField } from './NumberField';
 import { UnitSelect, type UnitOption } from './UnitSelect';
@@ -48,9 +48,9 @@ export function HitEditor({ hit, enemies, onChange }: HitEditorProps) {
         {t('modifier.tags')}
         <select multiple value={hit.tags} onChange={({ currentTarget }) => {
           const selected = new Set(Array.from(currentTarget.selectedOptions, ({ value }) => value));
-          onChange({ ...hit, tags: DAMAGE_TAGS.filter((tag) => selected.has(tag)) });
+          onChange({ ...hit, tags: HIT_DAMAGE_TAGS.filter((tag) => selected.has(tag)) });
         }}>
-          {DAMAGE_TAGS.map((tag) => <option key={tag} value={tag}>{t(`tag.${tag}`)}</option>)}
+          {HIT_DAMAGE_TAGS.map((tag) => <option key={tag} value={tag}>{t(`tag.${tag}`)}</option>)}
         </select>
       </label>
       <label>

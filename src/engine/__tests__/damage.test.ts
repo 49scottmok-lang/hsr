@@ -186,8 +186,12 @@ describe('calculateHit', () => {
         mitigations: [],
         attackerLevel: 80,
         targetBroken: true,
+        effectHitRate: 0,
+        effectResPen: 0,
+        targetEffectRes: 0,
       },
     });
     expect(b.total).toBe(500);
+    expect(b.dotChanceMultiplier).toBe(1);
   });
 });

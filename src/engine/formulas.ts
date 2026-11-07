@@ -158,6 +158,21 @@ export function breakEffectMultiplier(breakEffect: number): number {
   return 1 + breakEffect;
 }
 
+/**
+ * §DoT application chance (E8):
+ * clamp(baseChance × (1 + EHR) × (1 − effectRes + effectResPen), 0, 1).
+ * Cross-checked against R1 `DotDamageFunction` (min(1, …)); the floor at 0 is an engine safeguard.
+ */
+export function dotApplicationChance(
+  baseChance: number,
+  effectHitRate: number,
+  targetEffectRes: number,
+  effectResPen: number,
+): number {
+  const raw = baseChance * (1 + effectHitRate) * (1 - targetEffectRes + effectResPen);
+  return Math.min(1, Math.max(0, raw));
+}
+
 /** §Action Value: AV = 10000 / SPD. Utility only; the rotation engine is manual. */
 export function actionValue(spd: number): number {
   if (spd <= 0) throw new RangeError('SPD must be positive');

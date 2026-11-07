@@ -27,8 +27,11 @@ export type Element = (typeof ELEMENTS)[number];
 /**
  * In-game DMG type tags that buffs can condition on. A single hit may carry
  * several tags (e.g. a hit that "counts as" both Follow-up ATK DMG and
- * Ultimate DMG). Break / Super Break DMG are not tags: they are separate
- * `break` steps with their own formula (docs/FORMULAS.md § Break DMG).
+ * Ultimate DMG).
+ *
+ * `break` and `superBreak` are set by the engine on `break` steps only (their
+ * own formula, docs/FORMULAS.md § Break DMG); a `hit` step may not use them.
+ * They let "Break DMG +X%" style modifiers condition on break hits.
  */
 export const DAMAGE_TAGS = [
   'basic',
@@ -38,8 +41,23 @@ export const DAMAGE_TAGS = [
   'followUp',
   'dot',
   'additional',
+  'break',
+  'superBreak',
 ] as const;
 export type DamageTag = (typeof DAMAGE_TAGS)[number];
+
+/** Tags the engine sets on `break` steps (the step's kind). */
+export const BREAK_DAMAGE_TAGS = ['break', 'superBreak'] as const satisfies readonly DamageTag[];
+/** Tags a `hit` step may carry: every tag except `BREAK_DAMAGE_TAGS`. */
+export const HIT_DAMAGE_TAGS: readonly Exclude<DamageTag, (typeof BREAK_DAMAGE_TAGS)[number]>[] = [
+  'basic',
+  'skill',
+  'ultimate',
+  'talent',
+  'followUp',
+  'dot',
+  'additional',
+];
 
 /** Stat a hit's multiplier scales from. */
 export type ScalingStat = 'atk' | 'hp' | 'def';
@@ -74,6 +92,12 @@ export const STAT_KEYS = [
   'finalDmgBoost',
   /** "True DMG" multiplier, 1 + Σ. Read from the attacker. */
   'trueDmg',
+  /** Weakness Break Efficiency, added to a Super Break step's own. Read from the attacker. */
+  'breakEfficiency',
+  /** Super Break DMG multiplier, added to a Super Break step's own. Read from the attacker. */
+  'superBreakDmg',
+  /** Effect RES PEN for DoT application chance (E8). Read from the attacker. */
+  'effectResPen',
   // --- target (defender) stats ---
   /** Subtracts from the holder's DEF% pool. Read from the target. */
   'defReduction',
@@ -83,10 +107,14 @@ export const STAT_KEYS = [
   'vulnerability',
   /** "DMG taken -X%" on the holder. Multiplicative per instance. Read from the target. */
   'dmgMitigation',
-  // --- tracked but not used by the MVP damage formula ---
+  // --- other unit stats ---
+  /** Break Effect. Read from the attacker on break hits. */
   'breakEffect',
+  /** Effect Hit Rate. Read from the attacker for DoT application chance (E8). */
   'effectHitRate',
+  /** Effect RES. Read from the target for DoT application chance (E8); negative values lower it. */
   'effectRes',
+  /** Tracked only; energy is not simulated. */
   'energyRegenRate',
 ] as const;
 export type StatKey = (typeof STAT_KEYS)[number];
@@ -117,6 +145,54 @@ export interface StatModifier {
   stat: StatKey;
   /** Fractional for percentage stats, absolute for *Flat stats. Per stack. */
   value: number;
+  condition?: ModifierCondition;
+}
+
+/**
+ * Final stats a conversion can read (E7). These are the same quantities as
+ * `ResolvedUnitStats` minus DMG Boost.
+ */
+export const CONVERSION_SOURCES = [
+  'hp',
+  'atk',
+  'def',
+  'spd',
+  'critRate',
+  'critDmg',
+  'breakEffect',
+  'effectHitRate',
+  'effectRes',
+  'energyRegenRate',
+] as const;
+export type ConversionSource = (typeof CONVERSION_SOURCES)[number];
+
+/**
+ * A stat-conversion modifier (TASKS E7): "`to` increases by `ratio` of
+ * `from`", evaluated at hit time from the current state
+ * (docs/FORMULAS.md § Stat conversion).
+ *
+ * contribution = min(cap, ratio × stacks × max(0, from − threshold))
+ *
+ * `from` is read WITHOUT any conversion contributions (single pass), so
+ * conversions never chain or loop.
+ */
+export interface StatConversion {
+  from: ConversionSource;
+  /**
+   * Whose `from` stat is read. `holder` (default): the unit holding the
+   * effect, with the current hit's conditional modifiers. `source`: the unit
+   * that applied the effect, context-free (as on its character sheet).
+   */
+  fromUnit?: 'holder' | 'source';
+  /** The stat that is increased, with the usual holder-side semantics. */
+  to: StatKey;
+  /** Fraction of `from` per stack (e.g. 0.5 for "50% of …"). Caller-supplied. */
+  ratio: number;
+  /** Only the part of `from` above this value counts ("… exceeding 1800"). Default 0. */
+  threshold?: number;
+  /** Maximum contribution, after stacks ("up to +50%"). Default: no cap. */
+  cap?: number;
+  /** When the converted value applies, matched against the holder's hit context. */
   condition?: ModifierCondition;
 }
 
@@ -176,6 +252,8 @@ export interface EffectDef {
   name: string;
   kind: 'buff' | 'debuff';
   modifiers: readonly StatModifier[];
+  /** Stat conversions (E7), evaluated at hit time. */
+  conversions?: readonly StatConversion[];
   /** Absent = permanent until explicitly removed. */
   duration?: DurationSpec;
   /** Default 1. With `independent` stacking, the cap on the holder's total stacks. */
@@ -276,6 +354,11 @@ export interface EnemyConfig {
    * Needed only for Break DMG (`break` steps of kind 'break'). Caller-supplied.
    */
   maxToughness?: number;
+  /**
+   * Base Effect RES (fraction), used for DoT application chance (E8). Default 0.
+   * Caller-supplied.
+   */
+  effectRes?: number;
   /** Always-on enemy effects (e.g. innate damage reduction). */
   passiveEffects?: readonly EffectDef[];
 }
@@ -324,6 +407,12 @@ export interface HitSpec {
   tags: readonly DamageTag[];
   /** Defaults to false if tags include 'dot', otherwise true. */
   canCrit?: boolean;
+  /**
+   * DoT only (E8): base chance of the debuff that deals this DoT (fraction,
+   * may exceed 1). When set, the hit is weighted by its application chance
+   * (docs/FORMULAS.md § DoT application chance). Absent: the DoT always landed.
+   */
+  baseChance?: number;
   label?: string;
 }
 
@@ -368,6 +457,9 @@ export interface BreakDetails {
   maxToughness?: number;
   /** Super Break only: (1 + breakEfficiency) × toughnessReduction + fixedToughnessReduction. */
   toughness?: number;
+  /** Super Break only: the step's Weakness Break Efficiency plus the attacker's `breakEfficiency` stat. */
+  breakEfficiency?: number;
+  /** Super Break: the step's multiplier plus the attacker's `superBreakDmg` stat. */
   multiplier: number;
   breakEffect: number;
   /** 1 + breakEffect. Already included in the breakdown's `baseDmg`. */
@@ -395,6 +487,10 @@ export interface ResolvedHitStats {
   mitigations: readonly number[];
   attackerLevel: number;
   targetBroken: boolean;
+  /** Attacker Effect Hit Rate, Effect RES PEN and target Effect RES (E8; used only by DoT with `baseChance`). */
+  effectHitRate: number;
+  effectResPen: number;
+  targetEffectRes: number;
 }
 
 export interface DamageBreakdown {
@@ -409,6 +505,8 @@ export interface DamageBreakdown {
   brokenMultiplier: number;
   finalDmgMultiplier: number;
   trueDmgMultiplier: number;
+  /** DoT application chance (E8). 1 unless the hit is a DoT with `baseChance`. */
+  dotChanceMultiplier: number;
   /** Product of all of the above. Unrounded. */
   total: number;
 }
@@ -427,8 +525,9 @@ export interface HitResult {
   breakdown: DamageBreakdown;
   damage: number;
   /**
-   * Set for Break and Super Break DMG (`break` steps). Such hits have no tags
-   * and never crit, and their `breakdown.baseDmg` already includes 1 + Break Effect.
+   * Set for Break and Super Break DMG (`break` steps). Such hits carry only the
+   * tag `break` or `superBreak`, never crit, and their `breakdown.baseDmg`
+   * already includes 1 + Break Effect.
    */
   break?: BreakDetails;
 }

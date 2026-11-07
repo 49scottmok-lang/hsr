@@ -47,12 +47,13 @@ Also on 2026-11-07, these were confirmed by the Fandom wiki Damage page (S3):
 
 These are still **unverified**, because no read source covers them:
 
-1. Stat formula `(char + LC base) × (1 + %) + flat`.
+1. ~~Stat formula `(char + LC base) × (1 + %) + flat`.~~ *Cross-checked 2026-11-07 (E1) against R1's stat pipeline (`FORMULAS.md § Stats`). It still has no game-side source.*
 2. Whether the game itself rounds values.
 3. Whether several Weaken sources add together.
-4. How several Final DMG (Original DMG) sources stack. R1 multiplies them, and S3 doesn't say.
+4. How several Final DMG (Original DMG) sources stack. R1 multiplies them (re-checked 2026-11-07: its `MULTIPLICATIVE_BOOST` operator), and so does the engine. No other source says.
 5. Level scaling below level 80 (base stats) and below max level (relic main stats). The formulas are checked only at those levels (`FORMULAS.md § Level scaling`).
-6. RES clamp [10%, 200%] and the vulnerability cap of +250%. These rest on R1 alone, because S3's Damage page states no bounds. The Damage RES and Vulnerability sub-pages couldn't be read.
+6. RES clamp [10%, 200%] and the vulnerability cap of +250%. These rest on R1 alone, because S3's Damage page states no bounds. The Damage RES and Vulnerability sub-pages couldn't be read (on 2026-11-07 they returned HTTP 402 to automated fetch; search snippets of the RES page agree with the RES bounds).
+7. *(E8)* Debuff-specific RES in the DoT application chance, and R1's multi-stack DoT weighting. Neither is modelled (`FORMULAS.md § DoT application chance`).
 
 *Resolved 2026-11-07:* base CRIT Rate 5% / CRIT DMG 50% is in source A's `AvatarPromotionConfig` for every character and ascension, and matches B (`FORMULAS.md § Base CRIT`).
 
@@ -72,12 +73,15 @@ R1 is a widely used optimizer, but it is not the game. If game testing contradic
 | A6 | Missing enemy RES for an element is treated as 0. | `damage.ts` |
 | A7 | Stats are resolved fresh at every hit. There is **no snapshotting**, including for DoTs. | `damage.ts` |
 | A8 | Conditional modifiers are excluded from context-free stat displays. | `stats.ts` |
+| A9 | *(E7)* A stat conversion reads its source stat **without** other conversions (single pass), so conversions never chain. `fromUnit: 'source'` reads the source unit's context-free stats. The cap applies after stacks. | `stats.ts` |
+| A10 | *(E8)* Enemy Effect RES defaults to 0 when `EnemyConfig.effectRes` is not set. | `damage.ts` |
+| A11 | *(E4 follow-up)* Break hits carry only their own tag (`break` or `superBreak`). An effect that should boost both must list both. `breakEfficiency` / `superBreakDmg` modifiers are read in the Super Break hit's context, not the triggering hit's. | `breakDamage.ts` |
 
 ## Out of scope for the MVP
 
 - **Break and Super Break DMG (E4, added 2026-11-07) have these gaps** (formulas: `FORMULAS.md § Break DMG`):
-  - Break-specific DMG boosts ("Break DMG +X%") are not modelled. Break hits ignore every `dmgBoost` modifier and carry no damage tags. Adding `break` / `superBreak` tags needs zh-HK labels in the UI, so it is a follow-up.
-  - Weakness Break Efficiency and the Super Break DMG multiplier are entered on each Super Break step (as totals), not as buff stats.
+  - *Resolved 2026-11-07 (E4 follow-up):* break hits now carry the tag `break` / `superBreak`, so "Break DMG +X%" is a `dmgBoost` modifier conditioned on that tag. Weakness Break Efficiency and the Super Break DMG multiplier can come from buffs (`breakEfficiency`, `superBreakDmg` stats), added to the step's own values.
+  - Break DoTs (the Burn, Bleed, Shock, Wind Shear, Entanglement, Freeze and Imprisonment that a Weakness Break applies) are not modelled.
   - The level multiplier is checked against R1 only at level 80. Weaken and Mitigation on break hits, and the broken factor at the moment of the break, are **[UNVERIFIED]**.
   - Toughness is not simulated: the user states the enemy's max Toughness (displayed units) and each Super Break step's Toughness reduction.
 - **Toughness simulation.** Weakness break is a manual toggle (`setBroken`).
@@ -86,8 +90,8 @@ R1 is a widely used optimizer, but it is not the game. If game testing contradic
 - **Standalone True DMG** (based on tallied DMG, Max HP, etc.). Not supported. Only "True DMG equal to X% of this hit" is modelled, via `trueDmg`.
 - **Superimposition scaling.** `LightCone.superimposition` is a label only. The values for each S1–S5 level must be entered or supplied by data.
 - **Eidolon effects** are gated by `requires.minEidolon`, but the effects themselves (what E1–E6 do) must be entered by the user, because no kit data ships. Eidolons that *replace* an earlier effect, rather than adding to it, need two effects with the same ID: with the default `refresh` stacking, the later one replaces the earlier one when applied. (`noRefresh` keeps the earlier one.)
-- **Stat-conversion buffs** (e.g. "ATK increases by X% of another stat"). Callers must precompute a flat value. The value doesn't update if the source stat changes mid-rotation.
-- **Effect hit rate / effect RES and debuff application chance.** All debuffs land. R1 weights DoT damage by its application chance (`baseChance × (1 + EHR) × (1 − enemyEffectRES + effectResPen)`); we don't.
+- **Stat-conversion buffs** *(E7, added 2026-11-07)* are supported through `EffectDef.conversions` and are evaluated at hit time. **Chained** conversions (one conversion reading a stat that another conversion raised) are not: see A9.
+- **Debuff application chance.** *(E8, added 2026-11-07)* A DoT hit with `baseChance` is weighted by its application chance, as R1 does. Debuffs applied by `apply` steps (DEF reduction, vulnerability, …) still **always land**: their effect on later hits is not weighted by chance.
 - **Attacker level.** Our DEF formula supports any attacker level. R1 always assumes Lv80, so results only match R1 at Lv80.
 - **Enemy actions against allies, shields, healing, HP thresholds, and kill or overkill.** Damage isn't capped by enemy HP.
 - **Multiple enemies.** Supported for targeting, but there is no blast/AoE helper. Each hit lists its target explicitly.
