@@ -94,10 +94,10 @@ Rules for every task:
 
 - **Ready 2026-11-07 (I1–I3 done).** Flow: `JSON.parse` the file → `parseArchive(json)` from `src/import` (show `errors` on `ok: false`, `warnings` otherwise) → `importArchive(archive, DATA_TABLES)` with `DATA_TABLES` from `src/data`. Per build, `report.builds[i]` has `lookedUp`, `toEnter` and `problems`. Each item has a `kind` for zh-HK text and an English `message` as a fallback. `report.dropped` counts the unequipped items the parser discarded.
 
-- [ ] Add a file picker for a Reliquary Archiver `.json` export. The file is read **in the browser only**, with no upload or network request.
-- [ ] Call `importArchive()` (I2) and list the imported characters with level, eidolon, light cone and superimposition, and relic summary. The user picks which ones to add to Team A or Team B.
-- [ ] For each imported build, show what was **looked up** (base stats, main stats, 2-piece sets, traces) and what **must still be entered** (kit effects, 4-piece sets, LC passive), using `ImportReport` (I2).
-- [ ] Keep the raw export in memory only. Never persist it to `localStorage` and never put it in a share link.
+- [x] Add a file picker for a Reliquary Archiver `.json` export. The file is read **in the browser only**, with no upload or network request.
+- [x] Call `importArchive()` (I2) and list the imported characters with level, eidolon, light cone and superimposition, and relic summary. The user picks which ones to add to Team A or Team B.
+- [x] For each imported build, show what was **looked up** (base stats, main stats, 2-piece sets, traces) and what **must still be entered** (kit effects, 4-piece sets, LC passive), using `ImportReport` (I2).
+- [x] Keep the raw export in memory only. Never persist it to `localStorage` and never put it in a share link.
 - **Acceptance:** importing the synthetic fixture from I3 adds a build whose final stats match the I3 expected values. An unsupported file shows a zh-HK error and doesn't crash.
 
 ### F11. Traditional Chinese (Hong Kong) UI — `src/ui/i18n/` (start alongside F1)

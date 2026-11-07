@@ -3,6 +3,7 @@ import type { CritMode } from '../engine/index';
 import { CharacterEditor } from './components/CharacterEditor';
 import { EffectEditor } from './components/EffectEditor';
 import { EnemyEditor } from './components/EnemyEditor';
+import { ImportPanel } from './components/ImportPanel';
 import { IssueList } from './components/IssueList';
 import { Results } from './components/Results';
 import { RotationEditor } from './components/RotationEditor';
@@ -128,6 +129,9 @@ export default function App() {
       </label>
       <button type="button" onClick={resetScenario}>{t('scenario.reset')}</button>
       {loaded && !loaded.ok && <div role="alert"><IssueList issues={loaded.issues} /></div>}
+      <ImportPanel scenario={scenario} onAdd={(teamIndex, value) => dispatch({
+        type: 'editCharacters', teamIndex, edit: { type: 'add', value },
+      })} />
       <section aria-label={t('enemy.shared')}>
         <h2>{t('enemy.shared')}</h2>
         <IssueList issues={issues.get('enemies')} />
