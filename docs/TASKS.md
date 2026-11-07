@@ -56,10 +56,10 @@ Rules for every task:
 
 ### F5. Manual rotation editor — `src/ui/components/RotationEditor.tsx`
 
-- [ ] Show an ordered list of events. Add a Turn or an Extra event, choose the actor, add a label, and reorder with up/down buttons (no drag-and-drop needed).
-- [ ] Each event has an ordered step list: `hit` (target, scaling, multiplier %, element override, tags multi-select, canCrit override, label), `apply` (effect from the library, target or allAllies/allEnemies, stacks), `remove`, and `setBroken`. Every step has an optional "Requires Eidolon ≥ N" field (`step.requires`).
+- [x] Show an ordered list of events. Add a Turn or an Extra event, choose the actor, add a label, and reorder with up/down buttons (no drag-and-drop needed).
+- [x] Each event has an ordered step list: `hit` (target, scaling, multiplier %, element override, tags multi-select, canCrit override, label), `apply` (effect from the library, target or allAllies/allEnemies, stacks), `remove`, and `setBroken`. Every step has an optional "Requires Eidolon ≥ N" field (`step.requires`).
 - [ ] In the results view (F6), show steps skipped by eidolon gating (`log[].skippedSteps`) so users can see why a hit didn't happen.
-- [ ] Add a "duplicate event" button to make repeating cycles quick.
+- [x] Add a "duplicate event" button to make repeating cycles quick.
 - **Acceptance:** you can build both `rotation.test.ts` scenarios ("buff applied earlier" and "enemy debuff ticking") in the UI, and they give the same totals as the tests.
 
 ### F6. Results & comparison view — `src/ui/components/Results.tsx`

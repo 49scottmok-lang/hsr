@@ -2,6 +2,7 @@ import { useReducer, useRef } from 'react';
 import { CharacterEditor } from './components/CharacterEditor';
 import { EffectEditor } from './components/EffectEditor';
 import { EnemyEditor } from './components/EnemyEditor';
+import { RotationEditor } from './components/RotationEditor';
 import { t } from './i18n';
 import { scenarioReducer } from './state/reducer';
 import type { Scenario, TeamIndex } from './state/scenario';
@@ -121,6 +122,7 @@ export default function App() {
               ))}
               <button type="button" onClick={() => addEffect(teamIndex)}>{t('effect.add')}</button>
             </fieldset>
+            <RotationEditor draft={scenario.teams[teamIndex]} enemies={scenario.enemies} teamIndex={teamIndex} dispatch={dispatch} />
           </section>
         );
       })}
