@@ -26,10 +26,10 @@ Rules for every task:
 
 ### F1. Scenario state model — `src/ui/state/`
 
-- [ ] Define a `Scenario` type: `{ enemies: EnemyConfig[]; critMode: CritMode; teams: [TeamDraft, TeamDraft] }`, where `TeamDraft = { label; team: CharacterBuild[]; events: RotationEvent[]; cycles?: number }`.
-- [ ] Add a pure function `toRotationInput(scenario, teamIndex): RotationInput`. Both teams must share the same `enemies` and `critMode`.
-- [ ] Use a reducer (`useReducer`) with actions to add, update, remove and reorder characters, effects, events and steps.
-- [ ] Add JSON export and import of a `Scenario`. On import, run `validateRotationInput` for each team and show the issues.
+- [x] Define `Scenario` and `TeamDraft` with readonly arrays, exactly two teams and optional per-team cycles.
+- [x] Add a pure function `toRotationInput(scenario, teamIndex): RotationInput`. Both teams share the same `enemies` and `critMode`.
+- [x] Add a reducer for `useReducer` that adds, updates, removes and reorders characters, enemies, events and steps, and sets crit mode and cycles.
+- [x] Add JSON export and import of a `Scenario`. On import, run `validateRotationInput` for each team and return issues for display.
 - **Acceptance:** the reducer and `toRotationInput` are unit-tested (node env). A round-trip export → import gives a deep-equal result.
 
 ### F2. Character build editor — `src/ui/components/CharacterEditor.tsx`
