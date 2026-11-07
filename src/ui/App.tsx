@@ -1,5 +1,6 @@
 import { useReducer, useRef } from 'react';
 import { CharacterEditor } from './components/CharacterEditor';
+import { EnemyEditor } from './components/EnemyEditor';
 import { t } from './i18n';
 import { scenarioReducer } from './state/reducer';
 import type { Scenario, TeamIndex } from './state/scenario';
@@ -16,6 +17,17 @@ const initialScenario: Scenario = {
 export default function App() {
   const [scenario, dispatch] = useReducer(scenarioReducer, initialScenario);
   const nextCharacterNumber = useRef(1);
+  const nextEnemyNumber = useRef(1);
+
+  function addEnemy() {
+    const units = [...scenario.enemies, ...scenario.teams.flatMap(({ team }) => team)];
+    const ids = new Set(units.map(({ id }) => id));
+    let id: string;
+    do {
+      id = `enemy-${nextEnemyNumber.current++}`;
+    } while (ids.has(id));
+    dispatch({ type: 'editEnemies', edit: { type: 'add', value: { id, name: '', level: 1, res: {} } } });
+  }
 
   function addCharacter(teamIndex: TeamIndex) {
     const units = [...scenario.enemies, ...scenario.teams.flatMap(({ team }) => team)];
@@ -44,6 +56,18 @@ export default function App() {
   return (
     <main>
       <h1>{t('app.title')}</h1>
+      <section aria-label={t('enemy.shared')}>
+        <h2>{t('enemy.shared')}</h2>
+        {scenario.enemies.map((enemy, index) => (
+          <EnemyEditor
+            key={index}
+            enemy={enemy}
+            onChange={(value) => dispatch({ type: 'editEnemies', edit: { type: 'update', index, value } })}
+            onRemove={() => dispatch({ type: 'editEnemies', edit: { type: 'remove', index } })}
+          />
+        ))}
+        <button type="button" onClick={addEnemy}>{t('enemy.add')}</button>
+      </section>
       {([0, 1] as const).map((teamIndex) => {
         const { label, team } = scenario.teams[teamIndex];
         return (
