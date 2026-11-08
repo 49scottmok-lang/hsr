@@ -11,8 +11,12 @@ const character: CharacterBuild = {
   base: { hp: 11, atk: 12, def: 13, spd: 14 },
   lightCone: { name: 'Test cone', superimposition: 3, base: { hp: 2, atk: 3, def: 4 }, effects: [] },
 };
-const enemy: EnemyConfig = { id: 'e', name: 'Enemy', level: 3, res: { fire: 0.12 }, effectRes: 0.2 };
-const hit: ActionStep = { op: 'hit', hit: { targetId: enemy.id, scaling: 'atk', multiplier: 1.25, tags: ['dot'], baseChance: 0 } };
+const enemy: EnemyConfig = {
+  id: 'e', name: 'Enemy', level: 3, res: { fire: 0.12 }, effectRes: 0.2, debuffRes: { burn: 0.3, bleed: 0 },
+};
+const hit: ActionStep = {
+  op: 'hit', hit: { targetId: enemy.id, scaling: 'atk', multiplier: 1.25, tags: ['dot'], baseChance: 0, dotType: 'burn' },
+};
 const event: RotationEvent = {
   id: 'ev', kind: 'turn', actorId: character.id, steps: [{
     op: 'apply', to: character.id,
@@ -184,15 +188,30 @@ describe('scenario JSON', () => {
   });
 
   it('reports each shared enemy issue once', () => {
-    const draft = { ...scenario, enemies: [{ ...enemy, level: 0, res: { ...enemy.res, unknown: 0.1 } }] };
+    const draft = { ...scenario, enemies: [{
+      ...enemy, level: 0, res: { ...enemy.res, unknown: 0.1 }, debuffRes: { ...enemy.debuffRes, unknown: 0.4 },
+    }] };
     expect(importScenario(JSON.stringify(draft))).toStrictEqual({
       ok: true,
       scenario: { ...scenario, enemies: [{ ...enemy, level: 0 }] },
       issues: [
         'enemies[0]: level must be an integer >= 1',
+        'enemies[0].debuffRes: unknown DoT type "unknown"',
         'enemies[0].res: unknown element "unknown"',
       ],
     });
+  });
+
+  it('reports an unsupported DoT type and missing base chance on an imported hit', () => {
+    const draft = { ...scenario, teams: [{
+      ...scenario.teams[0], events: [{
+        ...event, steps: [{ ...hit, hit: { ...hit.hit, dotType: 'unknown', baseChance: undefined } }],
+      }],
+    }, scenario.teams[1]] };
+    expect(importScenario(JSON.stringify(draft))).toMatchObject({ ok: true, issues: [
+      'teams[0].events[0].steps[0]: unknown DoT type "unknown"',
+      'teams[0].events[0].steps[0]: dotType needs baseChance',
+    ] });
   });
 
   it('drops unknown keys at every level of the imported scenario', () => {

@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
-import type { EnemyConfig } from '../../engine/index';
+import { DOT_TYPES, type EnemyConfig } from '../../engine/index';
 import App from '../App';
 import { t } from '../i18n';
 import { EnemyEditor } from './EnemyEditor';
@@ -38,6 +38,14 @@ it('keeps DEF optional and stores signed elemental RES as a fraction', () => {
   expect(change.mock.lastCall?.[0].effectRes).toBe(0.255);
   fireEvent.change(effectRes, { target: { value: '' } });
   expect(change.mock.lastCall?.[0].effectRes).toBeUndefined();
+  const debuffRes = within(screen.getByRole('group', { name: t('enemy.debuffRes') }));
+  const fields = DOT_TYPES.map((type) => debuffRes.getByLabelText(t('enemy.debuffResType').replace('{type}', t(`dotType.${type}`))));
+  expect(debuffRes.getAllByRole('spinbutton')).toEqual(fields);
+  fireEvent.change(fields[1]!, { target: { value: '30.5' } });
+  fireEvent.change(fields[2]!, { target: { value: '0' } });
+  expect(change.mock.lastCall?.[0].debuffRes).toEqual({ burn: 0.305, shock: 0 });
+  fireEvent.change(fields[1]!, { target: { value: '' } });
+  expect(change.mock.lastCall?.[0].debuffRes).toEqual({ shock: 0 });
   fireEvent.change(baseDef, { target: { value: '' } });
   fireEvent.change(fireRes, { target: { value: '' } });
   fireEvent.click(screen.getByLabelText(t('enemy.initialBroken')));

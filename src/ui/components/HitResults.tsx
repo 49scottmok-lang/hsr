@@ -67,18 +67,24 @@ function BreakResult({ details }: { details: BreakDetails }) {
     ['results.hitMultiplier', details.multiplier],
     ['results.breakEffectMultiplier', details.breakEffectMultiplier],
   ] as const;
+  const bonuses = [
+    ['stat.breakEfficiency', details.breakEfficiency],
+    ['stat.breakEffect', details.breakEffect],
+    ['results.breakDmgIncrease', details.breakDmgIncrease],
+    ['results.superBreakDmgIncrease', details.superBreakDmgIncrease],
+  ] as const;
   return (
     <details>
       <summary>{t(`rotation.breakKind.${details.kind}`)}</summary>
       <p>{t('results.breakBaseNote')}</p>
+      {details.kind === 'superBreak' && <p>{t('results.superBreakBoostNote')}</p>}
       <dl>
         {factors.map(([label, value]) => value === undefined ? null : (
           <div key={label}><dt>{t(label)}</dt><dd>{formatMultiplier(value)}</dd></div>
         ))}
-        {details.breakEfficiency !== undefined && (
-          <div><dt>{t('stat.breakEfficiency')}</dt><dd>{formatPercent(details.breakEfficiency, { maximumFractionDigits: 4 })}</dd></div>
-        )}
-        <div><dt>{t('stat.breakEffect')}</dt><dd>{formatPercent(details.breakEffect, { maximumFractionDigits: 4 })}</dd></div>
+        {bonuses.map(([label, value]) => value === undefined ? null : (
+          <div key={label}><dt>{t(label)}</dt><dd>{formatPercent(value, { maximumFractionDigits: 4 })}</dd></div>
+        ))}
       </dl>
     </details>
   );

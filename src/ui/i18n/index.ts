@@ -46,6 +46,8 @@ const issuePatterns: readonly (readonly [RegExp, TranslationKey])[] = [
   [/^unknown break kind "(.*)"$/s, 'issue.unknownBreakKind'],
   [/^baseChance must be a finite number >= 0$/, 'issue.baseChance'],
   [/^baseChance needs the "dot" tag$/, 'issue.baseChanceNeedsDot'],
+  [/^unknown DoT type "(.*)"$/s, 'issue.unknownDotType'],
+  [/^dotType needs baseChance$/, 'issue.dotTypeNeedsBaseChance'],
   [/^unknown conversion source "(.*)"$/s, 'issue.unknownConversionSource'],
   [/^fromUnit must be "holder" or "source"$/, 'issue.conversionFromUnit'],
   [/^ratio must be a finite number$/, 'issue.conversionRatio'],

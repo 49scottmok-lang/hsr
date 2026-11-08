@@ -1,4 +1,4 @@
-import { ELEMENTS, type EnemyConfig, type Element } from '../../engine/index';
+import { DOT_TYPES, ELEMENTS, type DotType, type EnemyConfig, type Element } from '../../engine/index';
 import { t } from '../i18n';
 import { IssueList } from './IssueList';
 import { NumberField } from './NumberField';
@@ -16,6 +16,13 @@ export function EnemyEditor({ enemy, issues, onChange, onRemove }: EnemyEditorPr
     if (value === undefined) delete res[element];
     else res[element] = value;
     onChange({ ...enemy, res });
+  }
+
+  function updateDebuffRes(type: DotType, value: number | undefined) {
+    const debuffRes = { ...enemy.debuffRes };
+    if (value === undefined) delete debuffRes[type];
+    else debuffRes[type] = value;
+    onChange({ ...enemy, debuffRes });
   }
 
   return (
@@ -63,6 +70,14 @@ export function EnemyEditor({ enemy, issues, onChange, onRemove }: EnemyEditorPr
       <NumberField label={t('enemy.effectRes')} value={enemy.effectRes} percent
         onChange={(effectRes) => onChange({ ...enemy, effectRes })} />
       <p>{t('enemy.effectResHint')}</p>
+      <fieldset>
+        <legend>{t('enemy.debuffRes')}</legend>
+        <p>{t('enemy.debuffResHint')}</p>
+        {DOT_TYPES.map((type) => (
+          <NumberField key={type} label={t('enemy.debuffResType').replace('{type}', t(`dotType.${type}`))}
+            value={enemy.debuffRes?.[type]} percent onChange={(value) => updateDebuffRes(type, value)} />
+        ))}
+      </fieldset>
       <label>
         <input
           type="checkbox"

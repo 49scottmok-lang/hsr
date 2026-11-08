@@ -25,6 +25,7 @@ const checked = (check: (value: unknown) => boolean): Read => (value) => check(v
 const string = checked((value) => typeof value === 'string');
 const isNumber = (value: unknown) => typeof value === 'number' && Number.isFinite(value);
 const number = checked(isNumber);
+const numberRecord: Read = (value) => isRecord(value) && Object.values(value).every(isNumber) ? { ...value } : invalid;
 const boolean = checked((value) => typeof value === 'boolean');
 const oneOf = (...options: string[]): Read => checked((value) => typeof value === 'string' && options.includes(value));
 const optional = (read: Read): Read => (value) => value === undefined ? undefined : read(value);
@@ -95,9 +96,10 @@ const enemy = shape({
   ...unit,
   baseDef: optional(number),
   effectRes: optional(number),
+  debuffRes: optional(numberRecord),
   maxToughness: optional(number),
   broken: optional(boolean),
-  res: (value) => isRecord(value) && Object.values(value).every(isNumber) ? { ...value } : invalid,
+  res: numberRecord,
 });
 const hit = shape({
   attackerId: optional(string),
@@ -110,6 +112,7 @@ const hit = shape({
   tags: list(string),
   canCrit: optional(boolean),
   baseChance: optional(number),
+  dotType: optional(string),
   label: optional(string),
 });
 const stepFields = { op: string, requires: requirement };

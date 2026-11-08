@@ -23,7 +23,7 @@ const vulnerability: EffectDef = {
 function renderRotation() {
   let state: Scenario = {
     critMode: 'expected',
-    enemies: [{ id: 'e1', name: 'Test enemy', level: 90, res: { fire: 0.2 } }],
+    enemies: [{ id: 'e1', name: 'Test enemy', level: 90, res: { fire: 0.2 }, debuffRes: { burn: 0.2 } }],
     teams: [{
       label: 'Team A',
       team: [{
@@ -74,24 +74,36 @@ function addSkillHit(number: number) {
 
 afterEach(cleanup);
 
-it('edits an optional DoT chance above 100% and clears it when the DoT tag is removed', () => {
+it('edits DoT chance and type and clears dependent settings when the chance or tag is removed', () => {
   const input = renderRotation();
   click('rotation.addTurn');
   addSkillHit(1);
   const row = within(event(1).getByRole('group', { name: t('rotation.step.hit') }));
   expect(row.queryByLabelText(t('rotation.baseChance'))).toBeNull();
   change('modifier.tags', 'dot', row);
+  expect(row.queryByLabelText(t('rotation.dotType'))).toBeNull();
   change('rotation.baseChance', '125', row);
   expect(input().events[0]?.steps[0]).toMatchObject({ hit: { tags: ['dot'], baseChance: 1.25 } });
   change('rotation.baseChance', '0', row);
+  change('rotation.dotType', 'burn', row);
   expect(runRotation(input()).hits[0]?.breakdown.dotChanceMultiplier).toBe(0);
+  change('rotation.baseChance', '75', row);
+  expect(input().events[0]?.steps[0]).toMatchObject({ hit: { dotType: 'burn', baseChance: 0.75 } });
+  // 75% base chance × (1 − 20% Burn RES) = 60%.
+  expect(runRotation(input()).hits[0]?.breakdown.dotChanceMultiplier).toBeCloseTo(0.6, 6);
+  change('rotation.dotType', '', row);
+  expect(runRotation(input()).hits[0]?.breakdown.dotChanceMultiplier).toBe(0.75);
+  change('rotation.dotType', 'burn', row);
   change('rotation.baseChance', '', row);
+  expect(row.queryByLabelText(t('rotation.dotType'))).toBeNull();
   expect(runRotation(input()).hits[0]?.breakdown.dotChanceMultiplier).toBe(1);
   change('rotation.baseChance', '75', row);
+  expect(row.getByRole<HTMLSelectElement>('combobox', { name: t('rotation.dotType') }).value).toBe('');
+  change('rotation.dotType', 'shock', row);
   change('modifier.tags', 'skill', row);
   expect(row.queryByLabelText(t('rotation.baseChance'))).toBeNull();
   const step = input().events[0]?.steps[0];
-  expect(step?.op === 'hit' && Object.hasOwn(step.hit, 'baseChance')).toBe(false);
+  expect(step?.op === 'hit' && step.hit).toStrictEqual({ targetId: 'e1', scaling: 'atk', multiplier: 2, tags: ['skill'] });
 });
 
 it('adds a Break step and edits all Super Break inputs including a fractional efficiency', () => {

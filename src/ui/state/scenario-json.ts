@@ -1,4 +1,4 @@
-import { ELEMENTS } from '../../engine/index';
+import { DOT_TYPES, ELEMENTS } from '../../engine/index';
 import type { Scenario } from './scenario';
 import { scenarioIssues } from './scenario-issues';
 import { readScenario } from './scenario-shape';
@@ -23,11 +23,13 @@ export function importScenario(json: string): ScenarioImportResult {
 
   const issues = scenarioIssues(scenario);
 
-  // Let validation report unknown RES elements before dropping their keys.
-  const enemies = scenario.enemies.map((enemy) => ({
+  // Report unknown resistance keys before dropping them.
+  const enemies = scenario.enemies.map(({ debuffRes, ...enemy }) => ({
     ...enemy,
     res: Object.fromEntries(ELEMENTS.filter((element) => Object.hasOwn(enemy.res, element))
       .map((element) => [element, enemy.res[element]])),
+    ...(debuffRes && { debuffRes: Object.fromEntries(DOT_TYPES.filter((type) => Object.hasOwn(debuffRes, type))
+      .map((type) => [type, debuffRes[type]])) }),
   }));
   return { ok: true, scenario: { ...scenario, enemies }, issues };
 }

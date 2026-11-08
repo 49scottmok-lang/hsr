@@ -1,4 +1,4 @@
-import { ELEMENTS, HIT_DAMAGE_TAGS, type HitSpec } from '../../engine/index';
+import { DOT_TYPES, ELEMENTS, HIT_DAMAGE_TAGS, type HitSpec } from '../../engine/index';
 import { t } from '../i18n';
 import { NumberField } from './NumberField';
 import { UnitSelect, type UnitOption } from './UnitSelect';
@@ -48,11 +48,9 @@ export function HitEditor({ hit, enemies, onChange }: HitEditorProps) {
         {t('modifier.tags')}
         <select multiple value={hit.tags} onChange={({ currentTarget }) => {
           const selected = new Set(Array.from(currentTarget.selectedOptions, ({ value }) => value));
-          const { baseChance, ...unweighted } = hit;
+          const { baseChance: _baseChance, dotType: _dotType, ...unweighted } = hit;
           const tags = HIT_DAMAGE_TAGS.filter((tag) => selected.has(tag));
-          onChange(tags.includes('dot') && baseChance !== undefined
-            ? { ...unweighted, tags, baseChance }
-            : { ...unweighted, tags });
+          onChange(tags.includes('dot') ? { ...hit, tags } : { ...unweighted, tags });
         }}>
           {HIT_DAMAGE_TAGS.map((tag) => <option key={tag} value={tag}>{t(`tag.${tag}`)}</option>)}
         </select>
@@ -60,8 +58,22 @@ export function HitEditor({ hit, enemies, onChange }: HitEditorProps) {
       {hit.tags.includes('dot') && (
         <>
           <NumberField label={t('rotation.baseChance')} value={hit.baseChance} min={0} percent
-            onChange={(baseChance) => onChange({ ...hit, baseChance })} />
+            onChange={(baseChance) => {
+              const { dotType: _dotType, ...rest } = hit;
+              onChange(baseChance === undefined ? { ...rest, baseChance } : { ...hit, baseChance });
+            }} />
           <p>{t('rotation.baseChanceHint')}</p>
+          {hit.baseChance !== undefined && (
+            <label>
+              {t('rotation.dotType')}
+              <select value={hit.dotType ?? ''} onChange={({ currentTarget }) => onChange({
+                ...hit, dotType: DOT_TYPES.find((type) => type === currentTarget.value),
+              })}>
+                <option value="">{t('rotation.noDotType')}</option>
+                {DOT_TYPES.map((type) => <option key={type} value={type}>{t(`dotType.${type}`)}</option>)}
+              </select>
+            </label>
+          )}
         </>
       )}
       <label>
