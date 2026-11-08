@@ -363,6 +363,11 @@ export interface EnemyConfig {
   /** Initial toughness-broken state. Default false. */
   broken?: boolean;
   /**
+   * Base SPD, for the turn order helper's caller only (added 2026-11-08, D6):
+   * `runRotation` never reads it. Set when an endgame enemy is picked.
+   */
+  spd?: number;
+  /**
    * Max Toughness in displayed units (a Basic ATK typically reduces 10).
    * Needed only for Break DMG (`break` steps of kind 'break'). Caller-supplied.
    */
@@ -694,4 +699,77 @@ export interface TimelineResult {
   truncated: boolean;
   /** Indexes of adjustments whose trigger turn never happened within the limit. */
   unusedAdjustments: readonly number[];
+}
+
+// ---------------------------------------------------------------------------
+// Auto battle (D7, added 2026-11-08)
+// ---------------------------------------------------------------------------
+
+/** One action of an auto-battle kit. Every number is user input (no kit data ships). */
+export interface AutoAction {
+  steps: readonly ActionStep[];
+  /** Energy gained by the action, before Energy Regeneration Rate. */
+  energy: number;
+  /** Event label in the generated rotation. */
+  label?: string;
+}
+
+/** How one team member plays in the auto battle. */
+export interface AutoKit {
+  /** Team member ID. */
+  unitId: string;
+  /** Energy at battle start. */
+  startEnergy: number;
+  /** Basic ATK; `skillPoints` is the number it generates. */
+  basic: AutoAction & { skillPoints: number };
+  /** Skill; `skillPoints` is the number it costs. */
+  skill?: AutoAction & { skillPoints: number };
+  /** Ultimate; `energyCost` is the Energy needed (also the Energy cap). */
+  ultimate?: AutoAction & { energyCost: number };
+  /** Use the Skill whenever affordable while keeping `skillPointReserve` points. */
+  useSkill: boolean;
+  /** Skill points to keep after casting the Skill. Default 0. */
+  skillPointReserve?: number;
+  /** Cast the Ultimate as soon as Energy is full. */
+  useUltimate: boolean;
+}
+
+export interface AutoBattleInput {
+  team: readonly CharacterBuild[];
+  /** Every enemy needs `spd`. */
+  enemies: readonly EnemyConfig[];
+  /** At most one per team member; members without one take empty turns. */
+  kits: readonly AutoKit[];
+  /** Simulate turns up to this elapsed AV. */
+  avLimit: number;
+  cycleAv?: { first: number; later: number };
+  /** Team skill points at battle start and the cap. User input. */
+  skillPoints: { start: number; max: number };
+}
+
+export const AUTO_ACTIONS = ['basic', 'skill', 'ultimate', 'idle', 'enemyTurn'] as const;
+export type AutoActionKind = (typeof AUTO_ACTIONS)[number];
+
+export interface AutoBattleAction {
+  /** ID of the generated event. */
+  eventId: string;
+  unitId: string;
+  action: AutoActionKind;
+  av: number;
+  cycle?: number;
+  /** Team skill points after the action. */
+  skillPoints: number;
+  /** The acting ally's Energy after the action (kit members only). */
+  energy?: number;
+}
+
+export interface AutoBattleResult {
+  /** The rotation, ready for `runRotation`. */
+  events: RotationEvent[];
+  /** One entry per event, in order. */
+  actions: AutoBattleAction[];
+  /** True if `MAX_TIMELINE_TURNS` stopped the battle before `avLimit`. */
+  truncated: boolean;
+  /** With `cycleAv`: the cycle `avLimit` falls in, for `RotationInput.cycles`. */
+  cycles?: number;
 }

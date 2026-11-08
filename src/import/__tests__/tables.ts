@@ -40,7 +40,7 @@ const trace = (n: number, stat: 'atkPct' | 'critDmg' | 'spdFlat', value: number,
 });
 
 export const IMPORT_TABLES: DataTables = {
-  characters: [{ ...cite, id: '9001', element: 'fire', ascensions: charAscensions }],
+  characters: [{ ...cite, id: '9001', element: 'fire', energyCost: 120, ascensions: charAscensions }],
   lightCones: [{ ...cite, id: '9101', ascensions: lcAscensions }],
   relicMainStats: [
     {

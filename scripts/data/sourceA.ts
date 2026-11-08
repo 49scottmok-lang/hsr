@@ -26,6 +26,8 @@ interface Num {
 export interface RawAvatar {
   AvatarID: number;
   DamageType: string;
+  /** Ultimate Energy cost. */
+  SPNeed?: Num;
   Release?: boolean;
 }
 export interface RawAvatarPromotion {
@@ -113,6 +115,7 @@ export interface RawSourceA {
 export interface CharacterRow {
   id: string;
   element: string;
+  energyCost: number;
   ascensions: CharacterAscension[];
 }
 export interface LightConeRow {
@@ -242,6 +245,7 @@ export function transformSourceA(raw: RawSourceA): TablesA {
       return {
         id: String(a.AvatarID),
         element,
+        energyCost: v(a.SPNeed),
         ascensions: promos.map((p) => ({
           ascension: p.Promotion ?? 0,
           maxLevel: p.MaxLevel,

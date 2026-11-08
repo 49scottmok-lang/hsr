@@ -14,6 +14,7 @@ export { applyEffect, removeEffect, tickEffects, resolveUnitRef, meetsRequiremen
 export { runRotation, createInitialState } from './rotation';
 export { compareTeams } from './compare';
 export { validateRotationInput, EngineValidationError, RESERVED_UNIT_IDS } from './validate';
+export { simulateBattle, validateAutoBattleInput, energyGain } from './autoBattle';
 export {
   suggestTurnOrder,
   timelineToEvents,

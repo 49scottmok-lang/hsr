@@ -106,7 +106,7 @@ function moveTo(queue: Clock[], clock: Clock, end: 'front' | 'back'): void {
 }
 
 /** §Action Value, cycles: the first cycle covers (0, first], each later one the next `later` AV. */
-function cycleOf(av: number, cycleAv: { first: number; later: number }): number {
+export function cycleOf(av: number, cycleAv: { first: number; later: number }): number {
   if (av < cycleAv.first || sameAv(av, cycleAv.first)) return 1;
   const k = (av - cycleAv.first) / cycleAv.later;
   const nearest = Math.round(k);

@@ -130,6 +130,7 @@ function checkEnemy(e: EnemyConfig, path: string, unitIds: Set<string>, out: str
     out.push(`${path}.baseDef: must be a finite number >= 0`);
   }
   if (e.maxToughness !== undefined && !isPosNum(e.maxToughness)) out.push(`${path}.maxToughness: must be a positive number`);
+  if (e.spd !== undefined && !isPosNum(e.spd)) out.push(`${path}.spd: must be a positive number`);
   if (e.effectRes !== undefined && !isFiniteNum(e.effectRes)) out.push(`${path}.effectRes: must be a finite number`);
   for (const [type, v] of Object.entries(e.debuffRes ?? {})) {
     if (!(DOT_TYPES as readonly string[]).includes(type)) out.push(`${path}.debuffRes: unknown DoT type "${type}"`);

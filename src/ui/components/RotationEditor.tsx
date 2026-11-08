@@ -1,10 +1,12 @@
-import type { ActionStep, EnemyConfig, RotationEvent } from '../../engine/index';
+import type { EnemyConfig, RotationEvent } from '../../engine/index';
 import { formatNumber, t } from '../i18n';
 import type { ScenarioAction } from '../state/reducer';
 import type { TeamDraft, TeamIndex } from '../state/scenario';
+import { AutoBattlePanel } from './AutoBattlePanel';
 import { IssueList } from './IssueList';
 import { NumberField } from './NumberField';
-import { StepEditor } from './StepEditor';
+import { OrderButtons } from './OrderButtons';
+import { StepList } from './StepList';
 import { TurnOrderPanel } from './TurnOrderPanel';
 import { UnitSelect } from './UnitSelect';
 
@@ -15,25 +17,6 @@ interface RotationEditorProps {
   issues?: ReadonlyMap<string, readonly string[]>;
   dispatch: (action: ScenarioAction) => void;
 }
-
-interface OrderButtonsProps {
-  index: number;
-  length: number;
-  onMove: (toIndex: number) => void;
-  onRemove: () => void;
-}
-
-function OrderButtons({ index, length, onMove, onRemove }: OrderButtonsProps) {
-  return (
-    <>
-      <button type="button" disabled={index === 0} onClick={() => onMove(index - 1)}>{t('rotation.moveUp')}</button>
-      <button type="button" disabled={index === length - 1} onClick={() => onMove(index + 1)}>{t('rotation.moveDown')}</button>
-      <button type="button" onClick={onRemove}>{t('rotation.remove')}</button>
-    </>
-  );
-}
-
-const stepOps = ['hit', 'break', 'apply', 'remove', 'setBroken'] as const;
 
 export function RotationEditor({ draft, enemies, teamIndex, issues, dispatch }: RotationEditorProps) {
   const { team, events, cycles, effectLibrary = [] } = draft;
@@ -47,36 +30,10 @@ export function RotationEditor({ draft, enemies, teamIndex, issues, dispatch }: 
     dispatch({ type: 'appendEvents', teamIndex, events: [event] });
   }
 
-  function addStep(eventIndex: number, op: ActionStep['op']) {
-    const enemyId = enemies[0]?.id ?? '';
-    const allyId = team[0]?.id ?? '';
-    let value: ActionStep;
-    switch (op) {
-      case 'hit':
-        value = { op, hit: { targetId: enemyId, scaling: 'atk', multiplier: 0, tags: ['basic'] } };
-        break;
-      case 'apply': {
-        const effect = effectLibrary[0];
-        if (!effect) return;
-        value = { op, effect, to: effect.kind === 'buff' ? allyId : enemyId };
-        break;
-      }
-      case 'remove':
-        value = { op, effectId: effectLibrary[0]?.id ?? '', from: allyId };
-        break;
-      case 'setBroken':
-        value = { op, enemyId, broken: true };
-        break;
-      case 'break':
-        value = { op, hit: { kind: 'break', targetId: enemyId } };
-        break;
-    }
-    editStep(eventIndex, { type: 'add', value });
-  }
-
   return (
     <fieldset>
       <legend>{t('rotation.title')}</legend>
+      <AutoBattlePanel draft={draft} enemies={enemies} teamIndex={teamIndex} dispatch={dispatch} />
       <TurnOrderPanel team={team} enemies={enemies}
         onAppend={(events) => dispatch({ type: 'appendEvents', teamIndex, events })} />
       <IssueList issues={issues?.get(`teams[${teamIndex}].cycles`)} />
@@ -113,25 +70,9 @@ export function RotationEditor({ draft, enemies, teamIndex, issues, dispatch }: 
                 onMove={(toIndex) => editEvent({ type: 'reorder', index, toIndex })}
                 onRemove={() => editEvent({ type: 'remove', index })} />
               <button type="button" onClick={() => addEvent(event)}>{t('rotation.duplicate')}</button>
-              <ol>
-                {event.steps.map((step, stepIndex) => (
-                  <li key={stepIndex}>
-                    <fieldset>
-                      <legend>{t(`rotation.step.${step.op}`)}</legend>
-                      <IssueList issues={issues?.get(`teams[${teamIndex}].events[${index}].steps[${stepIndex}]`)} />
-                      <StepEditor step={step} units={units} allies={team} enemies={enemies} effects={effectLibrary}
-                        onChange={(value) => editStep(index, { type: 'update', index: stepIndex, value })} />
-                      <OrderButtons index={stepIndex} length={event.steps.length}
-                        onMove={(toIndex) => editStep(index, { type: 'reorder', index: stepIndex, toIndex })}
-                        onRemove={() => editStep(index, { type: 'remove', index: stepIndex })} />
-                    </fieldset>
-                  </li>
-                ))}
-              </ol>
-              {stepOps.map((op) => (
-                <button type="button" key={op} disabled={op === 'apply' && effectLibrary.length === 0}
-                  onClick={() => addStep(index, op)}>{t(`rotation.add.${op}`)}</button>
-              ))}
+              <StepList steps={event.steps} team={team} enemies={enemies} effects={effectLibrary}
+                issuesAt={(stepIndex) => issues?.get(`teams[${teamIndex}].events[${index}].steps[${stepIndex}]`)}
+                onEdit={(edit) => editStep(index, edit)} />
             </fieldset>
           </li>
         ))}

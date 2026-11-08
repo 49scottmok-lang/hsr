@@ -3,6 +3,7 @@ import type { CritMode } from '../engine/index';
 import { CharacterEditor } from './components/CharacterEditor';
 import { DataFooter } from './components/DataFooter';
 import { EffectEditor } from './components/EffectEditor';
+import { EndgameEnemyPicker } from './components/EndgameEnemyPicker';
 import { EnemyEditor } from './components/EnemyEditor';
 import { ImportPanel } from './components/ImportPanel';
 import { IssueList } from './components/IssueList';
@@ -13,6 +14,7 @@ import { formatNumber, t } from './i18n';
 import { decodeScenarioLink, isScenarioLink } from './share/scenario-link';
 import { ShareButton } from './share/ShareButton';
 import { suggestedBreakLevelMultiplier } from './state/break-level';
+import { addStageEnemy, applyStageEnemies } from './state/endgame-enemies';
 import { scenarioReducer } from './state/reducer';
 import { editorIssues, scenarioIssues } from './state/scenario-issues';
 import { importScenario, type ScenarioImportResult } from './state/scenario-json';
@@ -93,6 +95,10 @@ export default function App() {
       result = { ok: false, issues: ['Scenario: unreadable file'] };
     }
     if (read === fileRead.current) loadScenario(result);
+  }
+
+  function unitIds(): string[] {
+    return [...scenario.enemies, ...scenario.teams.flatMap(({ team }) => team)].map(({ id }) => id);
   }
 
   function addEnemy() {
@@ -185,6 +191,10 @@ export default function App() {
         <section id="enemies" className="panel" aria-label={t('enemy.shared')}>
           <h2>{t('enemy.shared')}</h2>
           <IssueList issues={issues.get('enemies')} />
+          <EndgameEnemyPicker
+            onApplyWave={(wave) => dispatch({ type: 'setEnemies', enemies: applyStageEnemies(scenario.enemies, wave, unitIds()) })}
+            onAdd={(enemy) => dispatch({ type: 'setEnemies', enemies: addStageEnemy(scenario.enemies, enemy, unitIds()) })}
+          />
           <div className="card-grid">
             {scenario.enemies.map((enemy, index) => (
               <EnemyEditor

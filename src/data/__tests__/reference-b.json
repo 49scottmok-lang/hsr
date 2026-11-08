@@ -24,6 +24,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "1001201": {
@@ -77,6 +78,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 100,
    "unreleased": false,
    "traces": {
     "1002201": {
@@ -130,6 +132,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "1003201": {
@@ -183,6 +186,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "1004201": {
@@ -236,6 +240,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "1005201": {
@@ -289,6 +294,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 110,
    "unreleased": false,
    "traces": {
     "1006201": {
@@ -342,6 +348,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 110,
    "unreleased": false,
    "traces": {
     "1008201": {
@@ -395,6 +402,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "1009201": {
@@ -448,6 +456,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 110,
    "unreleased": false,
    "traces": {
     "1013201": {
@@ -501,6 +510,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 360,
    "unreleased": false,
    "traces": {
     "1014201": {
@@ -554,6 +564,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 220,
    "unreleased": false,
    "traces": {
     "1015201": {
@@ -607,6 +618,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "1101201": {
@@ -660,6 +672,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "1102201": {
@@ -713,6 +726,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 100,
    "unreleased": false,
    "traces": {
     "1103201": {
@@ -766,6 +780,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 100,
    "unreleased": false,
    "traces": {
     "1104201": {
@@ -819,6 +834,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 90,
    "unreleased": false,
    "traces": {
     "1105201": {
@@ -872,6 +888,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 110,
    "unreleased": false,
    "traces": {
     "1106201": {
@@ -925,6 +942,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 110,
    "unreleased": false,
    "traces": {
     "1107201": {
@@ -978,6 +996,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "1108201": {
@@ -1031,6 +1050,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "1109201": {
@@ -1084,6 +1104,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 100,
    "unreleased": false,
    "traces": {
     "1110201": {
@@ -1137,6 +1158,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 130,
    "unreleased": false,
    "traces": {
     "1111201": {
@@ -1190,6 +1212,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 130,
    "unreleased": false,
    "traces": {
     "1112201": {
@@ -1243,6 +1266,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 140,
    "unreleased": false,
    "traces": {
     "1201201": {
@@ -1296,6 +1320,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 130,
    "unreleased": false,
    "traces": {
     "1202201": {
@@ -1349,6 +1374,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 100,
    "unreleased": false,
    "traces": {
     "1203201": {
@@ -1402,6 +1428,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 130,
    "unreleased": false,
    "traces": {
     "1204201": {
@@ -1455,6 +1482,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 130,
    "unreleased": false,
    "traces": {
     "1205201": {
@@ -1508,6 +1536,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "1206201": {
@@ -1561,6 +1590,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 130,
    "unreleased": false,
    "traces": {
     "1207201": {
@@ -1614,6 +1644,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 135,
    "unreleased": false,
    "traces": {
     "1208201": {
@@ -1667,6 +1698,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 140,
    "unreleased": false,
    "traces": {
     "1209201": {
@@ -1720,6 +1752,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "1210201": {
@@ -1773,6 +1806,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 100,
    "unreleased": false,
    "traces": {
     "1211201": {
@@ -1826,6 +1860,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 140,
    "unreleased": false,
    "traces": {
     "1212201": {
@@ -1879,6 +1914,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 140,
    "unreleased": false,
    "traces": {
     "1213201": {
@@ -1932,6 +1968,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "1214201": {
@@ -1985,6 +2022,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 140,
    "unreleased": false,
    "traces": {
     "1215201": {
@@ -2038,6 +2076,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 140,
    "unreleased": false,
    "traces": {
     "1217201": {
@@ -2091,6 +2130,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 100,
    "unreleased": false,
    "traces": {
     "1218201": {
@@ -2144,6 +2184,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 12,
    "unreleased": false,
    "traces": {
     "1220201": {
@@ -2197,6 +2238,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 240,
    "unreleased": false,
    "traces": {
     "1221201": {
@@ -2250,6 +2292,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 110,
    "unreleased": false,
    "traces": {
     "1222201": {
@@ -2303,6 +2346,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "1223201": {
@@ -2356,6 +2400,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 110,
    "unreleased": false,
    "traces": {
     "1224201": {
@@ -2409,6 +2454,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 130,
    "unreleased": false,
    "traces": {
     "1225201": {
@@ -2462,6 +2508,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 110,
    "unreleased": false,
    "traces": {
     "1301201": {
@@ -2515,6 +2562,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 180,
    "unreleased": false,
    "traces": {
     "1302201": {
@@ -2568,6 +2616,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 130,
    "unreleased": false,
    "traces": {
     "1303201": {
@@ -2621,6 +2670,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 110,
    "unreleased": false,
    "traces": {
     "1304201": {
@@ -2674,6 +2724,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 140,
    "unreleased": false,
    "traces": {
     "1305201": {
@@ -2727,6 +2778,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 110,
    "unreleased": false,
    "traces": {
     "1306201": {
@@ -2780,6 +2832,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "1307201": {
@@ -2833,6 +2886,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 9,
    "unreleased": false,
    "traces": {
     "1308201": {
@@ -2886,6 +2940,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 160,
    "unreleased": false,
    "traces": {
     "1309201": {
@@ -2939,6 +2994,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 240,
    "unreleased": false,
    "traces": {
     "1310201": {
@@ -2992,6 +3048,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 100,
    "unreleased": false,
    "traces": {
     "1312201": {
@@ -3045,6 +3102,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 130,
    "unreleased": false,
    "traces": {
     "1313201": {
@@ -3098,6 +3156,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 140,
    "unreleased": false,
    "traces": {
     "1314201": {
@@ -3151,6 +3210,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 115,
    "unreleased": false,
    "traces": {
     "1315201": {
@@ -3204,6 +3264,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 140,
    "unreleased": false,
    "traces": {
     "1317201": {
@@ -3257,6 +3318,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 130,
    "unreleased": false,
    "traces": {
     "1321201": {
@@ -3310,6 +3372,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 220,
    "unreleased": false,
    "traces": {
     "1401201": {
@@ -3363,6 +3426,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 350,
    "unreleased": false,
    "traces": {
     "1402201": {
@@ -3416,6 +3480,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "1403201": {
@@ -3469,6 +3534,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 160,
    "unreleased": false,
    "traces": {
     "1404201": {
@@ -3522,6 +3588,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 140,
    "unreleased": false,
    "traces": {
     "1405201": {
@@ -3575,6 +3642,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 130,
    "unreleased": false,
    "traces": {
     "1406201": {
@@ -3628,6 +3696,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "1407201": {
@@ -3681,6 +3750,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 12,
    "unreleased": false,
    "traces": {
     "1408201": {
@@ -3734,6 +3804,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 140,
    "unreleased": false,
    "traces": {
     "1409201": {
@@ -3787,6 +3858,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 110,
    "unreleased": false,
    "traces": {
     "1410201": {
@@ -3840,6 +3912,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 130,
    "unreleased": false,
    "traces": {
     "1412201": {
@@ -3893,6 +3966,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 240,
    "unreleased": false,
    "traces": {
     "1413201": {
@@ -3946,6 +4020,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 135,
    "unreleased": false,
    "traces": {
     "1414201": {
@@ -3999,6 +4074,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 24,
    "unreleased": false,
    "traces": {
     "1415201": {
@@ -4052,6 +4128,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 160,
    "unreleased": false,
    "traces": {
     "1501201": {
@@ -4105,6 +4182,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 180,
    "unreleased": false,
    "traces": {
     "1502201": {
@@ -4158,6 +4236,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 180,
    "unreleased": false,
    "traces": {
     "1503201": {
@@ -4211,6 +4290,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 150,
    "unreleased": false,
    "traces": {
     "1504201": {
@@ -4264,6 +4344,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 480,
    "unreleased": false,
    "traces": {
     "1505201": {
@@ -4317,6 +4398,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 60,
    "unreleased": false,
    "traces": {
     "1506201": {
@@ -4370,6 +4452,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 160,
    "unreleased": false,
    "traces": {
     "1507201": {
@@ -4423,6 +4506,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 160,
    "unreleased": false,
    "traces": {
     "1508201": {
@@ -4476,6 +4560,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 360,
    "unreleased": false,
    "traces": {
     "1509201": {
@@ -4529,6 +4614,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 150,
    "unreleased": false,
    "traces": {
     "1510201": {
@@ -4582,6 +4668,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 8,
    "unreleased": true,
    "traces": {
     "1511201_4.6v3": {
@@ -4635,6 +4722,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 140,
    "unreleased": false,
    "traces": {
     "1512201": {
@@ -4688,6 +4776,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 130,
    "unreleased": false,
    "traces": {
     "1513201": {
@@ -4741,6 +4830,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "8001201": {
@@ -4794,6 +4884,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "8002201": {
@@ -4847,6 +4938,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "8003201": {
@@ -4900,6 +4992,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "8004201": {
@@ -4953,6 +5046,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 140,
    "unreleased": false,
    "traces": {
     "8005201": {
@@ -5006,6 +5100,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 140,
    "unreleased": false,
    "traces": {
     "8006201": {
@@ -5059,6 +5154,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 160,
    "unreleased": false,
    "traces": {
     "8007201": {
@@ -5112,6 +5208,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 160,
    "unreleased": false,
    "traces": {
     "8008201": {
@@ -5165,6 +5262,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 160,
    "unreleased": false,
    "traces": {
     "8009201": {
@@ -5218,6 +5316,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 160,
    "unreleased": false,
    "traces": {
     "8010201": {
@@ -5271,6 +5370,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "11004201": {
@@ -5324,6 +5424,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "11005201": {
@@ -5377,6 +5478,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 110,
    "unreleased": false,
    "traces": {
     "11006201": {
@@ -5430,6 +5532,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "11102201": {
@@ -5483,6 +5586,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 130,
    "unreleased": false,
    "traces": {
     "11205201": {
@@ -5536,6 +5640,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 140,
    "unreleased": false,
    "traces": {
     "11212201": {
@@ -5589,6 +5694,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 140,
    "unreleased": false,
    "traces": {
     "11217201": {
@@ -5642,6 +5748,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 110,
    "unreleased": false,
    "traces": {
     "11306201": {
@@ -5695,6 +5802,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 120,
    "unreleased": false,
    "traces": {
     "11307201": {
@@ -5748,6 +5856,7 @@
     "CRIT Rate": 0.05,
     "CRIT DMG": 0.5
    },
+   "maxSp": 240,
    "unreleased": false,
    "traces": {
     "11310201": {

@@ -121,4 +121,13 @@ describe('formulas', () => {
     expect(f.relicMainStatValue(10, 2, 15)).toBe(40); // 10 + 2 × 15
     expect(f.relicMainStatValue(0.05, 0.01, 12)).toBeCloseTo(0.17, 12); // 0.05 + 0.12
   });
+
+  // TEST FIXTURE — NOT GAME DATA: synthetic base, ratios and additions.
+  it('enemyStageStat = base × every ratio + add', () => {
+    expect(f.enemyStageStat(1000, [], 0)).toBe(1000);
+    expect(f.enemyStageStat(1000, [1.5, 2, 4], 0)).toBe(12000); // 1000 × 1.5 × 2 × 4
+    expect(f.enemyStageStat(100, [1.2, 1.1], 10)).toBeCloseTo(142, 9); // 100 × 1.32 + 10
+    expect(f.enemyStageStat(210, [1, 1, 1, 5], 0)).toBe(1050); // 210 × 5
+    expect(f.STANCE_PER_TOUGHNESS).toBe(3);
+  });
 });

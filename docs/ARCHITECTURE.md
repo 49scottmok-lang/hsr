@@ -46,16 +46,17 @@ Engine independence is enforced three ways (and the same three cover `src/data` 
 | `rotation.ts` | `createInitialState`, `runRotation` (manual rotation engine). | yes |
 | `compare.ts` | `compareTeams`. | yes |
 | `timeline.ts` | Turn order helper (E6): `suggestTurnOrder`, `timelineToEvents`, `validateTimelineInput`, `ACTION_GAUGE`, `CHALLENGE_CYCLE_AV`, `MAX_TIMELINE_TURNS`. | yes |
+| `autoBattle.ts` | Auto battle (D7): `simulateBattle`, `validateAutoBattleInput`, `energyGain`. | yes |
 | `validate.ts` | `validateRotationInput`, `EngineValidationError`, `RESERVED_UNIT_IDS` (unit IDs that validation rejects). | yes |
 | `index.ts` | **Public API.** The only import path for UI code. | — |
 
-`formulas` (exported as a namespace) also holds the stat-table level formulas `promotedBaseStat` and `relicMainStatValue` (added 2026-11-07, `FORMULAS.md § Level scaling`), the break formulas `BREAK_ELEMENT_FACTOR`, `breakToughnessFactor`, `breakBaseDmg`, `superBreakToughness`, `superBreakBaseDmg` and `breakEffectMultiplier` (E4, `FORMULAS.md § Break DMG`), `dotApplicationChance` (E8, `FORMULAS.md § DoT application chance`), and `combinedWeaken` (E1, `FORMULAS.md § Weaken`).
+`formulas` (exported as a namespace) also holds the stat-table level formulas `promotedBaseStat` and `relicMainStatValue` (added 2026-11-07, `FORMULAS.md § Level scaling`), the break formulas `BREAK_ELEMENT_FACTOR`, `breakToughnessFactor`, `breakBaseDmg`, `superBreakToughness`, `superBreakBaseDmg` and `breakEffectMultiplier` (E4, `FORMULAS.md § Break DMG`), `dotApplicationChance` (E8, `FORMULAS.md § DoT application chance`), `combinedWeaken` (E1, `FORMULAS.md § Weaken`), and `enemyStageStat` and `STANCE_PER_TOUGHNESS` (D6, `FORMULAS.md § Enemy stats`, used by `src/data`).
 
 ## Data and import modules
 
 | Module | Public API (`index.ts`) |
 |---|---|
-| `src/data` | `DATA_TABLES`, record types (`CharacterRecord`, `LightConeRecord`, `RelicMainStatRecord`, `SetBonusRecord`, `TraceRecord`), `validateDataTables`, lookups `characterBase`, `lightConeBase`, `relicMainStat`, `setBonus2pc`, `statTrace`, `breakLevelMultiplier` (E4) (each returns `{ ok: true, value } \| { ok: false, reason }` or `undefined`), the pinned `DATA_COMMIT` / `DATA_GAME_VERSION`, `DATA_CREDITS` / `GAME_DATA_NOTICE` (D4), and the Traditional Chinese `NAME_TABLES` with `validateNameTables` and the lookups `characterName`, `lightConeName`, `relicSetName`, `pathName` (D5). |
+| `src/data` | `DATA_TABLES`, record types (`CharacterRecord`, `LightConeRecord`, `RelicMainStatRecord`, `SetBonusRecord`, `TraceRecord`), `validateDataTables`, lookups `characterBase`, `lightConeBase`, `relicMainStat`, `setBonus2pc`, `statTrace`, `breakLevelMultiplier` (E4) (each returns `{ ok: true, value } \| { ok: false, reason }` or `undefined`), the pinned `DATA_COMMIT` / `DATA_GAME_VERSION`, `DATA_CREDITS` / `GAME_DATA_NOTICE` (D4), and the Traditional Chinese `NAME_TABLES` with `validateNameTables` and the lookups `characterName`, `lightConeName`, `relicSetName`, `pathName` (D5). Endgame enemies (D6): `ENEMY_TABLES` with `validateEnemyTables`, `endgameStages(tables, mode)`, `stageEnemies(tables, stageId)` (each enemy scaled to its stage: level, HP, DEF, SPD, displayed Toughness, Effect RES) and `stageEnemyConfig(stageEnemy, unitId)` (→ engine `EnemyConfig`). |
 | `src/import` | `parseArchive(json)` (I1): checks and normalises a Reliquary Archiver export, drops the UID, gacha and materials, and returns `{ ok: true, archive, warnings } \| { ok: false, errors }`. `importArchive(archive, tables)` (I2) returns `{ builds, report }`: one `CharacterBuild` per character the tables cover, plus an `ImportReport` whose items (`lookedUp`, `toEnter`, `problems`) are structured with a `kind` so the UI can translate them. |
 
 `CombatState.units` is a null-prototype record keyed by unit ID (added 2026-11-07), so read it with indexing, `Object.keys` or `Object.values` rather than `Object.prototype` methods such as `units.hasOwnProperty`.
@@ -67,7 +68,7 @@ All engine functions are deterministic. None mutates its inputs, and this is tes
 Full definitions are in `src/engine/types.ts`.
 
 - **`CharacterBuild`**: id, optional `characterId` (game character ID for portraits and names; display metadata the engine never reads), level, element, base HP/ATK/DEF/SPD, optional base CRIT, optional `breakLevelMultiplier` (E4), `lightCone` (base stats plus passive `EffectDef[]`), `relics` (summed `StatModifier[]` plus set-bonus `EffectDef[]`), `traces`, `passiveEffects`.
-- **`EnemyConfig`**: id, level, optional `baseDef`, per-element `res`, initial `broken`, optional `maxToughness` (displayed units, E4), optional `effectRes` (E8), optional `debuffRes` per DoT type (E12), `passiveEffects`.
+- **`EnemyConfig`**: id, level, optional `baseDef`, per-element `res`, initial `broken`, optional `maxToughness` (displayed units, E4), optional `effectRes` (E8), optional `debuffRes` per DoT type (E12), optional `spd` (D6: for the turn order helper's caller only; `runRotation` never reads it), `passiveEffects`.
 - **`StatModifier`**: `{ stat, value, condition? }`. The condition can filter on hit element, damage tags (any-of), or counterpart unit IDs.
 - **`EffectDef`** (buff or debuff): id, kind, modifiers, optional `conversions` (`StatConversion[]`, E7), `DurationSpec`, `maxStacks`, `stacking` (E5), `source`.
 - **`StatConversion`** (E7): `to` += min(`cap`, `ratio` × stacks × max(0, `from` − `threshold`)), with `from` one of `CONVERSION_SOURCES`, read from the holder (default, in the hit context) or the effect's source (`fromUnit: 'source'`, context-free), without other conversions.
@@ -134,6 +135,20 @@ timelineToEvents(result) → RotationEvent[]   (empty 'turn' events, ids "turn-<
 - **Scope.** Only turns. Ultimates, follow-ups, energy, skill points and kit-driven advances are not simulated: the user enters them (as adjustments or `extra` events). Formulas and tags: `FORMULAS.md § Action Value`.
 - **Why not an APL simulator (E9).** R2's APL (`action on target if condition`, first matching line wins, ultimates in their own windows) needs energy, skill points, kit state and targeting for every character. This project ships no kit data (SPEC D5, AGENTS rule 3), so an APL would run on invented numbers. The helper takes R2's timeline layer only, and keeps the manual event list as the authority.
 - Throws `EngineValidationError` (issues in the same English style) on invalid input.
+
+## Auto battle (D7)
+
+```
+simulateBattle({ team, enemies, kits, avLimit, cycleAv?, skillPoints: { start, max } })
+  → { events, actions, truncated, cycles? }
+validateAutoBattleInput(input) → string[]
+```
+
+- **Input.** One `AutoKit` per team member that should act: `basic` (steps, Energy, skill points gained), optional `skill` (skill points spent) and `ultimate` (`energyCost`), `startEnergy`, `useSkill`, `skillPointReserve`, `useUltimate`. Every enemy needs `EnemyConfig.spd`. All numbers are user input; the UI may pre-fill `ultimate.energyCost` from `characterEnergyCost` in `src/data`.
+- **Output.** `events` is an ordinary `RotationEvent[]` (ids `auto-<n>`; turns as `turn`, Ultimates as `extra`), which the UI puts into the team's rotation and `runRotation` scores. `actions` is a log, one entry per event, with the action kind, AV, cycle, skill points after it and the actor's Energy after it.
+- **Rules.** `FORMULAS.md § Auto battle`. The turn order is `suggestTurnOrder` with static SPD; actions never move gauges.
+- **Why semi-auto.** The project ships no kit data (SPEC D5, AGENTS rule 3), so the user enters each kit once and the simulator only repeats it under the Energy and skill point rules. The generated rotation stays editable by hand.
+- Throws `EngineValidationError` on invalid input; paths name the kit (`kits[i].skill.steps[0]…`).
 
 ## Team comparison
 

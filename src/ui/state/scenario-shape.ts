@@ -99,6 +99,7 @@ const enemy = shape({
   effectRes: optional(number),
   debuffRes: optional(numberRecord),
   maxToughness: optional(number),
+  spd: optional(number),
   broken: optional(boolean),
   res: numberRecord,
 });
@@ -160,12 +161,31 @@ const event = shape({
   label: optional(string),
   steps: list(step),
 });
+const kitAction = shape({ steps: list(step), energy: optional(number), skillPoints: optional(number) });
+const autoBattle = shape({
+  kits: list(shape({
+    unitId: string,
+    startEnergy: optional(number),
+    basic: kitAction,
+    skill: kitAction,
+    ultimate: shape({ steps: list(step), energy: optional(number), energyCost: optional(number) }),
+    useSkill: boolean,
+    skillPointReserve: optional(number),
+    useUltimate: boolean,
+  })),
+  avLimit: optional(number),
+  skillPointStart: optional(number),
+  skillPointMax: optional(number),
+  firstCycle: optional(number),
+  laterCycle: optional(number),
+});
 const team = shape({
   label: string,
   team: list(character),
   events: list(event),
   effectLibrary: optional(list(effect)),
   cycles: optional(number),
+  autoBattle: optional(autoBattle),
 });
 const teams = list(team);
 const scenario = shape({

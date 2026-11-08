@@ -1,7 +1,8 @@
 import type { ActionStep, CharacterBuild, CritMode, EffectDef, EnemyConfig, RotationEvent } from '../../engine/index';
+import type { AutoBattleDraft } from './auto-battle';
 import type { Scenario, TeamDraft, TeamIndex } from './scenario';
 
-type ListEdit<T> =
+export type ListEdit<T> =
   | { type: 'add'; value: T }
   | { type: 'update'; index: number; value: T }
   | { type: 'remove'; index: number }
@@ -10,6 +11,7 @@ type ListEdit<T> =
 export type ScenarioAction =
   | { type: 'replaceScenario'; scenario: Scenario }
   | { type: 'editEnemies'; edit: ListEdit<EnemyConfig> }
+  | { type: 'setEnemies'; enemies: readonly EnemyConfig[] }
   | { type: 'setCritMode'; critMode: CritMode }
   | ({ teamIndex: TeamIndex } & (
     | { type: 'editCharacters'; edit: ListEdit<CharacterBuild> }
@@ -18,13 +20,15 @@ export type ScenarioAction =
     | { type: 'editEffects'; edit: ListEdit<EffectDef> }
     | { type: 'editSteps'; eventIndex: number; edit: ListEdit<ActionStep> }
     | { type: 'setCycles'; cycles: number | undefined }
+    | { type: 'setAutoBattle'; autoBattle: AutoBattleDraft | undefined }
+    | { type: 'replaceRotation'; events: readonly RotationEvent[]; cycles: number | undefined }
   ));
 
 function hasIndex(items: readonly unknown[], index: number): boolean {
   return Number.isInteger(index) && index >= 0 && index < items.length;
 }
 
-function editList<T>(items: readonly T[], edit: ListEdit<T>): readonly T[] {
+export function editList<T>(items: readonly T[], edit: ListEdit<T>): readonly T[] {
   if (edit.type === 'add') return [...items, edit.value];
   if (!hasIndex(items, edit.index)) return items;
   switch (edit.type) {
@@ -40,6 +44,7 @@ function editList<T>(items: readonly T[], edit: ListEdit<T>): readonly T[] {
 export function scenarioReducer(scenario: Scenario, action: ScenarioAction): Scenario {
   if (action.type === 'replaceScenario') return action.scenario;
   if (action.type === 'setCritMode') return { ...scenario, critMode: action.critMode };
+  if (action.type === 'setEnemies') return { ...scenario, enemies: action.enemies };
   if (action.type === 'editEnemies') {
     const enemies = editList(scenario.enemies, action.edit);
     return enemies === scenario.enemies ? scenario : { ...scenario, enemies };
@@ -102,6 +107,20 @@ export function scenarioReducer(scenario: Scenario, action: ScenarioAction): Sce
       const { cycles, ...rest } = draft;
       if (cycles === action.cycles) return scenario;
       updated = action.cycles === undefined ? rest : { ...rest, cycles: action.cycles };
+      break;
+    }
+    case 'setAutoBattle': {
+      const { autoBattle, ...rest } = draft;
+      if (autoBattle === action.autoBattle) return scenario;
+      updated = action.autoBattle === undefined ? rest : { ...rest, autoBattle: action.autoBattle };
+      break;
+    }
+    case 'replaceRotation': {
+      // The generated rotation replaces the old one, so its cycle count goes too.
+      const { cycles: _replaced, ...rest } = draft;
+      updated = action.cycles === undefined
+        ? { ...rest, events: action.events }
+        : { ...rest, events: action.events, cycles: action.cycles };
       break;
     }
   }

@@ -50,6 +50,9 @@ export function TurnOrderPanel({ team, enemies, onAppend }: TurnOrderPanelProps)
   const { adjustments, avLimit, firstCycle, laterCycle, enemySpeeds } = settings;
   const showCycle = firstCycle !== undefined || laterCycle !== undefined;
 
+  // A value typed here wins; otherwise the enemy's own SPD (set by the endgame picker or the enemy editor).
+  const enemySpeed = (enemy: EnemyConfig) => enemySpeeds.has(enemy.id) ? enemySpeeds.get(enemy.id) : enemy.spd;
+
   function edit(patch: Partial<Settings>) {
     setSettings({ ...settings, ...patch });
     setPreview(undefined);
@@ -58,7 +61,7 @@ export function TurnOrderPanel({ team, enemies, onAppend }: TurnOrderPanelProps)
   function previewOrder() {
     try {
       const result = suggestTurnOrder({
-        units: [...allies, ...enemies.map(({ id }) => ({ id, side: 'enemy' as const, spd: enemySpeeds.get(id) ?? NaN }))],
+        units: [...allies, ...enemies.map((enemy) => ({ id: enemy.id, side: 'enemy' as const, spd: enemySpeed(enemy) ?? NaN }))],
         avLimit: avLimit ?? NaN,
         cycleAv: showCycle ? { first: firstCycle ?? NaN, later: laterCycle ?? NaN } : undefined,
         adjustments: adjustments.map(({ afterTurn, unitId, turn, targetId, advance, spd, actNow }) => ({
@@ -100,11 +103,12 @@ export function TurnOrderPanel({ team, enemies, onAppend }: TurnOrderPanelProps)
             .replace('{spd}', formatNumber(spd))}</li>
         ))}</ul>}
         <div className="turn-order-fields">
-          {enemies.map(({ id, name }, index) => (
-            <NumberField key={index} label={t('timeline.enemySpeed').replace('{name}', () => name || id)}
-              value={enemySpeeds.get(id)}
-              onChange={(value) => edit({ enemySpeeds: new Map(enemySpeeds).set(id, value) })} />
-          ))}
+          {enemies.map((enemy, index) => {
+            const { id, name } = enemy;
+            return <NumberField key={index} label={t('timeline.enemySpeed').replace('{name}', () => name || id)}
+              value={enemySpeed(enemy)}
+              onChange={(value) => edit({ enemySpeeds: new Map(enemySpeeds).set(id, value) })} />;
+          })}
         </div>
       </fieldset>
       <div className="turn-order-fields">

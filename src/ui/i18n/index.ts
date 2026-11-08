@@ -87,6 +87,12 @@ const issuePatterns: readonly (readonly [RegExp, TranslationKey])[] = [
   [/^needs advance, spd or actNow$/, 'issue.timelineAdjustment'],
   [/^actNow must be true when set$/, 'issue.timelineActNow'],
   [/^advance must be a finite number$/, 'issue.timelineAdvance'],
+  [/^must be an integer >= 1$/, 'issue.positiveInteger'],
+  [/^must be an integer >= 0$/, 'issue.nonNegativeInteger'],
+  [/^must be an integer from 0 to skillPoints\.max$/, 'issue.autoSkillPointStart'],
+  [/^is required for the auto battle$/, 'issue.autoEnemySpeed'],
+  [/^unit "(.*)" is not a team member$/s, 'issue.autoKitUnit'],
+  [/^duplicate kit for "(.*)"$/s, 'issue.autoDuplicateKit'],
 ];
 
 export function translateIssue(issue: string): string {
