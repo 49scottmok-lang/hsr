@@ -17,7 +17,10 @@ Every formula below maps to one function in `src/engine/formulas.ts`. All percen
 - **S2**: GenshinTheory, "hsr damage" (`genshintheory.github.io/hsr-damage.html`). Read in full. It is an early, pre-release write-up.
 - **R1** (also **B** in `DATA_SOURCES.md`): Fribbels HSR Optimizer, `github.com/fribbels/hsr-optimizer`, MIT license, commit `ac5e9d6` (2026-11-04). The file is `src/lib/optimization/engine/damage/damageCalculator.ts`, mainly `computeCommonMultipliers`, `calculateDefMulti`, `getCritMultiplier` and `DotDamageFunction`. It was read on 2026-11-07. No code was copied; only the formulas were compared.
 - **R1′**: the same repository at the same commit (`ac5e9d6`), stat and buff pipeline, read on 2026-11-07 for E1: `src/lib/optimization/context/calculateContext.ts` (`sumCharacterBase`), `src/lib/optimization/calculateStats.ts` (`calculateBaseStats`, `sumFlatStat`, `applyPercentStats`) and `src/lib/optimization/engine/container/computedStatsContainer.ts` (`MULTIPLICATIVE_BOOST`). Formulas compared only; no code copied.
-- **R2**: Nous StarRailSim (`starrailsim.com`). This is a closed-source cloud simulator that claims ≤0.5% error against the game. It publishes **no formulas**, so it cannot verify anything here. It is a design reference for a future AV/APL simulator (TASKS E6).
+- **R2**: Nous StarRailSim (`starrailsim.com`). This is a closed-source cloud simulator that claims ≤0.5% error against the game. It publishes **no formulas**, so it cannot verify anything here. Its APL reference page (`starrailsim.com/apl`, read in the browser pane on 2026-11-08) was the design reference for E9/E6.
+- **S4**: KQM Star Rail Library, "Turn Order Mechanics" (`srl.keqingmains.com/combat-mechanics/turn-order/turn-order-mechanics`). Read in full on 2026-11-08. A community theorycrafting page; no licence shown. Only the mechanics are referenced.
+- **S5**: GenshinTheory, "hsr speed" (`genshintheory.github.io/hsr-speed.html`). Read in full on 2026-11-08. Its SPD-change formula, as extracted, contradicts its own derivation, so only its start/reset and negative-gauge statements are used.
+- The Fandom "Speed" page returned a bot check on 2026-11-08 and was **not** read.
 - **S3**: Honkai: Star Rail Wiki (Fandom), "Damage" (`honkai-star-rail.fandom.com/wiki/Damage`), section "General Damage Formula". Read in full on 2026-11-07, after the user cleared the site's bot check in the browser pane. Text is CC-BY-SA. Only the formulas are referenced; none of the page's game data (hit splits, ability values) is used.
 - The sub-pages (Damage RES, Vulnerability, CRIT Rate, DEF) were **not** read, because each one triggered a new bot check.
 
@@ -316,11 +319,35 @@ Hand-computed tests (`src/engine/__tests__/dot-chance.test.ts`; the unweighted D
 
 ## Action Value
 
+Used only by the turn order helper (E6, `suggestTurnOrder` in `src/engine/timeline.ts`). `runRotation` stays manual (SPEC D1).
+
 ```
-AV = 10000 / SPD
+gauge   = 10000 at battle start and again right after each of the unit's turns
+AV      = gauge / SPD                         (full turn: 10000 / SPD)
+SPD change:      gauge kept, so AV_new = AV_old × SPD_old / SPD_new
+Advance/Delay X: gauge_new = gauge_old − X × 10000   (X > 0 advance, X < 0 delay)
 ```
 
-**[UNVERIFIED]**. This is a utility only, and the rotation engine does not use it.
+- **[SOURCED]** S4: the gauge starts at 10000 for every unit, a unit acts when it reaches 0, and it refills to 10000 after the unit acts. AV = gauge / SPD. A SPD change scales the current AV by old / new SPD. Advance and Delay add or subtract a percentage **of 10000** (not of the remaining gauge). S5 gives the same start and reset. R2's APL reference also says (in its Chinese page) that the next turn comes a full 10000 / current SPD later.
+- **[SOURCED]** S4, ties: characters sort before enemies, and the lower slot acts first. **[UNVERIFIED]** S4 describes this for the battle-start order and a stable sort afterwards. The engine applies the same rule to every tie mid-battle.
+- **[UNVERIFIED]** No floor at 0. S4 gives the formula with no floor; S5 says a negative gauge is allowed and puts the unit first in line. The engine keeps negative gauges: the most advanced unit acts first, at the current AV (time never goes back).
+- **[ENGINE]** Ultimates, follow-ups and extra actions are not turns. They do not touch any gauge, and the helper does not list them; the user adds them as `extra` events. R2 says the same of its own AV readings: only turns count. Effects that cancel or insert turns in the game (e.g. Frozen, Toughness Break delay) must be entered as adjustments.
+- **[ENGINE]** An adjustment triggered by a turn is applied right after that turn ends, after the actor's gauge refill. One that targets the actor therefore changes its next turn.
+- **[ENGINE]** Turns at exactly `avLimit` are included. Ties are detected with a relative tolerance of 1e-9 (so 3 × 10000/3 ties with 10000). No AV value is rounded.
+- **[UNVERIFIED]** Cycles. Community guides say Memory of Chaos counts a first cycle of 150 AV and 100 AV per later cycle; no read source confirms it. The engine has **no default**: the caller supplies `cycleAv`, and a turn at exactly a boundary belongs to the earlier cycle **[ENGINE]**.
+
+Hand-computed tests (`src/engine/__tests__/timeline.test.ts`; synthetic SPD values):
+
+| Case | Arithmetic | Order |
+|---|---|---|
+| SPD 134 vs enemy SPD 100, limit 200 | 10000/134 = 74.63, 149.25, 223.88 (out); 100, 200 | a1, e1, a2, e2 |
+| SPD 100 and 200; a advanced 25% after b's turn 1 | a's gauge at 50: 10000 − 50 × 100 = 5000 − 2500 = 2500 → 50 + 25 = 75 | b@50, a@75, b@100, b@150, a@175, b@200 |
+| Same, but a's SPD becomes 125 instead | 5000 / 125 = 40 → 90, then 90 + 80 = 170 | b@50, a@90, b@100, b@150, a@170, b@200 |
+| Enemy delayed 25% at start | 12500 / 100 = 125 | a@100, e@125, a@200 |
+| Advance 150% and 100% at start | gauges −5000 and 0: both act at 0, more advanced first | a@0, b@0, then the tie at 100 by slot |
+| Cycles first 150, later 100 | 50, 100, 150 → 1; 200, 250 → 2; 300 → 3 | |
+
+Function: `formulas.actionValue` (a full gauge, 10000 / SPD), used by `suggestTurnOrder`.
 
 ## Rounding
 

@@ -76,6 +76,9 @@ R1 is a widely used optimizer, but it is not the game. If game testing contradic
 | A9 | *(E7)* A stat conversion reads its source stat **without** other conversions (single pass), so conversions never chain. `fromUnit: 'source'` reads the source unit's context-free stats. The cap applies after stacks. | `stats.ts` |
 | A10 | *(E8)* Enemy Effect RES defaults to 0 when `EnemyConfig.effectRes` is not set. | `damage.ts` |
 | A11 | *(E4 follow-up)* Break hits carry only their own tag (`break` or `superBreak`). An effect that should boost both must list both. `breakEfficiency` / `superBreakDmg` modifiers are read in the Super Break hit's context, not the triggering hit's. | `breakDamage.ts` |
+| A12 | *(E6)* AV ties mid-battle are broken like battle-start ties (allies first, then slot). The source describes the battle-start order and a stable sort only. | `timeline.ts` |
+| A13 | *(E6)* An action gauge can go below 0 after a large advance. That unit acts at the current AV, before units with a higher gauge. | `timeline.ts` |
+| A14 | *(E6)* An adjustment triggered by a turn applies after that turn ends, after the actor's gauge refill. | `timeline.ts` |
 
 ## Out of scope for the MVP
 
@@ -85,7 +88,7 @@ R1 is a widely used optimizer, but it is not the game. If game testing contradic
   - The level multiplier is checked against R1 only at level 80. Weaken and Mitigation on break hits, and the broken factor at the moment of the break, are **[UNVERIFIED]**.
   - Toughness is not simulated: the user states the enemy's max Toughness (displayed units) and each Super Break step's Toughness reduction.
 - **Toughness simulation.** Weakness break is a manual toggle (`setBroken`).
-- **SPD/AV timeline simulation.** Rotations are manual. `actionValue` exists as a utility only.
+- **SPD/AV timeline simulation.** `runRotation` stays manual. The turn order helper (E6, `suggestTurnOrder`) only suggests the order of turns from SPD and **user-entered** advances, delays and SPD changes. It knows no kit: ultimates, follow-ups, energy, skill points, Frozen, Toughness Break delay and Memory of Chaos cycle lengths must be entered by the user (`FORMULAS.md § Action Value`).
 - **Energy and skill points.** Neither is tracked or validated, so a rotation can be "illegal" in-game.
 - **Standalone True DMG** (based on tallied DMG, Max HP, etc.). Not supported. Only "True DMG equal to X% of this hit" is modelled, via `trueDmg`.
 - **Superimposition scaling.** `LightCone.superimposition` is a label only. The values for each S1–S5 level must be entered or supplied by data.

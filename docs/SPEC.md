@@ -23,7 +23,7 @@ English: *"I want a website that compares the damage of two Honkai: Star Rail te
 
 ## Interpretation decisions (until the owner says otherwise)
 
-- **D1. The rotation is manual.** The user lists the order of actions. SPD/AV simulation is not required by the spec (backlog E6/E9).
+- **D1. The rotation is manual.** The user lists the order of actions. SPD/AV simulation is not required by the spec. An optional turn order helper (E6, 2026-11-08) can suggest the order of turns; the user still owns the event list.
 - **D2. "Damage" means expected damage by default.** Crit and non-crit modes are also available.
 - **D3. No game data is invented.** Character kits, light cone values and eidolon effects are user-entered, or come from `src/data` with citations. *Refined by D5.*
 - **D4. Superimposition is a label.** The engine doesn't scale light cone values by S1–S5. The UI or data layer supplies the values for the chosen superimposition.

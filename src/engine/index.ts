@@ -14,3 +14,4 @@ export { applyEffect, removeEffect, tickEffects, resolveUnitRef, meetsRequiremen
 export { runRotation, createInitialState } from './rotation';
 export { compareTeams } from './compare';
 export { validateRotationInput, EngineValidationError, RESERVED_UNIT_IDS } from './validate';
+export { suggestTurnOrder, timelineToEvents, validateTimelineInput, ACTION_GAUGE, MAX_TIMELINE_TURNS } from './timeline';

@@ -173,7 +173,7 @@ export function dotApplicationChance(
   return Math.min(1, Math.max(0, raw));
 }
 
-/** §Action Value: AV = 10000 / SPD. Utility only; the rotation engine is manual. */
+/** §Action Value: AV for a full gauge, 10000 / SPD. Used by the turn order helper (E6); `runRotation` stays manual. */
 export function actionValue(spd: number): number {
   if (spd <= 0) throw new RangeError('SPD must be positive');
   return 10000 / spd;

@@ -43,6 +43,7 @@ Engine independence is enforced three ways (and the same three cover `src/data` 
 | `effects.ts` | Buff/debuff lifecycle: `applyEffect`, `removeEffect`, `tickEffects`. | yes (returns new state) |
 | `rotation.ts` | `createInitialState`, `runRotation` (manual rotation engine). | yes |
 | `compare.ts` | `compareTeams`. | yes |
+| `timeline.ts` | Turn order helper (E6): `suggestTurnOrder`, `timelineToEvents`, `validateTimelineInput`, `ACTION_GAUGE`, `MAX_TIMELINE_TURNS`. | yes |
 | `validate.ts` | `validateRotationInput`, `EngineValidationError`, `RESERVED_UNIT_IDS` (unit IDs that validation rejects). | yes |
 | `index.ts` | **Public API.** The only import path for UI code. | — |
 
@@ -114,10 +115,23 @@ runRotation(input):
   aggregate totals
 ```
 
-- The engine does **not** simulate SPD, action order, energy, or toughness. The user's event list is the authority.
+- `runRotation` does **not** simulate SPD, action order, energy, or toughness. The user's event list is the authority. The separate turn order helper (below) can *suggest* the order of `turn` events.
 - Effects applied in a step affect every later step in the same event, but not earlier ones.
 - Duration ticking is explicit per effect (`DurationSpec.tickUnit` / `tickPhase`). By default, an effect that ticks at `turnEnd` and is applied during its tick unit's own turn is **not** decremented at the end of that turn. Set `tickOnApplyTurn` to change this. The game behaviour behind this default is **UNVERIFIED** (see `KNOWN_LIMITATIONS.md`).
 - Re-applying the same effect ID to the same holder follows the effect's `stacking` policy (E5, `STACKING_POLICIES`): `refresh` (default) replaces the definition, adds stacks up to `maxStacks` and restarts the duration; `noRefresh` keeps the live instance and only adds stacks; `independent` adds a separate instance with its own duration, and `maxStacks` caps the holder's total by trimming the oldest instances. Only the default is an **ASSUMPTION** (KNOWN_LIMITATIONS A1).
+
+## Turn order helper (E6)
+
+```
+suggestTurnOrder({ units, avLimit, adjustments?, cycleAv? }) → { turns, truncated, unusedAdjustments }
+timelineToEvents(result) → RotationEvent[]   (empty 'turn' events, ids "turn-<n>-<unitId>")
+```
+
+- **Input.** `units` are `{ id, side, spd }` in slot order. The caller supplies SPD: for allies, `resolveUnitStats(createInitialState(team, enemies), id).spd`; for enemies, user input, because `EnemyConfig` has no SPD. `adjustments` are manual Action Advance/Delay (`advance`, a fraction of the 10000 gauge, negative for delay) and absolute SPD changes, each triggered at battle start or right after a given turn of a given unit. `cycleAv` is user-supplied; no game default ships.
+- **Output.** `turns` lists each turn with the unit's own turn count, the elapsed AV and, with `cycleAv`, the cycle. `truncated` is true when `MAX_TIMELINE_TURNS` stopped it; `unusedAdjustments` lists adjustments whose trigger turn never came.
+- **Scope.** Only turns. Ultimates, follow-ups, energy, skill points and kit-driven advances are not simulated: the user enters them (as adjustments or `extra` events). Formulas and tags: `FORMULAS.md § Action Value`.
+- **Why not an APL simulator (E9).** R2's APL (`action on target if condition`, first matching line wins, ultimates in their own windows) needs energy, skill points, kit state and targeting for every character. This project ships no kit data (SPEC D5, AGENTS rule 3), so an APL would run on invented numbers. The helper takes R2's timeline layer only, and keeps the manual event list as the authority.
+- Throws `EngineValidationError` (issues in the same English style) on invalid input.
 
 ## Team comparison
 

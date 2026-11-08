@@ -1,0 +1,204 @@
+import { describe, expect, it } from 'vitest';
+import {
+  EngineValidationError,
+  MAX_TIMELINE_TURNS,
+  runRotation,
+  suggestTurnOrder,
+  timelineToEvents,
+  type TimelineInput,
+  type TimelineResult,
+} from '../index';
+import { enemy, fireDps } from './fixtures';
+
+// TEST FIXTURE — NOT GAME DATA. SPD values and cycle lengths are synthetic.
+// Every expected AV is hand-computed from FORMULAS.md § Action Value:
+// first turn at 10000 / SPD, then +10000 / SPD after each turn.
+
+const order = (r: TimelineResult) => r.turns.map((t) => `${t.unitId}${t.turn}@${t.av}`);
+
+describe('suggestTurnOrder', () => {
+  it('orders turns by action value', () => {
+    // A: 10000/134 = 74.6268…, ×2 = 149.2537…, ×3 = 223.88… (> 200, excluded)
+    // E: 10000/100 = 100, 200 (included: the limit is inclusive)
+    const r = suggestTurnOrder({
+      units: [{ id: 'a', side: 'ally', spd: 134 }, { id: 'e', side: 'enemy', spd: 100 }],
+      avLimit: 200,
+    });
+    expect(r.turns.map((t) => [t.unitId, t.turn])).toEqual([['a', 1], ['e', 1], ['a', 2], ['e', 2]]);
+    expect(r.turns[0]!.av).toBeCloseTo(74.6268656716, 9);
+    expect(r.turns[2]!.av).toBeCloseTo(149.2537313433, 9);
+    expect(r.turns[3]!.av).toBe(200);
+    expect(r.truncated).toBe(false);
+    expect(r.unusedAdjustments).toEqual([]);
+  });
+
+  it('breaks ties allies first, then by slot', () => {
+    // All at SPD 100: every unit reaches 0 at 100 and 200.
+    const r = suggestTurnOrder({
+      units: [
+        { id: 'e', side: 'enemy', spd: 100 },
+        { id: 'a2', side: 'ally', spd: 100 },
+        { id: 'a1', side: 'ally', spd: 100 },
+      ],
+      avLimit: 200,
+    });
+    expect(order(r)).toEqual(['a21@100', 'a11@100', 'e1@100', 'a22@200', 'a12@200', 'e2@200']);
+  });
+
+  it('ties after float sums (3 × 10000/3 = 10000)', () => {
+    // a: 3333.33… × 3 vs b: 10000 at 10000 AV; a is the earlier slot.
+    const r = suggestTurnOrder({
+      units: [{ id: 'a', side: 'ally', spd: 3 }, { id: 'b', side: 'ally', spd: 1 }],
+      avLimit: 10000,
+    });
+    expect(r.turns.map((t) => `${t.unitId}${t.turn}`)).toEqual(['a1', 'a2', 'a3', 'b1']);
+  });
+
+  it('applies Action Advance after the trigger turn', () => {
+    // b (SPD 200) acts at 50; then a's gauge = 10000 − 50 × 100 = 5000,
+    // advanced 25% → 5000 − 2500 = 2500 → a acts at 50 + 2500/100 = 75, then 175.
+    // b: 50, 100, 150, 200.
+    const r = suggestTurnOrder({
+      units: [{ id: 'a', side: 'ally', spd: 100 }, { id: 'b', side: 'ally', spd: 200 }],
+      avLimit: 200,
+      adjustments: [{ at: { unitId: 'b', turn: 1 }, targetId: 'a', advance: 0.25 }],
+    });
+    expect(order(r)).toEqual(['b1@50', 'a1@75', 'b2@100', 'b3@150', 'a2@175', 'b4@200']);
+  });
+
+  it('applies Action Delay (negative advance) at battle start', () => {
+    // e's gauge 10000 + 2500 = 12500 → 125, then 225 (excluded). a: 100, 200.
+    const r = suggestTurnOrder({
+      units: [{ id: 'a', side: 'ally', spd: 100 }, { id: 'e', side: 'enemy', spd: 100 }],
+      avLimit: 200,
+      adjustments: [{ at: 'start', targetId: 'e', advance: -0.25 }],
+    });
+    expect(order(r)).toEqual(['a1@100', 'e1@125', 'a2@200']);
+  });
+
+  it('keeps the gauge across a SPD change', () => {
+    // At 50 (b's turn 1), a's gauge = 10000 − 50 × 100 = 5000; at SPD 125 that is
+    // 5000/125 = 40 AV → a at 90, then 90 + 10000/125 = 170. b: 50, 100, 150, 200.
+    const r = suggestTurnOrder({
+      units: [{ id: 'a', side: 'ally', spd: 100 }, { id: 'b', side: 'ally', spd: 200 }],
+      avLimit: 200,
+      adjustments: [{ at: { unitId: 'b', turn: 1 }, targetId: 'a', spd: 125 }],
+    });
+    expect(order(r)).toEqual(['b1@50', 'a1@90', 'b2@100', 'b3@150', 'a2@170', 'b4@200']);
+  });
+
+  it('lets a gauge go below 0: the more advanced unit acts first, at the current AV', () => {
+    // a: 10000 − 15000 = −5000; b: 10000 − 10000 = 0. Both act at AV 0, a first
+    // despite the later slot. Then both reset: 0 + 100 = 100, tie → slot order (b, a).
+    const r = suggestTurnOrder({
+      units: [{ id: 'b', side: 'ally', spd: 100 }, { id: 'a', side: 'ally', spd: 100 }],
+      avLimit: 100,
+      adjustments: [
+        { at: 'start', targetId: 'a', advance: 1.5 },
+        { at: 'start', targetId: 'b', advance: 1 },
+      ],
+    });
+    expect(order(r)).toEqual(['a1@0', 'b1@0', 'b2@100', 'a2@100']);
+  });
+
+  it('assigns user-supplied cycles with inclusive upper bounds', () => {
+    // first = 150, later = 100: cycle 1 is (0, 150], cycle 2 (150, 250], cycle 3 (250, 350].
+    // a (SPD 200): 50, 100, 150, 200, 250, 300.
+    const r = suggestTurnOrder({
+      units: [{ id: 'a', side: 'ally', spd: 200 }],
+      avLimit: 300,
+      cycleAv: { first: 150, later: 100 },
+    });
+    expect(r.turns.map((t) => [t.av, t.cycle])).toEqual([[50, 1], [100, 1], [150, 1], [200, 2], [250, 2], [300, 3]]);
+  });
+
+  it('omits cycle when cycleAv is not set', () => {
+    const r = suggestTurnOrder({ units: [{ id: 'a', side: 'ally', spd: 100 }], avLimit: 100 });
+    expect(r.turns).toEqual([{ unitId: 'a', turn: 1, av: 100 }]);
+  });
+
+  it('reports adjustments whose trigger turn never happens', () => {
+    const r = suggestTurnOrder({
+      units: [{ id: 'a', side: 'ally', spd: 100 }],
+      avLimit: 100,
+      adjustments: [
+        { at: { unitId: 'a', turn: 1 }, targetId: 'a', advance: 0.1 },
+        { at: { unitId: 'a', turn: 2 }, targetId: 'a', advance: 0.1 },
+      ],
+    });
+    expect(r.unusedAdjustments).toEqual([1]);
+  });
+
+  it('stops at MAX_TIMELINE_TURNS and says so', () => {
+    // SPD 10000 → one turn per AV; 20000 AV would be 20000 turns.
+    const r = suggestTurnOrder({ units: [{ id: 'a', side: 'ally', spd: 10000 }], avLimit: 20000 });
+    expect(r.turns).toHaveLength(MAX_TIMELINE_TURNS);
+    expect(r.truncated).toBe(true);
+  });
+
+  it('does not mutate its input', () => {
+    const input: TimelineInput = {
+      units: [{ id: 'a', side: 'ally', spd: 100 }, { id: 'b', side: 'ally', spd: 200 }],
+      avLimit: 200,
+      adjustments: [{ at: { unitId: 'b', turn: 1 }, targetId: 'a', spd: 125, advance: 0.1 }],
+    };
+    const before = structuredClone(input);
+    suggestTurnOrder(input);
+    expect(input).toEqual(before);
+  });
+
+  it('rejects invalid input with every issue', () => {
+    const bad = {
+      units: [
+        { id: 'a', side: 'ally', spd: 0 },
+        { id: 'a', side: 'enemy', spd: 100 },
+        { id: 'allAllies', side: 'ally', spd: 100 },
+        { id: 'x', side: 'boss', spd: 100 },
+      ],
+      avLimit: Number.POSITIVE_INFINITY,
+      cycleAv: { first: 0, later: -1 },
+      adjustments: [
+        { at: { unitId: 'nope', turn: 0 }, targetId: 'ghost' },
+        { at: 'start', targetId: 'a', advance: Number.NaN, spd: -5 },
+      ],
+    } as unknown as TimelineInput;
+    let issues: readonly string[] = [];
+    try {
+      suggestTurnOrder(bad);
+    } catch (e) {
+      expect(e).toBeInstanceOf(EngineValidationError);
+      issues = (e as EngineValidationError).issues;
+    }
+    expect(issues).toEqual([
+      'units[0]: spd must be a finite number > 0',
+      'units[1]: duplicate id "a"',
+      'units[2]: id "allAllies" is reserved',
+      'units[3]: side must be "ally" or "enemy"',
+      'avLimit: must be a finite number > 0',
+      'cycleAv.first: must be a finite number > 0',
+      'cycleAv.later: must be a finite number > 0',
+      'adjustments[0]: unknown unit "nope" in at',
+      'adjustments[0]: at.turn must be an integer >= 1',
+      'adjustments[0]: unknown target "ghost"',
+      'adjustments[0]: needs advance or spd',
+      'adjustments[1]: advance must be a finite number',
+      'adjustments[1]: spd must be a finite number > 0',
+    ]);
+  });
+});
+
+describe('timelineToEvents', () => {
+  it('creates empty turn events that runRotation accepts', () => {
+    const r = suggestTurnOrder({
+      units: [{ id: 'dps', side: 'ally', spd: 134 }, { id: 'enemy', side: 'enemy', spd: 100 }],
+      avLimit: 100,
+    });
+    const events = timelineToEvents(r);
+    expect(events).toEqual([
+      { kind: 'turn', id: 'turn-1-dps', actorId: 'dps', steps: [] },
+      { kind: 'turn', id: 'turn-2-enemy', actorId: 'enemy', steps: [] },
+    ]);
+    const result = runRotation({ team: [fireDps()], enemies: [enemy({ id: 'enemy' })], events });
+    expect(result.log.map((l) => l.eventId)).toEqual(['turn-1-dps', 'turn-2-enemy']);
+  });
+});

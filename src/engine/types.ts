@@ -607,3 +607,58 @@ export interface TeamComparison {
   perCycleDifference?: number;
   perCycleRatio?: number;
 }
+
+// ---------------------------------------------------------------------------
+// Turn order helper (E6). Suggests the order of `turn` events from SPD; it
+// never runs damage, and the manual event list stays the authority.
+// ---------------------------------------------------------------------------
+
+export interface TimelineUnit {
+  id: string;
+  side: 'ally' | 'enemy';
+  /** Final SPD at battle start (allies: `resolveUnitStats(...).spd`; enemies: user input). */
+  spd: number;
+}
+
+/**
+ * A manual change to one unit's action gauge or SPD (FORMULAS.md § Action Value).
+ * Advance and SPD changes commute: both act on the gauge, which a SPD change keeps.
+ */
+export interface TimelineAdjustment {
+  /** `'start'`: before the first turn. Otherwise right after the given turn of `unitId` ends (1-based, that unit's own count). */
+  at: 'start' | { unitId: string; turn: number };
+  /** Unit whose gauge or SPD changes. */
+  targetId: string;
+  /** Action Advance as a fraction of the 10000 gauge (`0.25` = 25%). Negative = Action Delay. */
+  advance?: number;
+  /** New SPD from this point on (absolute value, not a delta). */
+  spd?: number;
+}
+
+export interface TimelineInput {
+  /** Units in slot order. Within a side, earlier units win AV ties. */
+  units: readonly TimelineUnit[];
+  /** Include turns whose elapsed AV is <= this limit. */
+  avLimit: number;
+  adjustments?: readonly TimelineAdjustment[];
+  /** Cycle lengths in AV, user-supplied (no game default ships). When set, each turn gets a `cycle`. */
+  cycleAv?: { first: number; later: number };
+}
+
+export interface TimelineTurn {
+  unitId: string;
+  /** That unit's own turn count, 1-based. */
+  turn: number;
+  /** Elapsed action value at which the turn starts. */
+  av: number;
+  /** 1-based cycle, only when `TimelineInput.cycleAv` is set. */
+  cycle?: number;
+}
+
+export interface TimelineResult {
+  turns: readonly TimelineTurn[];
+  /** True if `MAX_TIMELINE_TURNS` stopped the timeline before `avLimit`. */
+  truncated: boolean;
+  /** Indexes of adjustments whose trigger turn never happened within the limit. */
+  unusedAdjustments: readonly number[];
+}
