@@ -15,7 +15,12 @@ interface Reference {
   source: { repo: string; commit: string };
   characters: Record<
     string,
-    { stats80: Record<string, number>; unreleased: boolean; traces: Record<string, { stat: string; value: number }> }
+    {
+      stats80: Record<string, number>;
+      maxSp: number;
+      unreleased: boolean;
+      traces: Record<string, { stat: string; value: number }>;
+    }
   >;
   lightCones: Record<string, { stats80: Record<string, number>; unreleased: boolean }>;
   relicMainAffixes: Record<string, Record<string, { base: number; step: number }>>;
@@ -112,6 +117,13 @@ describe('cross-check against B (fribbels/hsr-optimizer)', () => {
       expect(r.value.critRate, `${c.id} CR`).toBe(b['CRIT Rate']);
       expect(r.value.critDmg, `${c.id} CD`).toBe(b['CRIT DMG']);
     }
+  });
+
+  it('ultimate Energy cost (A: SPNeed) matches B (max_sp), except 1407', () => {
+    // 1407 (遐蝶): her Ultimate uses its own charge, not Energy. A has no SPNeed (0);
+    // B stores 120 as a placeholder. A is right (DATA_SOURCES.md § Ultimate Energy cost).
+    const differ = DATA_TABLES.characters.filter((c) => c.energyCost !== B.characters[c.id]!.maxSp);
+    expect(differ.map((c) => [c.id, c.energyCost])).toEqual([['1407', 0]]);
   });
 
   it('light cone base stats at level 80 match B', () => {

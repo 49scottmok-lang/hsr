@@ -8,7 +8,7 @@
  * level formulas (docs/FORMULAS.md § Level scaling); nothing is pre-computed
  * or interpolated here.
  */
-import type { Element, ModifierCondition, StatKey, StatModifier } from '../engine';
+import type { DotType, Element, ModifierCondition, StatKey, StatModifier } from '../engine';
 
 /** A pinned file set in a git repository. */
 export interface DataSource {
@@ -50,6 +50,8 @@ export interface CharacterRecord extends Cited {
   /** Game character ID, as in the account export. */
   readonly id: string;
   readonly element: Element;
+  /** Ultimate Energy cost (`SPNeed`, added 2026-11-08 for the auto battle). */
+  readonly energyCost: number;
   /** Ordered by ascension, starting at 0. */
   readonly ascensions: readonly CharacterAscension[];
 }
@@ -205,4 +207,107 @@ export interface NameTables {
   readonly characters: readonly CharacterNameRecord[];
   readonly lightCones: readonly LightConeNameRecord[];
   readonly relicSets: readonly RelicSetNameRecord[];
+}
+
+// --- Endgame enemies (added 2026-11-08) ---------------------------------------
+//
+// Enemies of the top floor of the latest endgame rotations, from source A's
+// stage and monster tables. Like the stat tables, records hold the source's
+// raw numbers; `stageEnemies` in `enemies.ts` applies the stage's level and
+// elite scaling (docs/FORMULAS.md § Enemy stats). Kept apart from
+// `DataTables` because the account import does not need them.
+
+/** Memory of Chaos (`memory`), Pure Fiction (`story`), Apocalyptic Shadow (`boss`): the source's own group types. */
+export const ENDGAME_MODES = ['memory', 'story', 'boss'] as const;
+export type EndgameMode = (typeof ENDGAME_MODES)[number];
+
+/** The source's `Rank` column, weakest first. */
+export const ENEMY_RANKS = ['Minion', 'MinionLv2', 'Elite', 'LittleBoss', 'BigBoss'] as const;
+export type EnemyRank = (typeof ENEMY_RANKS)[number];
+
+/**
+ * One raw enemy stat: the template's `base`, the variant's own multiplier
+ * (`…ModifyRatio`) and the flat `…ModifyValue` (0 when the source has none).
+ */
+export interface EnemyBaseStat {
+  readonly base: number;
+  readonly ratio: number;
+  readonly add: number;
+}
+
+/** One enemy variant: a `MonsterConfig` row joined with its template. */
+export interface EnemyRecord extends Cited {
+  /** `MonsterID`. Variants of one template differ in RES, weaknesses and multipliers. */
+  readonly id: string;
+  readonly templateId: string;
+  /** Traditional Chinese name from the text map. */
+  readonly name: string;
+  readonly rank: EnemyRank;
+  /** Elements that reduce Toughness (`StanceWeakList`). */
+  readonly weaknesses: readonly Element[];
+  /** `DamageTypeResistance`, copied as listed (fractions). */
+  readonly res: Partial<Record<Element, number>>;
+  /** DoT entries of `DebuffResist` (fractions). Other debuff RES types are not modelled. */
+  readonly debuffRes: Partial<Record<DotType, number>>;
+  readonly hp: EnemyBaseStat;
+  readonly def: EnemyBaseStat;
+  readonly spd: EnemyBaseStat;
+  /** Toughness in source units (`Stance`): `formulas.STANCE_PER_TOUGHNESS` per displayed point. */
+  readonly stance: EnemyBaseStat;
+  /** Template Effect RES (`StatusResistanceBase`) before the level bonus. */
+  readonly effectRes: number;
+  /** The variant's own `EliteGroup`. */
+  readonly eliteGroup: number;
+}
+
+/** Multipliers a level row or elite group applies to the four scaled stats. */
+export interface EnemyStatRatios {
+  readonly hp: number;
+  readonly def: number;
+  readonly spd: number;
+  readonly stance: number;
+}
+
+/** One `HardLevelGroup` row: the multipliers for enemies of `group` at `level`. */
+export interface EnemyLevelRecord extends Cited {
+  readonly group: number;
+  readonly level: number;
+  readonly ratios: EnemyStatRatios;
+  /** Effect RES added at this level (`StatusResistance`, 0 when absent). */
+  readonly effectRes: number;
+}
+
+export interface EliteGroupRecord extends Cited {
+  readonly id: number;
+  readonly ratios: EnemyStatRatios;
+}
+
+/** One node (half) of an endgame floor and its enemies. */
+export interface EndgameStageRecord extends Cited {
+  /** `StageID`. */
+  readonly id: string;
+  readonly mode: EndgameMode;
+  readonly groupId: string;
+  /** The rotation's Traditional Chinese title. */
+  readonly groupName: string;
+  /** First day of the rotation (`YYYY-MM-DD`, server time 04:00). */
+  readonly startDate: string;
+  readonly floor: number;
+  /** 1 and 2 are the two halves; 3 is the third node some rotations add. */
+  readonly node: number;
+  /** Enemy level of the stage. */
+  readonly level: number;
+  /** `HardLevelGroup` of the stage; with `level`, picks the `EnemyLevelRecord`. */
+  readonly levelGroup: number;
+  /** Stage-wide `EliteGroup`, or `null` when the stage has none. */
+  readonly eliteGroup: number | null;
+  /** Enemy IDs per wave, in slot order. */
+  readonly waves: readonly (readonly string[])[];
+}
+
+export interface EnemyTables {
+  readonly enemies: readonly EnemyRecord[];
+  readonly levels: readonly EnemyLevelRecord[];
+  readonly eliteGroups: readonly EliteGroupRecord[];
+  readonly stages: readonly EndgameStageRecord[];
 }

@@ -122,6 +122,7 @@ interface TraceNode {
 interface BCharacter {
   stats: Record<string, number>;
   traceTree: TraceNode[];
+  max_sp: number;
   unreleased?: boolean;
 }
 interface BLightCone {
@@ -169,7 +170,7 @@ async function main(): Promise<void> {
   for (const [id, c] of Object.entries(game.characters)) {
     const traces: Record<string, { stat: string; value: number }> = {};
     flatten(c.traceTree, traces);
-    characters[id] = { stats80: c.stats, unreleased: Boolean(c.unreleased), traces };
+    characters[id] = { stats80: c.stats, maxSp: c.max_sp, unreleased: Boolean(c.unreleased), traces };
   }
   const lightCones: Record<string, object> = {};
   for (const [id, l] of Object.entries(game.lightCones)) {

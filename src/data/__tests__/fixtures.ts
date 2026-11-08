@@ -15,6 +15,7 @@ export const FIXTURE_TABLES: DataTables = {
       ...cite,
       id: '9001',
       element: 'fire',
+      energyCost: 120,
       ascensions: [
         {
           ascension: 0,

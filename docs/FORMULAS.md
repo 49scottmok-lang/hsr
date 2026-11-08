@@ -221,6 +221,35 @@ Hand-computed tests (synthetic numbers):
 
 Covered by `src/engine/__tests__/formulas.test.ts` and `src/data/__tests__/lookup.test.ts`.
 
+## Enemy stats (endgame stage tables, added 2026-11-08)
+
+The endgame enemy tables (`src/data/enemies.ts`, TASKS D6) store each enemy's raw template values and multipliers exactly as source A gives them. `stageEnemies` scales them to the stage they appear in:
+
+```
+Stat(stage) = TemplateBase × VariantRatio × OwnElite × StageElite × LevelRow + VariantAdd    HP, DEF, SPD, Toughness (stance units)
+Toughness   = Stat_stance(stage) / 3                                                          displayed units, as EnemyConfig.maxToughness
+EffectRES   = StatusResistanceBase + LevelRow.StatusResistance
+```
+
+- `TemplateBase`: `MonsterTemplateConfig` `HPBase` / `DefenceBase` / `SpeedBase` / `StanceBase`. `VariantRatio`: `MonsterConfig` `…ModifyRatio`. `VariantAdd`: `SpeedModifyValue` / `StanceModifyValue` (template or variant, never both). `OwnElite`: the variant's `EliteGroup` row. `StageElite`: the stage's `EliteGroup` row (left out when the stage has none). `LevelRow`: the `HardLevelGroup` row for the **stage's** `HardLevelGroup` and `Level`; the variant's own `HardLevelGroup` is not used.
+- Functions: `formulas.enemyStageStat(base, ratios, add)` and `formulas.STANCE_PER_TOUGHNESS` (3).
+
+Verification:
+
+- **[CROSS-CHECKED] DEF only.** For every enemy of every stage in the tables, `Stat_def(stage)` equals `formulas.enemyBaseDef(level)` = 200 + 10 × level (§ DEF, S3 and R1) within 0.01% (`enemies.test.ts`). The tolerance allows for the source's rounded ratios: `210 × 5.47619 = 1149.9999` against 1150. `stageEnemyConfig` sets `baseDef` only outside that tolerance, so a later level edit still moves DEF.
+- **[UNVERIFIED] HP, SPD, Toughness and Effect RES scaling.** Which multipliers apply (variant, both elite groups, the stage's level row) is read from the tables' structure only. No second source was readable on 2026-11-08: the Fandom wiki was behind a bot check, and two other sites were refused. HP is display-only (the engine never caps damage by HP). SPD only pre-fills the turn order helper, where the user can change it.
+- **[UNVERIFIED] Toughness ÷ 3.** This matches B's convention of storing Toughness as 3 × the displayed value (`DATA_SOURCES.md § Break DMG level multiplier`), but B has no enemy tables to compare against.
+- RES, weaknesses and Debuff RES are copies, not formulas.
+
+Hand-computed tests (`src/engine/__tests__/formulas.test.ts`, `src/data/__tests__/enemies.test.ts`):
+
+| Call | Arithmetic | Result |
+|---|---|---|
+| `enemyStageStat(1000, [1.5, 2, 4], 0)` | 1000 × 1.5 × 2 × 4 | 12000 |
+| `enemyStageStat(100, [1.2, 1.1], 10)` | 100 × 1.32 + 10 | 142 |
+| fixture stage 100, enemy 11 | HP 1000 × 1.5 × 6.5 × 300; SPD 100 × 1.2 × 1.32 + 10; Toughness 300 × 1.5 / 3 | 2 925 000; 168.4; 150 |
+| table stage 30126121, wave 2 | HP 2557.5 × 375.4385 × 6.5; SPD 200 × 1.32; Toughness 720 / 3; Effect RES 0.2 + 0.1 | 6 241 195.76; 264; 240; 0.3 |
+
 ## Break DMG (added 2026-11-07, TASKS E4)
 
 ```
@@ -377,6 +406,39 @@ Hand-computed tests (`src/engine/__tests__/timeline.test.ts`; synthetic SPD valu
 | Cycles first 150, later 100 | 50, 100, 150 → 1; 200, 250 → 2; 300 → 3 | |
 
 Function: `formulas.actionValue` (a full gauge, 10000 / SPD), used by `suggestTurnOrder`.
+
+## Auto battle (added 2026-11-08, TASKS D7)
+
+Used only by `simulateBattle` (`src/engine/autoBattle.ts`). It writes a rotation that `runRotation` then scores; it computes no damage itself. Every kit number (steps, Energy per action, skill point cost or gain, Ultimate cost, starting Energy) and the battle's skill point start and maximum are **user input**. The Ultimate cost can be pre-filled from `src/data` (`characterEnergyCost`, A's `SPNeed`, cross-checked against B's `max_sp`).
+
+```
+turn order   = suggestTurnOrder (static SPD, no adjustments)       § Action Value
+Energy gain  = energy × (1 + Energy Regeneration Rate)
+Energy       = min(Energy + gain, ultimate.energyCost)
+Skill        if useSkill and SP − skill.skillPoints ≥ reserve, else Basic ATK
+SP           = SP − skill.skillPoints   (Skill)
+             = min(max, SP + basic.skillPoints)   (Basic ATK)
+Ultimate     at battle start and after every turn, in team order, for each ally with
+             useUltimate and Energy ≥ cost; Energy = min(gain(ult.energy), cost); at most once per ally per window
+```
+
+- **[UNVERIFIED]** Energy gain scales with Energy Regeneration Rate as `energy × (1 + ERR)`, and Energy is capped at the Ultimate's cost. No source in this document states either; both are the common community reading. ERR is read once from the context-free stats (`resolveUnitStats` on the initial state), so ERR buffs during the battle are ignored.
+- **[UNVERIFIED]** After an Ultimate, Energy restarts at 0 plus the Ultimate's own Energy (the cost is spent first).
+- **[ENGINE]** Ultimates are cast as soon as Energy is full, at battle start and right after each turn (enemy turns included), in team order. An ally casts at most once per window, so an Ultimate that refunds a full bar cannot loop. Ultimates are `extra` events and never move a gauge (§ Action Value).
+- **[ENGINE]** The Skill is used whenever it is affordable without dropping below the kit's `skillPointReserve` (default 0). Spending skill points never goes below 0. Gains are capped at the battle's maximum.
+- **[ENGINE]** A team member without a kit and every enemy get an empty `turn` event, so effect durations still tick on their turns as in a hand-written rotation. Enemies do not act (no damage taken, no Energy from being hit).
+- Hand-computed tests: `src/engine/__tests__/auto-battle.test.ts`. Synthetic case (SPD 100 DPS, SPD 200 support, SPD 50 enemy, limit 200, SP start 1 max 5, DPS Skill +30 Energy, cost 60):
+
+| AV | Actor | Action | SP | DPS Energy |
+|---|---|---|---|---|
+| 50 | sup | Basic | 1 + 1 = 2 | 0 |
+| 100 | dps | Skill | 2 − 1 = 1 | 30 |
+| 100, 150 | sup | Basic ×2 | 2, 3 | 30 |
+| 200 | e1 | (empty) | 3 | 30 |
+| 200 | dps | Skill, then Ultimate | 2 | 60 → 0 + 5 = 5 |
+| 200 | sup | Basic | 3 | 5 |
+
+With ERR 20%: 40 + 20 × 1.2 = 64 → capped at 60; the Ultimate then refunds 5 × 1.2 = 6.
 
 ## Rounding
 

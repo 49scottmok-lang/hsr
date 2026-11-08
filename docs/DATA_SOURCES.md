@@ -101,6 +101,7 @@ Cross-check against B (`crosscheck-b.test.ts`, all passing):
 | Trace stat and value | all 1040 traces, against `traceTree` (enhanced trees against B's `…b1` entries) |
 | 2-piece value appears in B's set text | all 54 sets |
 | Nothing B flags unreleased; known coverage gap | see Decision |
+| Ultimate Energy cost (`energyCost`, A `SPNeed` vs B `max_sp`; added 2026-11-08 for D7) | all characters; one known difference: 1407 has `SPNeed` 0 in A (its Ultimate does not use Energy) and 120 in B. The table keeps A's 0, and the auto battle UI does not pre-fill a cost of 0 |
 
 ## Names (D5, 2026-11-07)
 
@@ -151,3 +152,19 @@ The owner chose to hotlink character portraits and element and path icons from *
 - **IDs:** artwork is keyed by the game character ID in `CharacterBuild.characterId`, which is display metadata. The account import sets it, and so does the editor's character picker. Builds whose unit ID is a game ID (older imports) also get artwork.
 - **Fallback:** an element-coloured card with the name's first character, when a character has no ID or every host fails.
 - **Re-pinning:** change `ARTWORK_COMMIT` after checking that a few `character_preview` URLs return 200 on both hosts.
+
+## Endgame enemies (D6, owner request, 2026-11-08)
+
+`ENEMY_TABLES` (`src/data/enemies.ts`) comes from **source A at the same pinned commit**. `scripts/data/enemiesA.ts` generates it as part of `pnpm data:extract`.
+
+| Table | A files | Join |
+|---|---|---|
+| Stages | `Challenge{,Story,Boss}GroupConfig`, `Challenge{,Story,Boss}MazeConfig`, `Challenge{,Story,Boss}MazeTierce`, `ScheduleDataChallenge{Maze,Story,Boss}`, `StageConfig` | group → `ScheduleDataID` (start date) → top floor → `EventIDList1/2` (nodes 1 and 2) and the third-node row → `StageID` (level, `HardLevelGroup`, `EliteGroup`, `MonsterList`) |
+| Enemies | `MonsterConfig`, `MonsterTemplateConfig` | `MonsterTemplateID`; name from `MonsterName.Hash` in `TextMapCHT` |
+| Scaling | `HardLevelGroup`, `EliteGroup` | the stage's group and level; the stage's and the variant's elite group |
+
+- **Selection.** For Memory of Chaos (`memory`), Pure Fiction (`story`) and Apocalyptic Shadow (`boss`), the generator takes the 3 newest rotations that started on or before **2026-11-08 04:00** (`ENEMY_SELECTION` in `extract.ts`), top floor only, every node. The cutoff is a constant so the output is deterministic. It also drops rotations that the build contains but that had not started: 4.6.0 has AS 3022, an unnamed copy of 3021 starting 2026-11-16. Rotations without a schedule row (MoC 1034 and 1035) are skipped. **When re-pinning, move the cutoff forward.**
+- **Third node.** `Challenge*MazeTierce` has obfuscated column names, so the generator reads it by shape: the row that contains both the group's `TierceID` and the top floor's ID, and that row's one list whose entries are all `Challenge` stage IDs. Only the newest rotations have one (here MoC 1033 and 1036, and all three PF and AS rotations).
+- **Debuff RES.** The `DebuffResist` keys `STAT_DOT_Bleed`, `STAT_DOT_Burn`, `STAT_DOT_Electric` (Shock) and `STAT_DOT_Poison` map to the engine's DoT types. `STAT_DOT_Poison` is Wind Shear: its icon in `MonsterStatusResistanceType` is `IconImmuneWind.png`. Control and other debuff RES keys are dropped because the engine doesn't model them. An unknown key fails the generator.
+- Result: 26 stages (9 rotations), 63 enemy variants, 3 level rows and 13 elite groups. Re-running the generator reproduces every earlier table byte for byte.
+- **No second source.** B has no enemy data, and no other source was readable (`FORMULAS.md § Enemy stats`). Only DEF is cross-checked, against the engine's DEF formula.

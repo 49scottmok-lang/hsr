@@ -54,6 +54,9 @@ export function EnemyEditor({ enemy, issues, onChange, onRemove }: EnemyEditorPr
       <NumberField label={t('enemy.maxToughness')} value={enemy.maxToughness} min={0}
         onChange={(maxToughness) => onChange({ ...enemy, maxToughness })} />
       <p>{t('enemy.toughnessHint')}</p>
+      <NumberField label={t('enemy.spd')} value={enemy.spd} min={0}
+        onChange={(spd) => onChange({ ...enemy, spd })} />
+      <p>{t('enemy.spdHint')}</p>
       <fieldset>
         <legend>{t('enemy.res')}</legend>
         <p>{t('enemy.resHint')}</p>

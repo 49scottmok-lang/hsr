@@ -13,6 +13,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseExcelJson, transformNames, transformSourceA } from './sourceA.ts';
 import type { RawNamesA, RawSourceA } from './sourceA.ts';
+import { transformEnemies } from './enemiesA.ts';
+import type { EnemySelection, RawEnemiesA, RawModeTables } from './enemiesA.ts';
+import type { EndgameMode } from '../../src/data/schema.ts';
 
 const SOURCE_A = {
   repo: 'DimbreathBot/TurnBasedGameData',
@@ -39,6 +42,25 @@ const NAME_TABLES = {
   baseTypes: 'AvatarBaseType',
   multiplePathAvatars: 'MultiplePathAvatarConfig',
 } as const satisfies Partial<Record<keyof RawNamesA, string>>;
+/** Endgame enemy tables (added 2026-11-08). */
+const ENEMY_TABLES = {
+  monsters: 'MonsterConfig',
+  templates: 'MonsterTemplateConfig',
+  hardLevels: 'HardLevelGroup',
+  eliteGroups: 'EliteGroup',
+  stages: 'StageConfig',
+} as const satisfies Partial<Record<keyof RawEnemiesA, string>>;
+const MODE_TABLES = {
+  memory: { groups: 'ChallengeGroupConfig', mazes: 'ChallengeMazeConfig', schedules: 'ScheduleDataChallengeMaze', tierces: 'ChallengeMazeTierce' },
+  story: { groups: 'ChallengeStoryGroupConfig', mazes: 'ChallengeStoryMazeConfig', schedules: 'ScheduleDataChallengeStory', tierces: 'ChallengeStoryMazeTierce' },
+  boss: { groups: 'ChallengeBossGroupConfig', mazes: 'ChallengeBossMazeConfig', schedules: 'ScheduleDataChallengeBoss', tierces: 'ChallengeBossMazeTierce' },
+} as const satisfies Record<EndgameMode, Record<keyof RawModeTables, string>>;
+/**
+ * Which rotations to take. The cutoff is fixed (not today's date) so the output
+ * is deterministic; move it forward when re-pinning (docs/DATA_SOURCES.md).
+ */
+const ENEMY_SELECTION: EnemySelection = { cutoff: '2026-11-08 04:00:00', groupsPerMode: 3 };
+
 /** The game's Traditional Chinese (繁體中文) text map, about 52 MB. */
 const TEXT_MAP = 'TextMap/TextMapCHT.json';
 
@@ -84,12 +106,28 @@ async function main(): Promise<void> {
     raw[key] = await load(file(table), fromDir);
   }
   const out = transformSourceA(raw as unknown as RawSourceA);
+  const textMap = (await load(TEXT_MAP, fromDir)) as RawNamesA['textMap'];
   const names = transformNames({
     ...(raw as unknown as Pick<RawNamesA, 'avatars' | 'equipment' | 'relicSets'>),
     baseTypes: (await load(file(NAME_TABLES.baseTypes), fromDir)) as RawNamesA['baseTypes'],
     multiplePathAvatars: (await load(file(NAME_TABLES.multiplePathAvatars), fromDir)) as RawNamesA['multiplePathAvatars'],
-    textMap: (await load(TEXT_MAP, fromDir)) as RawNamesA['textMap'],
+    textMap,
   });
+
+  const modes = {} as Record<EndgameMode, RawModeTables>;
+  for (const [mode, tables] of Object.entries(MODE_TABLES) as [EndgameMode, Record<keyof RawModeTables, string>][]) {
+    const t = {} as Record<keyof RawModeTables, unknown>;
+    for (const [key, table] of Object.entries(tables) as [keyof RawModeTables, string][]) t[key] = await load(file(table), fromDir);
+    modes[mode] = t as unknown as RawModeTables;
+  }
+  const rawEnemies = {} as Record<keyof typeof ENEMY_TABLES, unknown>;
+  for (const [key, table] of Object.entries(ENEMY_TABLES) as [keyof typeof ENEMY_TABLES, string][]) {
+    rawEnemies[key] = await load(file(table), fromDir);
+  }
+  const enemies = transformEnemies(
+    { ...(rawEnemies as unknown as Omit<RawEnemiesA, 'modes' | 'textMap'>), modes, textMap },
+    ENEMY_SELECTION,
+  );
 
   const outDir = join(dirname(fileURLToPath(import.meta.url)), '../../src/data/generated');
   mkdirSync(outDir, { recursive: true });
@@ -113,7 +151,15 @@ async function main(): Promise<void> {
       src('PATH_NAME_SOURCE', [NAME_TABLES.baseTypes], [TEXT_MAP]) +
       src('CHARACTER_NAME_SOURCE', [TABLES.avatars, NAME_TABLES.multiplePathAvatars], [TEXT_MAP]) +
       src('LIGHT_CONE_NAME_SOURCE', [TABLES.equipment], [TEXT_MAP]) +
-      src('RELIC_SET_NAME_SOURCE', [TABLES.relicSets], [TEXT_MAP]),
+      src('RELIC_SET_NAME_SOURCE', [TABLES.relicSets], [TEXT_MAP]) +
+      src('ENEMY_SOURCE', [ENEMY_TABLES.monsters, ENEMY_TABLES.templates], [TEXT_MAP]) +
+      src('ENEMY_LEVEL_SOURCE', [ENEMY_TABLES.hardLevels]) +
+      src('ELITE_GROUP_SOURCE', [ENEMY_TABLES.eliteGroups]) +
+      src(
+        'ENDGAME_STAGE_SOURCE',
+        [ENEMY_TABLES.stages, ...Object.values(MODE_TABLES).flatMap((t) => [t.groups, t.mazes, t.schedules, t.tierces])],
+        [TEXT_MAP],
+      ),
   );
   const write = (fileName: string, type: string, name: string, sourceConst: string, rows: readonly object[]): void => {
     writeFileSync(join(outDir, fileName), tableModule(type, name, sourceConst, rows));
@@ -129,6 +175,10 @@ async function main(): Promise<void> {
   write('characterNames.ts', 'CharacterNameRecord', 'CHARACTER_NAMES', 'CHARACTER_NAME_SOURCE', names.characters);
   write('lightConeNames.ts', 'LightConeNameRecord', 'LIGHT_CONE_NAMES', 'LIGHT_CONE_NAME_SOURCE', names.lightCones);
   write('relicSetNames.ts', 'RelicSetNameRecord', 'RELIC_SET_NAMES', 'RELIC_SET_NAME_SOURCE', names.relicSets);
+  write('enemies.ts', 'EnemyRecord', 'ENEMIES', 'ENEMY_SOURCE', enemies.enemies);
+  write('enemyLevels.ts', 'EnemyLevelRecord', 'ENEMY_LEVELS', 'ENEMY_LEVEL_SOURCE', enemies.levels);
+  write('eliteGroups.ts', 'EliteGroupRecord', 'ELITE_GROUPS', 'ELITE_GROUP_SOURCE', enemies.eliteGroups);
+  write('endgameStages.ts', 'EndgameStageRecord', 'ENDGAME_STAGES', 'ENDGAME_STAGE_SOURCE', enemies.stages);
 }
 
 await main();

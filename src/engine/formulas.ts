@@ -207,3 +207,16 @@ export function promotedBaseStat(base: number, add: number, level: number): numb
 export function relicMainStatValue(base: number, perLevel: number, level: number): number {
   return base + perLevel * level;
 }
+
+/**
+ * §Enemy stats: an enemy's HP, DEF, SPD or Toughness (stance units) at a
+ * stage. The template's `base` is multiplied by every applicable ratio (the
+ * variant's own, its elite group's, the stage's elite group's and the level
+ * row's), then the flat addition is applied.
+ */
+export function enemyStageStat(base: number, ratios: readonly number[], add: number): number {
+  return ratios.reduce((v, r) => v * r, base) + add;
+}
+
+/** §Enemy stats: source Toughness ("stance") units per displayed Toughness point. */
+export const STANCE_PER_TOUGHNESS = 3;

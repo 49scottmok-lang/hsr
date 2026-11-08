@@ -134,3 +134,8 @@ export function breakLevelMultiplier(tables: DataTables, level: number): Lookup<
   if (!record) return miss(`no break level multiplier for level ${level}`);
   return { ok: true, value: record.value };
 }
+
+/** Ultimate Energy cost (`SPNeed`); 0 for a kit whose Ultimate uses no Energy. */
+export function characterEnergyCost(tables: DataTables, id: string): number | undefined {
+  return tables.characters.find((c) => c.id === id)?.energyCost;
+}

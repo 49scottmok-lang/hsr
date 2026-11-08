@@ -6,6 +6,7 @@ import type {
   RotationEvent,
   RotationInput,
 } from '../../engine/index';
+import type { AutoBattleDraft } from './auto-battle';
 
 export type TeamIndex = 0 | 1;
 
@@ -15,6 +16,7 @@ export interface TeamDraft {
   events: readonly RotationEvent[];
   effectLibrary?: readonly EffectDef[];
   cycles?: number;
+  autoBattle?: AutoBattleDraft;
 }
 
 export interface Scenario {

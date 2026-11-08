@@ -21,6 +21,8 @@ export const DATA_LIMITS = {
   baseStat: { min: 0, max: 5000 },
   perLevel: { min: 0, max: 500 },
   spd: { min: 50, max: 200 },
+  /** Ultimate Energy cost; 0 is allowed (a kit without Energy). */
+  energyCost: { min: 0, max: 1000 },
   critRate: { min: 0, max: 1 },
   critDmg: { min: 0, max: 5 },
   relicRarity: { min: 2, max: 5 },
@@ -125,6 +127,7 @@ export function validateDataTables(tables: DataTables): DataIssue[] {
     checkCited(push, p, c);
     if (!ID_RE.test(c.id)) push(`${p}.id`, 'must be a numeric ID');
     if (!(ELEMENTS as readonly string[]).includes(c.element)) push(`${p}.element`, `unknown element ${c.element}`);
+    inRange(push, `${p}.energyCost`, c.energyCost, DATA_LIMITS.energyCost.min, DATA_LIMITS.energyCost.max);
     checkAscensions(push, `${p}.ascensions`, c.ascensions);
     c.ascensions.forEach((a, j) => {
       const q = `${p}.ascensions[${j}]`;
