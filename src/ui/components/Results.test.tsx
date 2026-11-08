@@ -74,7 +74,10 @@ it('shows both kinds of break details from the engine and damage by their break 
     enemies: scenario.enemies.map((enemy) => ({ ...enemy, maxToughness: 120 })),
     teams: [{
       ...scenario.teams[0],
-      team: [{ ...attacker, breakLevelMultiplier: 4000 }],
+      team: [{ ...attacker, breakLevelMultiplier: 4000, traces: [
+        { stat: 'breakEfficiency', value: 0.25 },
+        { stat: 'dmgBoost', value: 0.3, condition: { damageTags: ['superBreak'] } },
+      ] }],
       events: [{ id: 'break-event', kind: 'extra', actorId: 'dps', steps: [
         { op: 'break', hit: { kind: 'break', targetId: 'enemy', label: 'Test Break' } },
         { op: 'break', hit: {
@@ -96,11 +99,41 @@ it('shows both kinds of break details from the engine and damage by their break 
     // The tags cell shows the same words, so match the summary only.
     const summary = row.getByText(t(`rotation.breakKind.${details.kind}`), { selector: 'summary' });
     fireEvent.click(summary);
-    expect(row.getAllByRole('cell').slice(7, 9).map(({ textContent }) => textContent)).toEqual(['1.0000', '1.0000']);
+    expect(row.getAllByRole('cell').slice(7, 9).map(({ textContent }) => textContent)).toEqual([
+      '1.0000', details.kind === 'superBreak' ? '1.3000' : '1.0000',
+    ]);
     expect(row.getByText(t('results.breakBaseNote'))).toBeTruthy();
     const key = details.kind === 'break' ? 'enemy.maxToughness' : 'results.effectiveToughness';
     expect(row.getByText(t(key)).nextElementSibling?.textContent).toBe(formatMultiplier(details.maxToughness ?? details.toughness!));
+    const efficiency = row.queryByText(t('stat.breakEfficiency'));
+    // Super Break uses the step's 50% plus the attacker's 25%.
+    expect(efficiency?.nextElementSibling?.textContent).toBe(details.kind === 'superBreak' ? '75%' : undefined);
   }
+});
+
+it('shows the DoT application chance factor and the stats used to resolve it', () => {
+  const draft: Scenario = {
+    ...scenario,
+    enemies: scenario.enemies.map((enemy) => ({ ...enemy, effectRes: 0.35 })),
+    teams: [{
+      ...scenario.teams[0],
+      team: [{ ...attacker, traces: [
+        { stat: 'effectHitRate', value: 0.25 }, { stat: 'effectResPen', value: 0.1 },
+      ] }],
+      events: [{ id: 'dot-event', kind: 'extra', actorId: 'dps', steps: [
+        { op: 'hit', hit: { ...hit, tags: ['dot'], baseChance: 0.8 } },
+      ] }],
+    }, scenario.teams[1]],
+  };
+  render(<Results scenario={draft} />);
+  const hits = within(teamDetails(t('team.a')).getByRole('table', { name: t('results.hits') }));
+  const chanceColumn = hits.getByRole<HTMLTableCellElement>('columnheader', { name: t('results.dotChanceMultiplier') });
+  // 0.8 × 1.25 × (1 − 0.35 + 0.1) = 0.75.
+  expect(hits.getAllByRole('cell')[chanceColumn.cellIndex]?.textContent).toBe('0.7500');
+  fireEvent.click(hits.getByText(t('results.resolvedStats')));
+  expect(hits.getByText(t('stat.effectHitRate')).nextElementSibling?.textContent).toBe('25%');
+  expect(hits.getByText(t('stat.effectResPen')).nextElementSibling?.textContent).toBe('10%');
+  expect(hits.getByText(t('results.targetEffectRes')).nextElementSibling?.textContent).toBe('35%');
 });
 
 it('routes missing Break inputs to the break step and both unit editors', () => {

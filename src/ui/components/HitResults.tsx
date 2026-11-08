@@ -12,7 +12,7 @@ const multiplierLabels = {
   brokenMultiplier: 'results.brokenMultiplier',
   finalDmgMultiplier: 'results.finalDmgMultiplier',
   trueDmgMultiplier: 'results.trueDmgMultiplier',
-  dotChanceMultiplier: 'results.dotChanceMultiplier', // TODO(frontend): engine stub, see TASKS.md E8
+  dotChanceMultiplier: 'results.dotChanceMultiplier',
 } satisfies Record<Exclude<keyof DamageBreakdown, 'baseDmg' | 'total'>, TranslationKey>;
 const multipliers = Object.keys(multiplierLabels) as (keyof typeof multiplierLabels)[];
 
@@ -36,7 +36,6 @@ const resolvedLabels = {
   mitigations: 'stat.dmgMitigation',
   attackerLevel: 'results.attackerLevel',
   targetBroken: 'results.targetBroken',
-  // TODO(frontend): engine stubs, see TASKS.md E8.
   effectHitRate: 'stat.effectHitRate',
   effectResPen: 'stat.effectResPen',
   targetEffectRes: 'results.targetEffectRes',
@@ -76,6 +75,9 @@ function BreakResult({ details }: { details: BreakDetails }) {
         {factors.map(([label, value]) => value === undefined ? null : (
           <div key={label}><dt>{t(label)}</dt><dd>{formatMultiplier(value)}</dd></div>
         ))}
+        {details.breakEfficiency !== undefined && (
+          <div><dt>{t('stat.breakEfficiency')}</dt><dd>{formatPercent(details.breakEfficiency, { maximumFractionDigits: 4 })}</dd></div>
+        )}
         <div><dt>{t('stat.breakEffect')}</dt><dd>{formatPercent(details.breakEffect, { maximumFractionDigits: 4 })}</dd></div>
       </dl>
     </details>

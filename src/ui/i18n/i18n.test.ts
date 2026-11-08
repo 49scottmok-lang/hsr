@@ -15,6 +15,8 @@ it('formats numbers and fractional percentages for zh-HK', () => {
 });
 
 it.each([
+  ['team[0]: id "allAllies" is reserved', 'team[0]：「allAllies」是保留的單位 ID，請改用另一個 ID。'],
+  ['enemies[0]: id "__proto__" is reserved', 'enemies[0]：「__proto__」是保留的單位 ID，請改用另一個 ID。'],
   ['teams[1].events[0].steps[2]: target "boss" must be an enemy', 'teams[1].events[0].steps[2]：目標「boss」須為敵人。'],
   ['events[0]: actor "ally" is not a unit', 'events[0]：行動者「ally」並非有效單位。'],
   ['events[0].steps[2]: target "ally" is not a unit', 'events[0].steps[2]：目標「ally」並非有效單位。'],
