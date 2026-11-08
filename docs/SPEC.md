@@ -10,16 +10,16 @@ English: *"I want a website that compares the damage of two Honkai: Star Rail te
 
 | # | Requirement | Where it lives | Status |
 |---|---|---|---|
-| R1 | Website | Vite + React SPA (`src/ui`) | Scaffolded. UI tasks F1–F9 are in `TASKS.md`. |
+| R1 | Website | Vite + React SPA (`src/ui`) | ✅ Done: F1–F9. Live at `https://49scottmok-lang.github.io/hsr/` (F12). |
 | R2 | Compare the damage of two teams | `runRotation` per team plus `compareTeams`. Both teams share the same enemies and critMode (F1). | ✅ Engine done |
 | R3 | Character buffs (角色 Buff) | `EffectDef`/`StatModifier` with conditions, durations and stacks. Applied by `apply` steps or as passives. | ✅ Engine done |
 | R4 | Light cones (光錐) | `CharacterBuild.lightCone`: base stats, passive `effects`, and `superimposition` 1–5 (metadata). | ✅ Engine done. Effect values per superimposition are user/data-supplied. |
 | R5 | Eidolons (星魂) | `CharacterBuild.eidolon` 0–6, plus `requires.minEidolon` on `EffectDef` and on each `ActionStep`. One kit definition and one rotation serve E0–E6. | ✅ Engine done 2026-11-07 |
-| R6 | Skill rotation (技能循環) | Manual ordered `RotationEvent`s (`turn` / `extra`) with ordered steps. | ✅ Engine done. Editor is F5. |
-| R7 | Import the user's own account (decided 2026-11-07, Q1) | `src/import/` turns a Reliquary Archiver export into `CharacterBuild`s, using the stat tables in R8. The file picker is F10. | ⬜ Planned: I1–I3, F10 |
-| R8 | Sourced stat tables (decided 2026-11-07, Q1) | `src/data/`: tabular game numbers only, each with a citation. Source decided in D8. | ✅ D1–D3 done 2026-11-07. D4 (credits) planned. |
-| R9 | UI language: Traditional Chinese (Hong Kong) (decided 2026-11-07, Q2) | All UI strings in `zh-HK`, collected in one module so another language can be added later. | ⬜ Planned: F11 |
-| R10 | Reachable and shareable by link (decided 2026-11-07, Q3) | Static deploy at a public URL, and a comparison encoded into the URL so it can be shared. | ⬜ Planned: F12, F13 |
+| R6 | Skill rotation (技能循環) | Manual ordered `RotationEvent`s (`turn` / `extra`) with ordered steps. | ✅ Engine and editor (F5) done |
+| R7 | Import the user's own account (decided 2026-11-07, Q1) | `src/import/` turns a Reliquary Archiver export into `CharacterBuild`s, using the stat tables in R8. The file picker is F10. | ✅ Done: I1–I3, F10 |
+| R8 | Sourced stat tables (decided 2026-11-07, Q1) | `src/data/`: tabular game numbers only, each with a citation. Source decided in D8. | ✅ D1–D5 done 2026-11-07, including credits (D4, shown by F9) and zh-HK names (D5). Coverage is game build 4.6.0 (`KNOWN_LIMITATIONS.md`). |
+| R9 | UI language: Traditional Chinese (Hong Kong) (decided 2026-11-07, Q2) | All UI strings in `zh-HK`, collected in one module so another language can be added later. | ✅ Done: F11 |
+| R10 | Reachable and shareable by link (decided 2026-11-07, Q3) | Static deploy at a public URL, and a comparison encoded into the URL so it can be shared. | ✅ Done: F12 (GitHub Pages, D9), F13 |
 
 ## Interpretation decisions (until the owner says otherwise)
 

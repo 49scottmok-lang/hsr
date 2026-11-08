@@ -113,9 +113,9 @@ Rules for every task:
 
 - **Ready 2026-11-07:** the owner chose GitHub Pages. Deploy with GitHub Actions (`actions/deploy-pages`), set Vite `base` to the repository sub-path, and make sure share links (`#s=…` in the hash) still work under that path.
 
-- [ ] Make the production build work from a sub-path (Vite `base`) and add a deploy workflow for the chosen host.
-- [ ] Add a CI step that runs `pnpm check` and `pnpm build` before deploying.
-- **Acceptance:** the public URL loads and the worked example computes 4386.
+- [x] Make the production build work from a sub-path (Vite `base`) and add a deploy workflow for the chosen host. *Done 2026-11-07:* `.github/workflows/pages.yml` passes `--base` from `actions/configure-pages`, so `vite.config.ts` hard-codes no path.
+- [x] Add a CI step that runs `pnpm check` and `pnpm build` before deploying.
+- **Acceptance:** the public URL loads and the worked example computes 4386. *Verified 2026-11-07* on `https://49scottmok-lang.github.io/hsr/`: the worked example, loaded through a `#s=1.…` share link, shows 4386 for both teams, with no console errors.
 
 ### F13. Share by link — `src/ui/share/`
 
