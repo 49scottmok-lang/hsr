@@ -36,6 +36,8 @@ describe('importArchive (I2) with the synthetic fixture (I3)', () => {
 
   it('builds the covered character and reports the uncovered one', () => {
     expect(builds.map((b) => b.id)).toEqual(['9001']);
+    // The game ID doubles as the portrait key (characterId) for the UI.
+    expect(builds.map((b) => b.characterId)).toEqual(['9001']);
     expect(report.builds.map((b) => [b.characterId, b.built])).toEqual([
       ['9001', true],
       ['9002', false],

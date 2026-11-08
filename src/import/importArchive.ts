@@ -261,6 +261,7 @@ function importCharacter(
   const build: CharacterBuild = {
     id: c.id,
     name: c.name,
+    characterId: c.id,
     level: c.level,
     element: base.value.element,
     eidolon: c.eidolon,

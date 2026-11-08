@@ -80,6 +80,7 @@ const unit = { id: string, name: string, level: number, passiveEffects: optional
 const baseStats = { hp: number, atk: number, def: number };
 const character = shape({
   ...unit,
+  characterId: optional(string),
   element: string,
   eidolon: optional(number),
   base: shape({ ...baseStats, spd: number }),

@@ -310,6 +310,11 @@ export interface Relics {
 export interface CharacterBuild {
   id: string;
   name: string;
+  /**
+   * Game character ID (e.g. `1102`), for display only (portraits, names).
+   * The engine never reads it; every number still comes from the fields below.
+   */
+  characterId?: string;
   level: number;
   element: Element;
   /** Eidolon level 0–6 (default 0). Gates effects and rotation steps via `requires`. */

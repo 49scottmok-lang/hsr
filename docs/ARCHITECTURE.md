@@ -66,7 +66,7 @@ All engine functions are deterministic. None mutates its inputs, and this is tes
 
 Full definitions are in `src/engine/types.ts`.
 
-- **`CharacterBuild`**: id, level, element, base HP/ATK/DEF/SPD, optional base CRIT, optional `breakLevelMultiplier` (E4), `lightCone` (base stats plus passive `EffectDef[]`), `relics` (summed `StatModifier[]` plus set-bonus `EffectDef[]`), `traces`, `passiveEffects`.
+- **`CharacterBuild`**: id, optional `characterId` (game character ID for portraits and names; display metadata the engine never reads), level, element, base HP/ATK/DEF/SPD, optional base CRIT, optional `breakLevelMultiplier` (E4), `lightCone` (base stats plus passive `EffectDef[]`), `relics` (summed `StatModifier[]` plus set-bonus `EffectDef[]`), `traces`, `passiveEffects`.
 - **`EnemyConfig`**: id, level, optional `baseDef`, per-element `res`, initial `broken`, optional `maxToughness` (displayed units, E4), optional `effectRes` (E8), optional `debuffRes` per DoT type (E12), `passiveEffects`.
 - **`StatModifier`**: `{ stat, value, condition? }`. The condition can filter on hit element, damage tags (any-of), or counterpart unit IDs.
 - **`EffectDef`** (buff or debuff): id, kind, modifiers, optional `conversions` (`StatConversion[]`, E7), `DurationSpec`, `maxStacks`, `stacking` (E5), `source`.
