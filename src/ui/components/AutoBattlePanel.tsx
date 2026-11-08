@@ -85,6 +85,13 @@ export function AutoBattlePanel({ draft, enemies, teamIndex, dispatch }: AutoBat
             .replace('{later}', formatNumber(CHALLENGE_CYCLE_AV.later))}
         </button>
       </div>
+      <button type="button" disabled={team.every(({ id }) => settings.kits.some((kit) => kit.unitId === id))}
+        onClick={() => update({ kits: [
+          ...settings.kits,
+          ...team.filter(({ id }) => !settings.kits.some((kit) => kit.unitId === id)).map((build) => newKit(build, enemies)),
+        ] })}>
+        {t('auto.enableAll')}
+      </button>
       {team.map((build, index) => {
         const kit = settings.kits.find(({ unitId }) => unitId === build.id);
         return (
@@ -218,7 +225,9 @@ function KitPrefillEditor({ kit, build, enemies, onChange }: KitPrefillEditorPro
       const action = template.value.actions[name];
       if (!action) continue;
       const notes = [
-        ...(action.steps.length === 0 ? [t('auto.prefill.noDamage')] : []),
+        // An unreadable damage sentence is listed as a gap below, not as "no damage".
+        ...(action.steps.length === 0 && !template.value.gaps.some((gap) => gap.slot === name && gap.reason === 'unsupported')
+          ? [t('auto.prefill.noDamage')] : []),
         ...(action.otherEffects ? [t('auto.prefill.otherEffects')] : []),
       ];
       lines.push(t('auto.prefill.ready').replace('{action}', () => actionName(name)).replace('{name}', () => action.name)

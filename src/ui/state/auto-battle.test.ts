@@ -37,12 +37,16 @@ describe('newKit', () => {
     expect(created.ultimate).toEqual({ steps: [], energyCost: characterEnergyCost(DATA_TABLES, record.id) });
     expect(created.basic).toEqual({ steps: [] });
     expect(created.startEnergy).toBeUndefined();
+    expect(created.useUltimate).toBe(true);
   });
 
   it('leaves the cost empty for unknown characters and a cost of 0 (1407)', () => {
     expect(newKit(build('x')).ultimate).toEqual({ steps: [] });
     expect(characterEnergyCost(DATA_TABLES, '1407')).toBe(0);
     expect(newKit(build('x', '1407')).ultimate).toEqual({ steps: [] });
+    // Regression: without a cost the Ultimate starts off, so the kit is valid as created.
+    expect(newKit(build('x')).useUltimate).toBe(false);
+    expect(newKit(build('x', '1407')).useUltimate).toBe(false);
   });
 });
 
@@ -101,9 +105,16 @@ describe('toAutoBattleInput', () => {
     expect(input.kits[0]).toMatchObject({
       startEnergy: 0,
       skill: { steps: [hit], energy: 30, skillPoints: 1, label: t('auto.action.skill') },
-      ultimate: { energyCost: 120, label: t('auto.action.ultimate') },
     });
     expect(input.kits[0]).not.toHaveProperty('skillPointReserve');
+  });
+
+  it('sends the Ultimate only when it is used, so an unused one needs no cost', () => {
+    // The fixture kit has useUltimate: false.
+    expect(toAutoBattleInput(scenario, 0).kits[0]).not.toHaveProperty('ultimate');
+    const used = { ...scenario.teams[0], autoBattle: { kits: [{ ...kit, useUltimate: true }], avLimit: 300 } };
+    expect(toAutoBattleInput({ ...scenario, teams: [used, scenario.teams[1]] }, 0).kits[0]?.ultimate)
+      .toMatchObject({ energyCost: 120, label: t('auto.action.ultimate') });
   });
 
   it('adds cycles when either cycle field is set', () => {

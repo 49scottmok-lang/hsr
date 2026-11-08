@@ -279,3 +279,10 @@ _Append requests here: what you need, why, and the proposed API._
 - [x] **Reserved unit IDs (F7/F11).** The shared zh-HK translator handles engine issues for both character and enemy IDs. Results use engine validation directly. Tests cover both path formats and all three reserved IDs.
 - [x] **Break and Super Break (E4).** Character and enemy inputs, the rotation editor, and scenario import and sharing support both kinds. The results table groups them by their damage tags and shows the engine's combined Weakness Break Efficiency bonus for Super Break. The normal hit picker excludes both tags, and modifier conditions allow them.
 - [x] **Stacking, conversions and DoT application chance (E5/E7/E8).** The editors, scenario field allowlist and validation translations cover the handoff fields. The DoT column describes application chance and displays the engine's factor. Its expanded stats show Effect Hit Rate, Effect RES PEN and target Effect RES. The temporary label and result-field annotations have been reviewed and removed.
+
+## Auto battle usability fixes (engine owner, 2026-11-08, at the owner's request)
+
+- `validateAutoBattleInput` rejects an empty kit list; the UI translates it (`issue.kitRequired`). Before, simulating with no kit enabled wrote empty turns and the results showed 0 damage.
+- `kitTemplate` fills Energy and skill points for actions whose damage sentence is unparseable (e.g. 1507 Skill), and lists the damage as an `unsupported` gap.
+- **Frontend note:** these touched `src/ui` (`AutoBattlePanel` "全部角色啟用自動行動" button, `newKit` Ultimate default, `toAutoBattleInput` drops an unused Ultimate, i18n keys). Please review.
+- **Open data issues:** 1308's `SPNeed` (9) is not Energy, so the auto battle casts its Ultimate far too often; 1507 and 1413 have no readable Skill or Ultimate damage, so their auto rotations deal almost nothing until hits are added by hand.

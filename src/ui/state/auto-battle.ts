@@ -72,7 +72,8 @@ export function newKit(build: CharacterBuild, enemies: readonly EnemyConfig[] = 
     skill: { steps: [] },
     ultimate: { steps: [], ...(cost !== undefined && cost > 0 ? { energyCost: cost } : {}) },
     useSkill: true,
-    useUltimate: true,
+    // Without a sourced cost (unknown, or 0 = not Energy-based) the auto battle cannot cast it.
+    useUltimate: cost !== undefined && cost > 0,
   };
   const template = levels ? kitTemplateFor(build, enemies, kit.prefill ?? {}) : undefined;
   return template?.ok ? applyKitTemplate(kit, template.value) : kit;
@@ -136,9 +137,12 @@ export function toAutoBattleInput(scenario: Scenario, teamIndex: TeamIndex): Aut
       startEnergy: kit.startEnergy ?? 0,
       basic: { steps: kit.basic.steps, energy: value(kit.basic.energy), skillPoints: value(kit.basic.skillPoints), label: label('basic') },
       skill: { steps: kit.skill.steps, energy: value(kit.skill.energy), skillPoints: value(kit.skill.skillPoints), label: label('skill') },
-      ultimate: {
-        steps: kit.ultimate.steps, energy: value(kit.ultimate.energy), energyCost: value(kit.ultimate.energyCost), label: label('ultimate'),
-      },
+      // An Ultimate that is never cast needs no cost or Energy.
+      ...(kit.useUltimate ? {
+        ultimate: {
+          steps: kit.ultimate.steps, energy: value(kit.ultimate.energy), energyCost: value(kit.ultimate.energyCost), label: label('ultimate'),
+        },
+      } : {}),
       useSkill: kit.useSkill,
       useUltimate: kit.useUltimate,
       ...(kit.skillPointReserve !== undefined ? { skillPointReserve: kit.skillPointReserve } : {}),
