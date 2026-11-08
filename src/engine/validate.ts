@@ -2,6 +2,7 @@ import {
   BREAK_DAMAGE_TAGS,
   CONVERSION_SOURCES,
   DAMAGE_TAGS,
+  DOT_TYPES,
   ELEMENTS,
   STACKING_POLICIES,
   STAT_KEYS,
@@ -130,6 +131,10 @@ function checkEnemy(e: EnemyConfig, path: string, unitIds: Set<string>, out: str
   }
   if (e.maxToughness !== undefined && !isPosNum(e.maxToughness)) out.push(`${path}.maxToughness: must be a positive number`);
   if (e.effectRes !== undefined && !isFiniteNum(e.effectRes)) out.push(`${path}.effectRes: must be a finite number`);
+  for (const [type, v] of Object.entries(e.debuffRes ?? {})) {
+    if (!(DOT_TYPES as readonly string[]).includes(type)) out.push(`${path}.debuffRes: unknown DoT type "${type}"`);
+    else if (!isFiniteNum(v)) out.push(`${path}.debuffRes.${type}: must be a finite number`);
+  }
   for (const [el, v] of Object.entries(e.res)) {
     if (!(ELEMENTS as readonly string[]).includes(el)) out.push(`${path}.res: unknown element "${el}"`);
     if (!isFiniteNum(v)) out.push(`${path}.res.${el}: must be a finite number`);
@@ -164,6 +169,10 @@ function checkHit(
   if (h.baseChance !== undefined) {
     if (!isNonNeg(h.baseChance)) out.push(`${path}: baseChance must be a finite number >= 0`);
     if (!h.tags.includes('dot')) out.push(`${path}: baseChance needs the "dot" tag`);
+  }
+  if (h.dotType !== undefined) {
+    if (!(DOT_TYPES as readonly string[]).includes(h.dotType)) out.push(`${path}: unknown DoT type "${String(h.dotType)}"`);
+    if (h.baseChance === undefined) out.push(`${path}: dotType needs baseChance`);
   }
 }
 

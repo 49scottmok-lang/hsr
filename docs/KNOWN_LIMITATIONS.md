@@ -53,8 +53,8 @@ These are still **unverified**, because no read source covers them:
 4. How several Final DMG (Original DMG) sources stack. R1 multiplies them (re-checked 2026-11-07: its `MULTIPLICATIVE_BOOST` operator), and so does the engine. No other source says.
 5. Level scaling below level 80 (base stats) and below max level (relic main stats). The formulas are checked only at those levels (`FORMULAS.md § Level scaling`).
 6. The vulnerability cap of +250%. It rests on R1 alone: the S3 Vulnerability page (read 2026-11-08) says sources add, but states no cap. *The RES clamp [10%, 200%] was sourced on 2026-11-08 (S3 Damage RES).*
-7. *(E8)* R1's multi-stack DoT weighting. Debuff RES is now sourced (S3, 2026-11-08: `× (1 − Debuff RES)`) but **not modelled** (TASKS E12).
-8. *(E11)* Super Break as Break DMG. S3 says Super Break DMG is also Break DMG and multiplies `(1 + Break DMG Increase) × (1 + Super Break DMG Increase)`. The engine keeps the two tags apart and adds `superBreakDmg` to the ability multiplier, as R1 does. S3 and R1 disagree (`FORMULAS.md § Super Break DMG`).
+7. *(E8)* R1's multi-stack DoT weighting. *Debuff RES was modelled on 2026-11-08 (E12): `EnemyConfig.debuffRes` per DoT type and `HitSpec.dotType`.* Debuff RES of non-DoT debuffs (`apply` steps) is not modelled, because those always land.
+8. ~~*(E11)* Super Break as Break DMG.~~ *Resolved 2026-11-08: the engine follows S3. `break` modifiers reach Super Break hits, and Break DMG Increase × Super Break DMG Increase multiply. A modifier naming both tags counts once (**[ENGINE]**).*
 
 *Resolved 2026-11-07:* base CRIT Rate 5% / CRIT DMG 50% is in source A's `AvatarPromotionConfig` for every character and ascension, and matches B (`FORMULAS.md § Base CRIT`).
 
@@ -76,7 +76,7 @@ R1 is a widely used optimizer, but it is not the game. If game testing contradic
 | A8 | Conditional modifiers are excluded from context-free stat displays. | `stats.ts` |
 | A9 | *(E7)* A stat conversion reads its source stat **without** other conversions (single pass), so conversions never chain. `fromUnit: 'source'` reads the source unit's context-free stats. The cap applies after stacks. | `stats.ts` |
 | A10 | *(E8)* Enemy Effect RES defaults to 0 when `EnemyConfig.effectRes` is not set. | `damage.ts` |
-| A11 | *(E4 follow-up)* Break hits carry only their own tag (`break` or `superBreak`). An effect that should boost both must list both. `breakEfficiency` / `superBreakDmg` modifiers are read in the Super Break hit's context, not the triggering hit's. | `breakDamage.ts` |
+| A11 | *(E4 follow-up; E11 2026-11-08)* Break hits report only their own tag (`break` or `superBreak`), but a Super Break hit also matches `break` modifiers (S3). A `dmgBoost` naming both tags counts once, as Break DMG Increase. `breakEfficiency` / `superBreakDmg` modifiers are read in the Super Break hit's context, not the triggering hit's. | `breakDamage.ts` |
 | A12 | *(E6)* AV ties mid-battle are broken like battle-start ties (allies first, then slot). The source describes the battle-start order and a stable sort only. | `timeline.ts` |
 | A13 | *(E6)* ~~A gauge can go below 0.~~ *Replaced 2026-11-08 (E1):* gauges are floored at 0 (S3 Speed), so two units advanced to 0 tie and A12 decides. | `timeline.ts` |
 | A14 | *(E6)* An adjustment triggered by a turn applies after that turn ends, after the actor's gauge refill. S3 Speed (2026-11-08) confirms that post-action Ultimates act at this point. | `timeline.ts` |

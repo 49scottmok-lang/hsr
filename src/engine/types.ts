@@ -336,6 +336,14 @@ export interface CharacterBuild {
   passiveEffects?: readonly EffectDef[];
 }
 
+/**
+ * DoT debuffs with their own Debuff RES (E12; S3 Debuff RES lists Bleed, Burn,
+ * Shock and Wind Shear among its types). Non-DoT debuffs (Frozen, Entanglement,
+ * Imprisonment, Control Effects) are not listed: `apply` steps always land.
+ */
+export const DOT_TYPES = ['bleed', 'burn', 'shock', 'windShear'] as const;
+export type DotType = (typeof DOT_TYPES)[number];
+
 export interface EnemyConfig {
   id: string;
   name: string;
@@ -359,6 +367,11 @@ export interface EnemyConfig {
    * Caller-supplied.
    */
   effectRes?: number;
+  /**
+   * Debuff RES per DoT type (fractions), used for DoT application chance (E12).
+   * Missing types default to 0. Caller-supplied.
+   */
+  debuffRes?: Partial<Record<DotType, number>>;
   /** Always-on enemy effects (e.g. innate damage reduction). */
   passiveEffects?: readonly EffectDef[];
 }
@@ -413,6 +426,11 @@ export interface HitSpec {
    * (docs/FORMULAS.md § DoT application chance). Absent: the DoT always landed.
    */
   baseChance?: number;
+  /**
+   * DoT only (E12): which DoT debuff this is, so the target's `debuffRes` for it
+   * lowers the application chance. Needs `baseChance`.
+   */
+  dotType?: DotType;
   label?: string;
 }
 
@@ -464,6 +482,10 @@ export interface BreakDetails {
   breakEffect: number;
   /** 1 + breakEffect. Already included in the breakdown's `baseDmg`. */
   breakEffectMultiplier: number;
+  /** Σ DMG Boost naming `break` (S3's Break DMG Increase). Same as `stats.dmgBoost`. Added 2026-11-08 (E11). */
+  breakDmgIncrease: number;
+  /** Super Break only: Σ DMG Boost naming `superBreak` but not `break`, a separate factor (E11). */
+  superBreakDmgIncrease?: number;
 }
 
 /** Fully resolved inputs used for one hit (useful for UI breakdowns and tests). */

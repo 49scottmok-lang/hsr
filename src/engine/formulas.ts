@@ -159,17 +159,19 @@ export function breakEffectMultiplier(breakEffect: number): number {
 }
 
 /**
- * §DoT application chance (E8):
- * clamp(baseChance × (1 + EHR) × (1 − effectRes + effectResPen), 0, 1).
- * Cross-checked against R1 `DotDamageFunction` (min(1, …)); the floor at 0 is an engine safeguard.
+ * §DoT application chance (E8, E12):
+ * clamp(baseChance × (1 + EHR) × (1 − effectRes + effectResPen) × (1 − debuffRes), 0, 1).
+ * Cross-checked against R1 `DotDamageFunction` (min(1, …)); the Debuff RES factor is
+ * from S3 (Debuff RES). The floor at 0 is an engine safeguard.
  */
 export function dotApplicationChance(
   baseChance: number,
   effectHitRate: number,
   targetEffectRes: number,
   effectResPen: number,
+  targetDebuffRes = 0,
 ): number {
-  const raw = baseChance * (1 + effectHitRate) * (1 - targetEffectRes + effectResPen);
+  const raw = baseChance * (1 + effectHitRate) * (1 - targetEffectRes + effectResPen) * (1 - targetDebuffRes);
   return Math.min(1, Math.max(0, raw));
 }
 

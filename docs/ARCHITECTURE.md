@@ -25,6 +25,8 @@ Dependency direction: `ui → engine`, `ui → import`, `ui → data`, `import �
 
 `scripts/data/` holds the Node generator scripts that write `src/data/generated/` (TASKS D3). They are the only code that touches the network, and they run by hand, never in the app or in tests.
 
+**Build chunks** (`vite.config.ts`, 2026-11-08): `pnpm build` splits `src/data/generated/` into a `data-tables` chunk and React into a `react` chunk. The stat tables are most of the bundle and change only on a re-pin, so an app update re-downloads only the app chunk. It also keeps every chunk under Vite's 500 kB warning.
+
 Engine independence is enforced three ways (and the same three cover `src/data` and `src/import`):
 
 1. **Typecheck.** `tsconfig.engine.json` compiles `src/engine`, `src/data` and `src/import` with `lib: ["ES2023"]` and no DOM, so any use of `document`, `window`, etc. fails `pnpm typecheck` and `pnpm build`. `tsconfig.scripts.json` type-checks `scripts/` with Node types.
@@ -65,16 +67,16 @@ All engine functions are deterministic. None mutates its inputs, and this is tes
 Full definitions are in `src/engine/types.ts`.
 
 - **`CharacterBuild`**: id, level, element, base HP/ATK/DEF/SPD, optional base CRIT, optional `breakLevelMultiplier` (E4), `lightCone` (base stats plus passive `EffectDef[]`), `relics` (summed `StatModifier[]` plus set-bonus `EffectDef[]`), `traces`, `passiveEffects`.
-- **`EnemyConfig`**: id, level, optional `baseDef`, per-element `res`, initial `broken`, optional `maxToughness` (displayed units, E4), optional `effectRes` (E8), `passiveEffects`.
+- **`EnemyConfig`**: id, level, optional `baseDef`, per-element `res`, initial `broken`, optional `maxToughness` (displayed units, E4), optional `effectRes` (E8), optional `debuffRes` per DoT type (E12), `passiveEffects`.
 - **`StatModifier`**: `{ stat, value, condition? }`. The condition can filter on hit element, damage tags (any-of), or counterpart unit IDs.
 - **`EffectDef`** (buff or debuff): id, kind, modifiers, optional `conversions` (`StatConversion[]`, E7), `DurationSpec`, `maxStacks`, `stacking` (E5), `source`.
 - **`StatConversion`** (E7): `to` += min(`cap`, `ratio` × stacks × max(0, `from` − `threshold`)), with `from` one of `CONVERSION_SOURCES`, read from the holder (default, in the hit context) or the effect's source (`fromUnit: 'source'`, context-free), without other conversions.
 - **`EffectInstance`**: a live effect on a holder, with stacks, remaining turns, resolved tick unit, and the skip flag.
 - **`CombatState`**: units by ID, effect instances, and the active turn unit.
-- **`HitSpec`**: attacker, target, scaling stat, multiplier, element, tags (`HIT_DAMAGE_TAGS` only), `canCrit`, and for DoT an optional `baseChance` (E8).
+- **`HitSpec`**: attacker, target, scaling stat, multiplier, element, tags (`HIT_DAMAGE_TAGS` only), `canCrit`, and for DoT an optional `baseChance` (E8) and `dotType` (E12, one of `DOT_TYPES`), which picks the target's `EnemyConfig.debuffRes` entry.
 - **`RotationEvent`**: either `turn` (ticks durations at the start and end) or `extra` (no ticking). Each holds ordered `ActionStep`s: `apply`, `remove`, `hit`, `break` or `setBroken`.
-- **`BreakHitSpec`** (E4, the `break` step): `kind: 'break'` (Break DMG, optional `multiplier`) or `kind: 'superBreak'` (`toughnessReduction`, optional `breakEfficiency` and `fixedToughnessReduction`, `multiplier`). Its `HitResult` has `break: BreakDetails`, the single tag `break` or `superBreak` (E4 follow-up), `canCrit: false`, and `breakdown.baseDmg` that already includes 1 + Break Effect. `BreakDetails.breakEfficiency` and `multiplier` for Super Break include the attacker's `breakEfficiency` / `superBreakDmg` stats.
-- **`DamageBreakdown`** has `dotChanceMultiplier` (E8; 1 unless a DoT sets `baseChance`), and `ResolvedHitStats` has `effectHitRate`, `effectResPen` and `targetEffectRes`. Both are required fields, added 2026-11-07: code that builds these objects by hand must add them.
+- **`BreakHitSpec`** (E4, the `break` step): `kind: 'break'` (Break DMG, optional `multiplier`) or `kind: 'superBreak'` (`toughnessReduction`, optional `breakEfficiency` and `fixedToughnessReduction`, `multiplier`). Its `HitResult` has `break: BreakDetails`, the single tag `break` or `superBreak` (E4 follow-up), `canCrit: false`, and `breakdown.baseDmg` that already includes 1 + Break Effect. `BreakDetails.breakEfficiency` and `multiplier` for Super Break include the attacker's `breakEfficiency` / `superBreakDmg` stats. A Super Break hit also matches `break` modifiers (E11), and `BreakDetails.breakDmgIncrease` / `superBreakDmgIncrease` are the two factors whose product is `dmgBoostMultiplier`.
+- **`DamageBreakdown`** has `dotChanceMultiplier` (E8; 1 unless a DoT sets `baseChance`; includes the E12 Debuff RES factor), and `ResolvedHitStats` has `effectHitRate`, `effectResPen` and `targetEffectRes`. Both are required fields, added 2026-11-07: code that builds these objects by hand must add them.
 - **`RotationResult`**: per-hit `HitResult` (stats and breakdown), per-event log, totals by attacker and tag, per-cycle damage, and final state.
 
 ### Holder-side modifier semantics

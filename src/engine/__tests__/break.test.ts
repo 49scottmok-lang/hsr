@@ -71,6 +71,7 @@ describe('calculateBreakHit', () => {
       multiplier: 1,
       breakEffect: 1.5,
       breakEffectMultiplier: 2.5,
+      breakDmgIncrease: 0,
     });
   });
 

@@ -43,8 +43,10 @@ describe('break-tagged DMG Boost', () => {
     expect(c.breakdown.total).toBeCloseTo(34666.666667, 6);
   });
 
-  it('Super Break DMG takes only DMG Boost that names `superBreak`', () => {
-    // Base 4000 × 10 / 10 × 1 = 4000; × 2.5 = 10000; × 1.6 × 0.8 × 1000/2100 = 6095.238…
+  it('Super Break DMG multiplies Break DMG Increase and Super Break DMG Increase (E11, S3)', () => {
+    // Base 4000 × 10 / 10 × 1 = 4000; × 2.5 = 10000.
+    // (1 + 0.3 break-tagged) × (1 + 0.6 superBreak-tagged) = 2.08; the unconditional 100% is ignored.
+    // 10000 × 2.08 × 0.8 × 1000/2100 = 7923.809…
     const c = hit([breakDmg, superBreakDmgBoost, plainDmg], {
       kind: 'superBreak',
       targetId: 'e1',
@@ -52,8 +54,19 @@ describe('break-tagged DMG Boost', () => {
       multiplier: 1,
     });
     expect(c.tags).toEqual(['superBreak']);
-    expect(c.breakdown.dmgBoostMultiplier).toBeCloseTo(1.6, 12);
-    expect(c.breakdown.total).toBeCloseTo(10000 * 1.6 * RES * DEF, 8);
+    expect(c.details.breakDmgIncrease).toBeCloseTo(0.3, 12);
+    expect(c.details.superBreakDmgIncrease).toBeCloseTo(0.6, 12);
+    expect(c.breakdown.dmgBoostMultiplier).toBeCloseTo(2.08, 12);
+    expect(c.breakdown.total).toBeCloseTo(10000 * 2.08 * RES * DEF, 8);
+    expect(c.breakdown.total).toBeCloseTo(7923.809524, 6);
+  });
+
+  it('counts a modifier naming both tags once, as Break DMG Increase (E11)', () => {
+    // { break, superBreak } +50% → (1 + 0.5) × (1 + 0) = 1.5, not 2.25.
+    const both: StatModifier = { stat: 'dmgBoost', value: 0.5, condition: { damageTags: ['break', 'superBreak'] } };
+    const c = hit([both], { kind: 'superBreak', targetId: 'e1', toughnessReduction: 10, multiplier: 1 });
+    expect(c.breakdown.dmgBoostMultiplier).toBeCloseTo(1.5, 12);
+    expect(c.details.superBreakDmgIncrease).toBe(0);
   });
 
   it('applies other modifiers conditioned on the break tag (DEF ignore on Super Break only)', () => {
@@ -65,7 +78,7 @@ describe('break-tagged DMG Boost', () => {
     expect(b.breakdown.defMultiplier).toBeCloseTo(DEF, 12);
   });
 
-  it('target-held vulnerability conditioned on `break` applies to Break DMG only', () => {
+  it('target-held vulnerability conditioned on `break` applies to Break and Super Break DMG (E11)', () => {
     const vuln: EffectDef = {
       id: 'break-vuln',
       name: 'Fixture Break DMG taken +25%',
@@ -75,7 +88,9 @@ describe('break-tagged DMG Boost', () => {
     const state = createInitialState([breaker()], [enemy({ maxToughness: 120, broken: true, passiveEffects: [vuln] })]);
     expect(calculateBreakHit(state, { kind: 'break', targetId: 'e1' }, 'dps').breakdown.vulnerabilityMultiplier).toBe(1.25);
     const sb = calculateBreakHit(state, { kind: 'superBreak', targetId: 'e1', toughnessReduction: 10, multiplier: 1 }, 'dps');
-    expect(sb.breakdown.vulnerabilityMultiplier).toBe(1);
+    // S3: Super Break DMG is also considered Break DMG, so the Break DMG vulnerability reaches it.
+    expect(sb.breakdown.vulnerabilityMultiplier).toBe(1.25);
+    expect(sb.tags).toEqual(['superBreak']);
   });
 });
 

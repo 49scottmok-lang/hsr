@@ -111,3 +111,57 @@ describe('validation', () => {
     ]);
   });
 });
+
+describe('Debuff RES (E12, S3: × (1 − Debuff RES))', () => {
+  const ehr = withStats([{ stat: 'effectHitRate', value: 0.5 }]);
+  const resistant = (): EnemyConfig => enemy({ effectRes: 0.2, debuffRes: { burn: 0.3 } });
+  const burn = (dotType?: HitSpec['dotType']): HitSpec => ({ ...dot(0.6), dotType });
+
+  it('formula: base × (1 + EHR) × (1 − Effect RES + PEN) × (1 − Debuff RES)', () => {
+    // 0.6 × 1.5 × 0.8 × 0.7 = 0.504
+    expect(formulas.dotApplicationChance(0.6, 0.5, 0.2, 0, 0.3)).toBeCloseTo(0.504, 12);
+    // Default Debuff RES is 0: 0.6 × 1.5 × 0.8 = 0.72
+    expect(formulas.dotApplicationChance(0.6, 0.5, 0.2, 0)).toBeCloseTo(0.72, 12);
+  });
+
+  it('applies the target Debuff RES for the hit dotType', () => {
+    // 936 × 0.504 = 471.744
+    const c = calculateHit(createInitialState([ehr], [resistant()]), burn('burn'), 'dps', 'expected');
+    expect(c.breakdown.dotChanceMultiplier).toBeCloseTo(0.504, 12);
+    expect(c.breakdown.total).toBeCloseTo(DOT_DAMAGE * 0.504, 8);
+    expect(c.breakdown.total).toBeCloseTo(471.744, 6);
+  });
+
+  it('uses 0 for a DoT type the enemy has no Debuff RES for, and when dotType is absent', () => {
+    // 0.6 × 1.5 × 0.8 = 0.72 → 936 × 0.72 = 673.92
+    const state = createInitialState([ehr], [resistant()]);
+    expect(calculateHit(state, burn('shock'), 'dps', 'expected').breakdown.dotChanceMultiplier).toBeCloseTo(0.72, 12);
+    const plain = calculateHit(state, burn(), 'dps', 'expected');
+    expect(plain.breakdown.dotChanceMultiplier).toBeCloseTo(0.72, 12);
+    expect(plain.breakdown.total).toBeCloseTo(673.92, 6);
+  });
+
+  it('validates dotType and debuffRes', () => {
+    const input = {
+      team: [fireDps()],
+      enemies: [enemy({ debuffRes: { frozen: 0.1, burn: Number.NaN } as unknown as EnemyConfig['debuffRes'] })],
+      events: [
+        {
+          kind: 'extra',
+          id: 'x',
+          actorId: 'dps',
+          steps: [
+            { op: 'hit', hit: { ...dot(), dotType: 'burn' } },
+            { op: 'hit', hit: { ...dot(0.5), dotType: 'poison' } },
+          ],
+        },
+      ],
+    } as unknown as RotationInput;
+    expect(validateRotationInput(input)).toEqual([
+      'enemies[0].debuffRes: unknown DoT type "frozen"',
+      'enemies[0].debuffRes.burn: must be a finite number',
+      'events[0].steps[0]: dotType needs baseChance',
+      'events[0].steps[1]: unknown DoT type "poison"',
+    ]);
+  });
+});

@@ -13,7 +13,7 @@ Every formula below maps to one function in `src/engine/formulas.ts`. All percen
 
 ### Sources and references
 
-- **S1**: Prydwen damage formula guide (`prydwen.gg/star-rail/guides/damage-formula`). Only the search-result summary was available; the page returned HTTP 403 to automated fetch.
+- **S1**: Prydwen damage formula guide (`prydwen.gg/star-rail/guides/damage-formula`). Automated fetch returned HTTP 403; the page was read in full in the browser pane on 2026-11-08. It confirms the RES bounds and that DMG Taken (Vulnerability) sources add, states no Vulnerability cap, and offers only a guess about rounding. It adds nothing for the remaining E1 items.
 - **S2**: GenshinTheory, "hsr damage" (`genshintheory.github.io/hsr-damage.html`). Read in full. It is an early, pre-release write-up.
 - **R1** (also **B** in `DATA_SOURCES.md`): Fribbels HSR Optimizer, `github.com/fribbels/hsr-optimizer`, MIT license, commit `ac5e9d6` (2026-11-04). The file is `src/lib/optimization/engine/damage/damageCalculator.ts`, mainly `computeCommonMultipliers`, `calculateDefMulti`, `getCritMultiplier` and `DotDamageFunction`. It was read on 2026-11-07. No code was copied; only the formulas were compared.
 - **R1′**: the same repository at the same commit (`ac5e9d6`), stat and buff pipeline, read on 2026-11-07 for E1: `src/lib/optimization/context/calculateContext.ts` (`sumCharacterBase`), `src/lib/optimization/calculateStats.ts` (`calculateBaseStats`, `sumFlatStat`, `applyPercentStats`) and `src/lib/optimization/engine/container/computedStatsContainer.ts` (`MULTIPLICATIVE_BOOST`). Formulas compared only; no code copied.
@@ -226,12 +226,12 @@ BreakDMG = LevelMultiplier × ElementFactor × (0.5 + MaxToughness / 40) × Mult
 - **MaxToughness** is `EnemyConfig.maxToughness` in **displayed** units (a Basic ATK typically shows 10). **[CROSS-CHECKED]** R1 computes `0.5 + T / 120`, but its enemy form stores Toughness ×3 and labels it `toughness / 3` (`EnemyConfigurationsDrawer.tsx@dd0c4af`), so R1's term is `0.5 + T_displayed / 40`. Source A shows the same ×3 ratio for skills: March 7th's Basic ATK has `ShowStanceList` 30 and `StanceDamageDisplay` 10 (`AvatarSkillConfig`).
 - **Multiplier** (`BreakDmgSpec.multiplier`, default 1) is R1's `specialScaling`, for abilities that deal "X% of Break DMG".
 - **(1 + BreakEffect)**: **[CROSS-CHECKED]** R1 `beMulti`. The engine folds it into `DamageBreakdown.baseDmg`, so the breakdown keeps the same factors as an ordinary hit. `HitResult.break` lists the parts.
-- **No CRIT; only break-specific DMG Boost.** **[CROSS-CHECKED]** R1 uses `dmgBoostMulti = 1 + (hit-level BOOST)` for Break and Super Break (its comment: "no action-level, no elemental boost"). *(Added 2026-11-07, E4 follow-up.)* The engine's equivalent is `DMGBoost = 1 + Σ dmgBoost` over the attacker's modifiers whose condition **names the hit's tag** (`damageTags` includes `break`, or `superBreak` for Super Break). Unconditional, element-only and other-tag DMG Boost does not apply. `stats.dmgBoost` shows that sum. `critMultiplier` is 1.
+- **No CRIT; only break-specific DMG Boost.** **[CROSS-CHECKED]** R1 uses `dmgBoostMulti = 1 + (hit-level BOOST)` for Break and Super Break (its comment: "no action-level, no elemental boost"). *(Added 2026-11-07, E4 follow-up.)* The engine's equivalent is `DMGBoost = 1 + Σ dmgBoost` over the attacker's modifiers whose condition **names `break`** (for Super Break, see § Super Break DMG for its second factor). Unconditional, element-only and other-tag DMG Boost does not apply. `stats.dmgBoost` and `BreakDetails.breakDmgIncrease` show that sum. `critMultiplier` is 1.
 - **DEF, RES, Vulnerability, Broken, Final DMG, True DMG**: the same functions as ordinary hits. **[CROSS-CHECKED]** R1 applies the same common multipliers to Break DMG.
 - **[SOURCED]** S3 Weakness Break (2026-11-08) gives `Base DMG × Ability Multiplier × (1 + Break Effect) × DMG Increase Multiplier × DEF × RES × Vulnerability × DMG Mitigation × Broken`, with `DMG Increase Multiplier = 1 + Break DMG Increase`, and says Break-related DMG is not affected by CRIT Rate, CRIT DMG, DMG Boost and Weaken. This matches the engine: `dmgBoostMultiplier` for a break hit **is** S3's Break DMG Increase, since only modifiers naming the `break` tag count (shown as `BreakDMGIncrease` above).
 - **Weaken** is 1 for break hits, **[SOURCED]** S3. *Changed 2026-11-08 (E1): it used to be applied.* `stats.weaken` still shows the attacker's Weaken. **Mitigation** is applied, **[SOURCED]** S3.
 - **Final DMG and True DMG** are not in S3's break formula. They stay because R1 applies them (**[CROSS-CHECKED]** only).
-- **Tags** *(changed 2026-11-07, E4 follow-up)*: a Break hit carries exactly the tag `break`, and a Super Break hit exactly `superBreak`. Every modifier conditioned on that tag applies (e.g. `defIgnore` with `damageTags: ['superBreak']`, or a target-held `vulnerability` with `damageTags: ['break']`). Modifiers conditioned on other tags never do. Element-conditioned ones apply as before. The two tags are separate: an effect that boosts both must list both. Ordinary `hit` steps may not carry them. **[ENGINE]** Whether the game counts Super Break DMG as Break DMG for some effects is ability-specific and not modelled.
+- **Tags** *(changed 2026-11-07, E4 follow-up; 2026-11-08, E11)*: a Break hit reports the tag `break`, and a Super Break hit `superBreak` (this is what `HitResult.tags` and `damageByTag` use). For **matching modifiers**, a Break hit matches `break`, and a Super Break hit matches both `superBreak` and `break`, because **[SOURCED]** S3 Weakness Break says Super Break DMG is also considered Break DMG. So a target-held `vulnerability` with `damageTags: ['break']` reaches both kinds, while one with `damageTags: ['superBreak']` (e.g. `defIgnore`) reaches Super Break only. Modifiers conditioned on other tags never apply. Element-conditioned ones apply as before. Ordinary `hit` steps may not carry these tags.
 - **Broken** uses the target's state at that step. **[SOURCED]** S3 Weakness Break (2026-11-08): the 0.9 multiplier applies while the enemy has Toughness, and the page notes that this affects the Break DMG dealt when Toughness is depleted. So the Break DMG of the breaking hit uses 0.9: put the `break` step **before** `setBroken: true`.
 
 Function: `calculateBreakHit` / `computeBreakBreakdown` in `src/engine/breakDamage.ts`, with `formulas.breakToughnessFactor`, `breakBaseDmg` and `breakEffectMultiplier`.
@@ -241,7 +241,8 @@ Function: `calculateBreakHit` / `computeBreakBreakdown` in `src/engine/breakDama
 ```
 Toughness       = (1 + BreakEfficiency) × ToughnessReduction + FixedToughnessReduction
 SuperBreakDMG   = LevelMultiplier × Toughness / 10 × Multiplier × (1 + BreakEffect)
-                × SuperBreakDMGBoost × DEF × RES × Vulnerability × Mitigation × Broken × FinalDMG × TrueDMG
+                × BreakDMGIncrease × SuperBreakDMGIncrease
+                × DEF × RES × Vulnerability × Mitigation × Broken × FinalDMG × TrueDMG
 ```
 
 - **[CROSS-CHECKED]** R1 `SuperBreakDamageFunction`: `(3767.5533 / 10) × effectiveToughness × beMulti × superBreakModMulti`, with `effectiveToughness = (1 + breakEfficiency) × toughnessDmg + fixedToughnessDmg`. R1's `toughnessDmg` is in displayed units (e.g. March 7th's Basic ATK is `.toughnessDmg(10)` in `March7th.ts@dd0c4af`).
@@ -249,8 +250,16 @@ SuperBreakDMG   = LevelMultiplier × Toughness / 10 × Multiplier × (1 + BreakE
 - **BreakEfficiency** (Weakness Break Efficiency) is the step's `breakEfficiency` + Σ the attacker's `breakEfficiency` stat *(stat added 2026-11-07, E4 follow-up)*. **[CROSS-CHECKED]** R1 uses `1 + BREAK_EFFICIENCY_BOOST`, one additive term, and scales only `toughnessDmg`, not `fixedToughnessDmg`.
 - **Multiplier** (the Super Break DMG multiplier, R1's `SUPER_BREAK_MODIFIER`) is the step's `multiplier` + Σ the attacker's `superBreakDmg` stat *(stat added 2026-11-07)*. **[CROSS-CHECKED]** R1 adds `SUPER_BREAK_MODIFIER + hit.extraSuperBreakModifier`. A step may set `multiplier: 0` and take it all from buffs. The code read does not show whether R1's stat container sums several sources, so summing them is **[ENGINE]**, consistent with R1's single additive term.
 - Both stats are read in the Super Break hit's context (tag `superBreak`). They describe the triggering hit, but the engine does not know that hit's tags, so a `breakEfficiency` modifier conditioned on e.g. `ultimate` never applies. **[ENGINE]**
-- The other factors follow § Break DMG: no CRIT, **no Weaken** (S3, changed 2026-11-08), Mitigation applied. `SuperBreakDMGBoost` is `1 + Σ dmgBoost` naming the `superBreak` tag.
-- **Open conflict (E11).** S3 Weakness Break (2026-11-08) says Super Break DMG is also considered Break DMG, and gives `… × (1 + Break DMG Increase) × (1 + Super Break DMG Increase) × …`: two factors that **multiply**. The engine differs in two ways. A `break`-tagged modifier does not reach a Super Break hit, because its only tag is `superBreak`. And the `superBreakDmg` stat is **added** to the ability multiplier, as in R1 (`SUPER_BREAK_MODIFIER`), not applied as its own factor. S3 and R1 disagree, so the engine is unchanged until E11 decides. **[UNVERIFIED]**
+- The other factors follow § Break DMG: no CRIT, **no Weaken** (S3, changed 2026-11-08), Mitigation applied.
+- **Break DMG Increase × Super Break DMG Increase** *(E11, changed 2026-11-08)*. **[SOURCED]** S3 Weakness Break says Super Break DMG is also considered Break DMG, and gives `… × (1 + Break DMG Increase) × (1 + Super Break DMG Increase) × …`: two factors that **multiply**. The engine follows S3:
+  - `BreakDMGIncrease` = `1 + Σ dmgBoost` over modifiers naming `break` (`BreakDetails.breakDmgIncrease`, also `stats.dmgBoost`).
+  - `SuperBreakDMGIncrease` = `1 + Σ dmgBoost` over modifiers naming `superBreak` but **not** `break` (`BreakDetails.superBreakDmgIncrease`).
+  - `DamageBreakdown.dmgBoostMultiplier` is their product.
+  - A modifier naming both tags counts once, in `BreakDMGIncrease`. **[ENGINE]** This keeps one buff from being applied twice.
+  - *Before 2026-11-08* a `break` modifier did not reach Super Break, and `superBreak` DMG Boost was the only factor. Results with `break`-tagged buffs and Super Break steps change.
+- **R1 is not contradicted.** R1's `SUPER_BREAK_MODIFIER` is the Super Break **ability multiplier** (S3's "Ability Multiplier" for Super Break), which the engine still sums from the step's `multiplier` and the `superBreakDmg` stat. S3's Super Break DMG Increase is a separate DMG Increase. R1 has no `break`-tagged boost reaching Super Break, so with a Break DMG Increase on a Super Break hit the engine and R1 differ; the engine follows S3.
+
+Hand-computed tests for E11 (`break-buffs.test.ts`, synthetic): Super Break with `break` +30%, `superBreak` +60% and an ignored unconditional +100%: 4000 × 10/10 × 2.5 × (1.3 × 1.6 = 2.08) × 0.8 × 1000/2100 = **7923.809…**. One modifier naming both tags at +50%: factor 1.5 (not 2.25). A target-held Break DMG vulnerability of 25% gives 1.25 on Super Break too.
 
 Function: `calculateBreakHit` with `formulas.superBreakToughness` and `superBreakBaseDmg`.
 
@@ -263,7 +272,7 @@ Hand-computed tests (synthetic numbers, `src/engine/__tests__/break.test.ts`). T
 | Super Break, reduction 20, efficiency 50%, multiplier 150% | 4000 × (1.5 × 20) / 10 × 1.5 × 2.5 × 1000/2100 × 0.8 | 17142.857… |
 | Break, unbroken, target vulnerability 20% | 70000 × 1000/2100 × 0.8 × 1.2 × 0.9 | 28800 |
 | Break, `break`-tagged DMG +30% (unconditional DMG +100% ignored) | 70000 × 1.3 × 0.8 × 1000/2100 | 34666.666… |
-| Super Break, `superBreak`-tagged DMG +60% | 4000 × 10/10 × 2.5 × 1.6 × 0.8 × 1000/2100 | 6095.238… |
+| Super Break, `break`-tagged DMG +30% and `superBreak`-tagged DMG +60% (E11) | 4000 × 10/10 × 2.5 × (1.3 × 1.6) × 0.8 × 1000/2100 | 7923.809… |
 | Super Break, step efficiency 50% + stat 25%, step multiplier 100% + `superBreakDmg` 50% | 4000 × (1.75 × 20)/10 × 1.5 × 2.5 × 0.8 × 1000/2100 | 20000 |
 
 The last three are in `src/engine/__tests__/break-buffs.test.ts`.
@@ -298,15 +307,15 @@ Hand-computed tests (`src/engine/__tests__/conversion.test.ts`, synthetic number
 ## DoT application chance (added 2026-11-07, TASKS E8)
 
 ```
-Chance  = clamp(BaseChance × (1 + EHR) × (1 − EffectRES + EffectRESPEN), 0, 1)
+Chance  = clamp(BaseChance × (1 + EHR) × (1 − EffectRES + EffectRESPEN) × (1 − DebuffRES), 0, 1)
 DoT DMG = (ordinary DMG product) × Chance
 ```
 
 - Applies only to a `hit` with the `dot` tag that sets `baseChance` (the base chance of the debuff that deals the DoT, which may exceed 1). Without `baseChance` the factor is 1, as before. Validation rejects `baseChance` on a hit without `dot`.
-- **[SOURCED]** S3 Effect RES, Debuff RES and Effect Hit Rate (2026-11-08): `Real Chance = Base Chance × (1 + Effect Hit Rate) × (1 − Effect RES) × (1 − Debuff RES)`. The engine has no Debuff RES term (E12), and S3 has no Effect RES PEN term, which comes from R1 only.
+- **[SOURCED]** S3 Effect RES, Debuff RES and Effect Hit Rate (2026-11-08): `Real Chance = Base Chance × (1 + Effect Hit Rate) × (1 − Effect RES) × (1 − Debuff RES)`. The Debuff RES term is modelled since 2026-11-08 (E12). S3 has no Effect RES PEN term, which comes from R1 only.
 - **[CROSS-CHECKED]** R1 `DotDamageFunction`: `min(1, dotBaseChance × (1 + EHR) × (1 − enemyEffectRes + EFFECT_RES_PEN))`, applied to DoT only. The floor at 0 is **[ENGINE]**: R1 has none, and it only matters when Effect RES exceeds 1 + PEN.
 - **EHR** and **EffectRESPEN** (`effectResPen`, a new stat) are read from the attacker in the hit's context. **EffectRES** is the target's `EnemyConfig.effectRes` (caller-supplied; default 0 is **[ENGINE]**) plus Σ its `effectRes` modifiers, so an "Effect RES −X%" debuff is a negative `effectRes` modifier on the enemy.
-- The game's real-chance formula also has a debuff-specific RES factor `(1 − Debuff RES)`. Its form comes only from search snippets of the Fandom Effect RES and Debuff RES pages, which were not read (HTTP 402). R1 has no such term, and **it is not modelled**.
+- **DebuffRES** *(E12, added 2026-11-08)* is `EnemyConfig.debuffRes[hit.dotType]` (caller-supplied, fractions; a missing type is 0, **[ENGINE]**). `HitSpec.dotType` is one of `DOT_TYPES` (`bleed`, `burn`, `shock`, `windShear`), the DoT debuffs on S3's Debuff RES page, and needs `baseChance`. Without `dotType` the factor is 1. R1 has no such term. Debuff RES is not a stat, so modifiers cannot change it. **[ENGINE]**
 - R1's extra weighting for multi-stack DoTs (`dotSplit`, `dotStacks`) is **not modelled**: each DoT hit is weighted by its own chance.
 - Applies in every crit mode. Crit mode only decides CRIT; a DoT that should be assumed to land simply omits `baseChance`.
 - The factor is `DamageBreakdown.dotChanceMultiplier`, and `ResolvedHitStats` shows `effectHitRate`, `effectResPen` and `targetEffectRes`. Break hits always have 1.
@@ -322,6 +331,8 @@ Hand-computed tests (`src/engine/__tests__/dot-chance.test.ts`; the unweighted D
 | Same, plus Effect RES PEN 10% | 0.6 × 1.5 × (1 − 0.1 + 0.1) | 0.9 |
 | Base 100%, EHR 50%, RES 40%, PEN 10% | min(1, 1 × 1.5 × 0.7) | 1 |
 | Base 100%, RES 150% | max(0, 1 × 1 × −0.5) | 0 |
+| Base 60%, EHR 50%, Effect RES 20%, Burn Debuff RES 30%, `dotType: 'burn'` (E12) | 0.6 × 1.5 × 0.8 × 0.7 = 0.504; 936 × 0.504 | 471.744 |
+| Same enemy, `dotType: 'shock'` (no Shock Debuff RES), or no `dotType` | 0.6 × 1.5 × 0.8 = 0.72; 936 × 0.72 | 673.92 |
 
 ## Action Value
 
@@ -363,7 +374,7 @@ Function: `formulas.actionValue` (a full gauge, 10000 / SPD), used by `suggestTu
 ## Rounding
 
 - The engine never rounds. R1 doesn't round damage either (**[CROSS-CHECKED]**, as an optimizer convention).
-- Whether the game itself floors values remains **[UNVERIFIED]**. The UI should round only for display. *(E1, 2026-11-07: no authoritative source found. A Prydwen worked example (search snippet only) differs from the game by under 1 point and blames rounded displayed stats, as a guess.)*
+- Whether the game itself floors values remains **[UNVERIFIED]**. The UI should round only for display. *(E1, 2026-11-07: no authoritative source found. A Prydwen worked example (search snippet only) differs from the game by under 1 point and blames rounded displayed stats, as a guess.)* *(2026-11-08: S1 read in full; it still only guesses.)*
 
 ---
 
@@ -395,8 +406,9 @@ Cross-check against R1's DEF form: `100 / ((90 + 20) × 1 + 100) = 100/210 = 0.4
 
 ## Not covered in the MVP
 
-- DoT snapshotting rules, R1's multi-stack DoT weighting, and debuff-specific RES. See § DoT application chance.
+- DoT snapshotting rules and R1's multi-stack DoT weighting. See § DoT application chance.
 - Chained stat conversions. See § Stat conversion.
 - *Done 2026-11-07:* break-specific DMG boosts and the Weakness Break Efficiency / Super Break DMG stats (E4 follow-up), DoT application chance (E8), and stat conversions (E7).
+- *Done 2026-11-08:* Super Break as Break DMG (E11) and Debuff RES (E12).
 
 See `KNOWN_LIMITATIONS.md`.

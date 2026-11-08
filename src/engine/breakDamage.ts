@@ -2,7 +2,9 @@
  * Break and Super Break DMG (TASKS E4, docs/FORMULAS.md § Break DMG and
  * § Super Break DMG). They share the target-side multipliers with ordinary
  * hits but have their own base, cannot crit, ignore Weaken, and take only DMG
- * Boost that explicitly names their tag (`break` / `superBreak`).
+ * Boost that explicitly names their tag. Super Break DMG also counts as Break
+ * DMG (E11, S3): `break` modifiers reach it, and its Break DMG Increase and
+ * Super Break DMG Increase are separate factors that multiply.
  */
 import { resolveHitStats } from './damage';
 import {
@@ -37,22 +39,25 @@ export interface BreakDamageInput {
   /** Break base before Break Effect (`breakBaseDmg` / `superBreakBaseDmg`). */
   breakBase: number;
   breakEffect: number;
+  /** `stats.dmgBoost` is the Break DMG Increase (modifiers naming `break`). */
   stats: ResolvedHitStats;
+  /** Super Break only: Super Break DMG Increase, a separate factor (E11). Default 0. */
+  superBreakDmgIncrease?: number;
 }
 
 /**
  * Pure formula application for Break and Super Break DMG. The breakdown has
  * the same factors as an ordinary hit, so `baseDmg` is the break base × (1 +
- * Break Effect), CRIT and Weaken are fixed at 1, and `stats.dmgBoost` must
- * already hold only the break-specific DMG Boost.
+ * Break Effect), CRIT and Weaken are fixed at 1, and `dmgBoostMultiplier` is
+ * (1 + Break DMG Increase) × (1 + Super Break DMG Increase).
  */
 export function computeBreakBreakdown(input: BreakDamageInput): DamageBreakdown {
   const s = input.stats;
   const parts = {
     baseDmg: input.breakBase * breakEffectMultiplier(input.breakEffect),
-    // Break DMG cannot crit (R1). DMG Boost is the break-specific part only, see calculateBreakHit.
+    // Break DMG cannot crit (R1, S3). S3: (1 + Break DMG Increase) × (1 + Super Break DMG Increase).
     critMultiplier: 1,
-    dmgBoostMultiplier: dmgBoostMultiplier(s.dmgBoost),
+    dmgBoostMultiplier: dmgBoostMultiplier(s.dmgBoost) * dmgBoostMultiplier(input.superBreakDmgIncrease ?? 0),
     // S3 (Weaken, Weakness Break): Break-related DMG is not affected by Weaken.
     // `stats.weaken` still shows the attacker's Weaken for display.
     weakenMultiplier: 1,
@@ -85,7 +90,7 @@ export function computeBreakBreakdown(input: BreakDamageInput): DamageBreakdown 
 export interface CalculatedBreakHit {
   attackerId: string;
   element: Element;
-  /** `[hit.kind]`: `break` or `superBreak`. */
+  /** `[hit.kind]`: `break` or `superBreak`. Super Break still matches `break` modifiers (E11). */
   tags: readonly DamageTag[];
   stats: ResolvedHitStats;
   breakdown: DamageBreakdown;
@@ -101,15 +106,20 @@ export function calculateBreakHit(state: CombatState, hit: BreakHitSpec, default
   if (levelMultiplier === undefined) throw new Error(`Attacker ${attackerId} has no breakLevelMultiplier`);
   const element = hit.element ?? build.element;
 
-  // A break hit carries exactly one tag, its kind, so modifiers conditioned on
-  // `break` / `superBreak` apply to it and those on other tags never do.
+  // A break hit reports one tag, its kind. For matching modifiers, Super Break
+  // also counts as Break DMG (E11, S3 Weakness Break), so `break` modifiers
+  // (Break DMG Increase, Break DMG vulnerability, …) reach it too.
   const tags: readonly DamageTag[] = [hit.kind];
-  const ctx: HitContext = { element, tags, counterpartId: hit.targetId };
-  const resolved = resolveHitStats(state, attackerId, hit.targetId, element, { scaling: 'atk', tags });
-  // Ordinary DMG Boost does not apply (R1: "hit-level" boost only); only
-  // modifiers that name this hit's tag count.
-  const breakDmgBoost = sumStat(state, attackerId, 'dmgBoost', ctx, namesTag(tags));
-  const stats: ResolvedHitStats = { ...resolved, dmgBoost: breakDmgBoost };
+  const matchTags: readonly DamageTag[] = hit.kind === 'superBreak' ? ['superBreak', 'break'] : ['break'];
+  const ctx: HitContext = { element, tags: matchTags, counterpartId: hit.targetId };
+  const resolved = resolveHitStats(state, attackerId, hit.targetId, element, { scaling: 'atk', tags: matchTags });
+  // Ordinary DMG Boost does not apply (S3: Break DMG is not affected by DMG Boost);
+  // only modifiers that name the tag count. One naming both counts once, as Break DMG Increase.
+  const breakDmgIncrease = sumStat(state, attackerId, 'dmgBoost', ctx, namesTag(['break']));
+  const superBreakDmgIncrease = hit.kind === 'superBreak'
+    ? sumStat(state, attackerId, 'dmgBoost', ctx, (c) => namesTag(['superBreak'])(c) && !namesTag(['break'])(c))
+    : 0;
+  const stats: ResolvedHitStats = { ...resolved, dmgBoost: breakDmgIncrease };
   const breakEffect = resolveUnitStats(state, attackerId, ctx).breakEffect;
 
   const breakEffectMultiplierValue = breakEffectMultiplier(breakEffect);
@@ -129,6 +139,7 @@ export function calculateBreakHit(state: CombatState, hit: BreakHitSpec, default
       multiplier,
       breakEffect,
       breakEffectMultiplier: breakEffectMultiplierValue,
+      breakDmgIncrease,
     };
   } else {
     // The step's own values plus the attacker's buff stats (sources add, as in R1).
@@ -144,8 +155,10 @@ export function calculateBreakHit(state: CombatState, hit: BreakHitSpec, default
       multiplier,
       breakEffect,
       breakEffectMultiplier: breakEffectMultiplierValue,
+      breakDmgIncrease,
+      superBreakDmgIncrease,
     };
   }
-  const breakdown = computeBreakBreakdown({ breakBase, breakEffect, stats });
+  const breakdown = computeBreakBreakdown({ breakBase, breakEffect, stats, superBreakDmgIncrease });
   return { attackerId, element, tags, stats, breakdown, details };
 }

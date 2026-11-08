@@ -33,6 +33,8 @@ export interface DamageInput {
   critMode: CritMode;
   /** DoT base chance (E8). Absent: no application-chance weighting. */
   baseChance?: number;
+  /** Target Debuff RES for the DoT's type (E12). Default 0. Kept out of `stats` so its key set stays stable. */
+  targetDebuffRes?: number;
   stats: ResolvedHitStats;
 }
 
@@ -57,7 +59,7 @@ export function computeBreakdown(input: DamageInput): DamageBreakdown {
     dotChanceMultiplier:
       input.baseChance === undefined
         ? 1
-        : dotApplicationChance(input.baseChance, s.effectHitRate, s.targetEffectRes, s.effectResPen),
+        : dotApplicationChance(input.baseChance, s.effectHitRate, s.targetEffectRes, s.effectResPen, input.targetDebuffRes ?? 0),
   };
   const total =
     parts.baseDmg *
@@ -150,6 +152,7 @@ export function calculateHit(
     canCrit,
     critMode,
     baseChance: hit.baseChance,
+    targetDebuffRes: hit.dotType === undefined ? undefined : (state.units[hit.targetId]?.enemy?.debuffRes?.[hit.dotType] ?? 0),
     stats,
   });
   return { attackerId, element, canCrit, stats, breakdown };
