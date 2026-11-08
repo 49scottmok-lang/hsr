@@ -87,3 +87,17 @@ it('shows a zh-HK error for an unsupported archive version', async () => {
   expect(error.textContent).toContain(t('import.error.version').replace('{versions}', '4'));
   expect(screen.queryByRole('button', { name: t('import.add').replace('{team}', t('team.a')) })).toBeNull();
 });
+
+it('pairs each summary label with its value and collapses the long report lists', async () => {
+  render(<App />);
+  select(archiveFixture());
+  const entry = within(await screen.findByRole('group', { name: 'Test Character' }));
+  // Regression: unwrapped dt/dd items were laid out as separate grid cells, so labels drifted away from values.
+  for (const label of ['character.level', 'term.eidolon', 'term.lightCone', 'term.relics'] as const) {
+    const term = entry.getByText(t(label));
+    expect(term.parentElement?.tagName).toBe('DIV');
+    expect(term.nextElementSibling?.tagName).toBe('DD');
+  }
+  const toEnter = entry.getByText(t('import.report.kit')).closest('details');
+  expect(toEnter?.open).toBe(false);
+});

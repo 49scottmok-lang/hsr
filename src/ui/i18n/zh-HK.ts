@@ -405,6 +405,7 @@ export const zhHK = {
   'import.lookedUp': '已由資料表填入',
   'import.toEnter': '待手動輸入',
   'import.problems': '資料缺漏或限制',
+  'import.reportCount': '{label}（{count}）',
   'import.add': '加入{team}',
   'import.alreadyAdded': '{team}無法加入相同 ID',
   'import.teamFull': '{team}已滿',
