@@ -195,6 +195,7 @@ export const zhHK = {
   'auto.kitFor': '{name} 的自動行動',
   'auto.enabled': '自動行動',
   'auto.enableAll': '全部角色啟用自動行動',
+  'auto.needEnemies': '請先加入敵人，系統先可以按遊戲資料填入技能數值。',
   'auto.startEnergy': '初始能量（留空為 0）',
   'auto.skillPointReserve': '保留戰技點（留空為 0）',
   'auto.useSkill': '戰技點足夠就用戰技',
