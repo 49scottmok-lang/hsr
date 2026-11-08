@@ -43,7 +43,8 @@ describe('kitTemplate', () => {
       ['e2', 1.3], ['e1', 0.52], ['e3', 0.52],
     ]);
     expect(r.value.actions.skill).toMatchObject({ level: 4, skillPoints: 1, energy: 30, otherEffects: true });
-    expect(r.value.actions.ultimate).toBeUndefined();
+    // Unreadable damage: no hits, but the sourced Energy (5) and skill points (0) are still filled.
+    expect(r.value.actions.ultimate).toEqual({ skillId: '3', name: 'U', level: 1, steps: [], energy: 5, skillPoints: 0, otherEffects: true });
     expect(r.value.gaps).toEqual([{ slot: 'ultimate', reason: 'unsupported', detail: 'bounces' }]);
     expect(r.value.source).toBe(source);
   });
@@ -56,7 +57,7 @@ describe('kitTemplate', () => {
   it('reports levels outside the table, or missing, as gaps', () => {
     const r = kitTemplate(tables, { characterId: '9001', eidolon: 5, levels: { basic: 3, skill: NaN, ultimate: 1 }, targetId: 'e1', enemyIds });
     expect(r.ok && r.value.gaps.map((g) => [g.slot, g.reason])).toEqual([['basic', 'level'], ['skill', 'level'], ['ultimate', 'unsupported']]);
-    expect(r.ok && Object.keys(r.value.actions)).toEqual([]);
+    expect(r.ok && Object.keys(r.value.actions)).toEqual(['ultimate']);
   });
 
   it('misses unknown characters, trees and targets', () => {
@@ -109,6 +110,13 @@ describe('generated skill kits against B', () => {
     // B: Himeko/Herta/Arlan SKILL_BASIC_3_ULT_TALENT_5, Sushang ULT_TALENT_3_SKILL_BASIC_5.
     for (const id of ['1003', '1013', '1008']) expect(groups(id)).toEqual(['basic1@E3', 'skill2@E3', 'ultimate2@E5']);
     expect(groups('1206')).toEqual(['basic1@E5', 'skill2@E5', 'ultimate2@E3']);
+  });
+
+  it('fills Energy and skill points of a Skill whose damage cannot be read (1507)', () => {
+    // A's 1507 Skill (150702): SPBase 30, BPNeed 0, BPAdd 0; its damage sentence has an HP cost before the target.
+    const r = kitTemplate(SKILL_TABLES, { characterId: '1507', levels: { basic: 1, skill: 7, ultimate: 9 }, targetId: 'e1', enemyIds });
+    expect(r.ok && r.value.actions.skill).toMatchObject({ steps: [], energy: 30, skillPoints: 0 });
+    expect(r.ok && r.value.gaps.find((g) => g.slot === 'skill')?.reason).toBe('unsupported');
   });
 
   it('every record is cited and every multiplier list covers its levels', () => {

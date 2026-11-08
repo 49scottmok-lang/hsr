@@ -149,7 +149,8 @@ validateAutoBattleInput(input) → string[]
 - **Rules.** `FORMULAS.md § Auto battle`. The turn order is `suggestTurnOrder` with static SPD; actions never move gauges.
 - **Why semi-auto.** The simulator only repeats each kit under the Energy and skill point rules; it plays no talents, follow-ups or buffs. The generated rotation stays editable by hand.
 - **Prefill (D8, 2026-11-08).** `kitTemplate(SKILL_TABLES, { characterId, tree?, eidolon?, levels, targetId, enemyIds })` in `src/data` returns `{ actions: { basic?, skill?, ultimate? }, gaps, source, gameVersion }`: each supported action's hit steps, Energy, skill points and eidolon-adjusted level, and a gap (`noData`, `unsupported`, `level`, `skillPoints`) for each action it cannot fill. The account import stores the skill-tree levels and tree on `CharacterBuild.skillLevels` (metadata; the engine never reads it), and the auto battle panel fills a new kit from them. Rules: `FORMULAS.md § Skill kit templates`.
-- Throws `EngineValidationError` on invalid input; paths name the kit (`kits[i].skill.steps[0]…`).
+- Throws `EngineValidationError` on invalid input, including an empty `kits` list; paths name the kit (`kits[i].skill.steps[0]…`).
+- **UI defaults (2026-11-08).** The panel has a one-click "enable all" for kits. A new kit's Ultimate is off when its cost is unknown or 0, and `toAutoBattleInput` sends no `ultimate` for a kit with the Ultimate off.
 
 ## Team comparison
 

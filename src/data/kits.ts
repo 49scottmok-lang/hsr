@@ -92,10 +92,9 @@ export function kitTemplate(tables: SkillTables, request: KitTemplateRequest): L
       gaps.push({ slot, reason: 'noData', detail: `no ${slot} in the table` });
       continue;
     }
-    if (skill.unsupported) {
-      gaps.push({ slot, reason: 'unsupported', detail: skill.unsupported });
-      continue;
-    }
+    // Unreadable damage still leaves the sourced Energy and skill points to fill;
+    // the action then has no steps and the gap tells the user to add the hits.
+    if (skill.unsupported) gaps.push({ slot, reason: 'unsupported', detail: skill.unsupported });
     const level = effectiveSkillLevel(kit, slot, levels[slot], eidolon);
     if (!Number.isInteger(levels[slot]) || levels[slot] < 1 || level > skill.maxLevel) {
       gaps.push({ slot, reason: 'level', detail: `level ${level} is not in the table (1–${skill.maxLevel})` });
@@ -106,7 +105,7 @@ export function kitTemplate(tables: SkillTables, request: KitTemplateRequest): L
       gaps.push({ slot, reason: 'skillPoints', detail: skillPoints });
       continue;
     }
-    const steps: ActionStep[] = skill.damage.flatMap((d) =>
+    const steps: ActionStep[] = skill.unsupported ? [] : skill.damage.flatMap((d) =>
       areaTargets[d.area].map((id): ActionStep => {
         const hit: HitSpec = {
           targetId: id,

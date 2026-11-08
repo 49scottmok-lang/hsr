@@ -147,3 +147,16 @@ function renderPanelWith(team: Scenario['teams'][0]) {
   render(<Panel />);
   return () => state;
 }
+
+it('enables every member in one click and names an empty kit list in zh-HK', () => {
+  const state = renderPanel({ ...settings, kits: [] });
+  // Regression: with no kit enabled the simulation wrote empty turns that scored 0.
+  fireEvent.click(screen.getByRole('button', { name: t('auto.simulate') }));
+  expect(within(screen.getByRole('alert')).getAllByRole('listitem').map((item) => item.textContent))
+    .toEqual([`${t('auto.title')}：${t('issue.kitRequired')}`]);
+
+  const enableAll = screen.getByRole<HTMLButtonElement>('button', { name: t('auto.enableAll') });
+  fireEvent.click(enableAll);
+  expect(state().teams[0].autoBattle?.kits.map(({ unitId }) => unitId)).toEqual(['dps', 'sup']);
+  expect(enableAll.disabled).toBe(true);
+});

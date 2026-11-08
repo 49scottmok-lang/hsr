@@ -157,6 +157,10 @@ describe('validateAutoBattleInput', () => {
     expect(issues.some((i) => i.startsWith('kits[0].basic.steps[0]'))).toBe(true);
   });
 
+  it('requires at least one kit (regression: no kit wrote a rotation of empty turns)', () => {
+    expect(validateAutoBattleInput(input({ kits: [] }))).toEqual(['kits: at least one kit is required']);
+  });
+
   it('simulateBattle throws EngineValidationError on invalid input', () => {
     expect(() => simulateBattle(input({ avLimit: 0 }))).toThrow(EngineValidationError);
   });

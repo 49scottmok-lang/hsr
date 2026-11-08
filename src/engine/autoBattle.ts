@@ -46,6 +46,8 @@ export function validateAutoBattleInput(input: AutoBattleInput): string[] {
   if (!isNonNegInt(start) || (Number.isInteger(max) && start > max)) {
     out.push('skillPoints.start: must be an integer from 0 to skillPoints.max');
   }
+  // With no kit every turn is empty and the rotation it writes deals no damage.
+  if (input.kits.length === 0) out.push('kits: at least one kit is required');
   for (const [i, e] of input.enemies.entries()) {
     if (e.spd === undefined) out.push(`enemies[${i}].spd: is required for the auto battle`);
   }
