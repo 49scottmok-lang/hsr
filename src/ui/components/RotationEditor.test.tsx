@@ -237,6 +237,7 @@ it('localizes missing timeline inputs and clears an obsolete preview when a sett
   const input = renderRotation();
   fireEvent.click(screen.getByText(t('timeline.title')));
   change('timeline.firstCycle', '100');
+  change('timeline.laterCycle', '');
   click('timeline.preview');
   const errors = screen.getByRole('alert').textContent;
   expect(errors).toContain(`Test enemy：${t('issue.timelineSpeed')}`);
@@ -246,10 +247,48 @@ it('localizes missing timeline inputs and clears an obsolete preview when a sett
   fireEvent.change(screen.getByLabelText(t('timeline.enemySpeed').replace('{name}', 'Test enemy')), { target: { value: '100' } });
   change('timeline.limit', '90');
   click('timeline.preview');
+  expect(screen.queryByRole('columnheader', { name: t('timeline.cycle') })).toBeNull();
   expect(screen.getByRole('button', { name: t('timeline.append').replace('{number}', '2') })).toBeTruthy();
   change('timeline.limit', '20');
   expect(screen.queryByRole('table', { name: t('timeline.preview') })).toBeNull();
   click('timeline.preview');
   expect(screen.getByRole('status').textContent).toBe(t('timeline.noTurns'));
   expect(input().events).toEqual([]);
+});
+
+it('moves a delayed enemy immediately after the trigger turn and labels turns with the default cycle lengths', () => {
+  renderRotation();
+  fireEvent.click(screen.getByText(t('timeline.title')));
+  expect((screen.getByLabelText(t('timeline.firstCycle')) as HTMLInputElement).value).toBe('150');
+  expect((screen.getByLabelText(t('timeline.laterCycle')) as HTMLInputElement).value).toBe('100');
+  fireEvent.change(screen.getByLabelText(t('timeline.enemySpeed').replace('{name}', 'Test enemy')), { target: { value: '100' } });
+  change('timeline.limit', '300');
+
+  click('timeline.addAdjustment');
+  const delay = within(screen.getByRole('group', { name: t('timeline.adjustment').replace('{number}', '1') }));
+  change('rotation.target', 'e1', delay);
+  change('timeline.advance', '-100', delay);
+
+  click('timeline.addAdjustment');
+  const immediate = within(screen.getByRole('group', { name: t('timeline.adjustment').replace('{number}', '2') }));
+  change('timeline.trigger', 'after', immediate);
+  change('rotation.target', 'e1', immediate);
+  click('timeline.preview');
+  expect(screen.getByRole('alert').textContent).toContain(t('issue.timelineAdjustment'));
+  fireEvent.click(immediate.getByRole('checkbox', { name: t('timeline.actNow') }));
+  click('timeline.preview');
+
+  const rows = within(screen.getByRole('table', { name: t('timeline.preview') })).getAllByRole('row');
+  const enemyRows = rows.filter((row) => within(row).queryByRole('rowheader', { name: 'Test enemy' }));
+  expect(within(rows[1]!).getByRole('rowheader').textContent).toBe('Test attacker');
+  expect(rows[2]).toBe(enemyRows[0]);
+  // At AV 80 the delayed enemy would have 12000 gauge left. Act now sets it to 0.
+  // At SPD 100 it acts again after 100 AV, crossing the 150 and 250 AV cycle boundaries.
+  expect(enemyRows.map((row) => within(row).getAllByRole('cell').map((cell) => cell.textContent)))
+    .toEqual([['1', '80', '1'], ['2', '180', '2'], ['3', '280', '3']]);
+
+  change('timeline.firstCycle', '75');
+  fireEvent.blur(screen.getByLabelText(t('timeline.firstCycle')));
+  fireEvent.click(screen.getByRole('button', { name: t('timeline.cyclePreset').replace('{first}', '150').replace('{later}', '100') }));
+  expect((screen.getByLabelText(t('timeline.firstCycle')) as HTMLInputElement).value).toBe('150');
 });

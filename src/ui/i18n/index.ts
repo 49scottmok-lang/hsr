@@ -82,7 +82,8 @@ const issuePatterns: readonly (readonly [RegExp, TranslationKey])[] = [
   [/^unknown unit "(.*)" in at$/s, 'issue.timelineTriggerUnit'],
   [/^at\.turn must be an integer >= 1$/, 'issue.timelineTriggerTurn'],
   [/^unknown target "(.*)"$/s, 'issue.timelineTarget'],
-  [/^needs advance or spd$/, 'issue.timelineAdjustment'],
+  [/^needs advance, spd or actNow$/, 'issue.timelineAdjustment'],
+  [/^actNow must be true when set$/, 'issue.timelineActNow'],
   [/^advance must be a finite number$/, 'issue.timelineAdvance'],
 ];
 

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import {
-  createInitialState, EngineValidationError, resolveUnitStats, suggestTurnOrder, timelineToEvents,
+  CHALLENGE_CYCLE_AV, createInitialState, EngineValidationError, resolveUnitStats, suggestTurnOrder, timelineToEvents,
   type CharacterBuild, type EnemyConfig, type RotationEvent, type TimelineAdjustment, type TimelineResult,
 } from '../../engine/index';
 import { formatNumber, t, translateIssue } from '../i18n';
@@ -28,8 +28,10 @@ interface Settings {
   adjustments: readonly AdjustmentDraft[];
 }
 
+const cyclePreset = { firstCycle: CHALLENGE_CYCLE_AV.first, laterCycle: CHALLENGE_CYCLE_AV.later };
+
 export function TurnOrderPanel({ team, enemies, onAppend }: TurnOrderPanelProps) {
-  const [settings, setSettings] = useState<Settings>({ enemySpeeds: new Map(), adjustments: [] });
+  const [settings, setSettings] = useState<Settings>({ enemySpeeds: new Map(), adjustments: [], ...cyclePreset });
   const [preview, setPreview] = useState<{
     team: typeof team;
     enemies: typeof enemies;
@@ -59,8 +61,8 @@ export function TurnOrderPanel({ team, enemies, onAppend }: TurnOrderPanelProps)
         units: [...allies, ...enemies.map(({ id }) => ({ id, side: 'enemy' as const, spd: enemySpeeds.get(id) ?? NaN }))],
         avLimit: avLimit ?? NaN,
         cycleAv: showCycle ? { first: firstCycle ?? NaN, later: laterCycle ?? NaN } : undefined,
-        adjustments: adjustments.map(({ afterTurn, unitId, turn, targetId, advance, spd }) => ({
-          at: afterTurn ? { unitId, turn: turn ?? NaN } : 'start', targetId, advance, spd,
+        adjustments: adjustments.map(({ afterTurn, unitId, turn, targetId, advance, spd, actNow }) => ({
+          at: afterTurn ? { unitId, turn: turn ?? NaN } : 'start', targetId, advance, spd, actNow,
         })),
       });
       setPreview({ team, enemies, result });
@@ -109,6 +111,10 @@ export function TurnOrderPanel({ team, enemies, onAppend }: TurnOrderPanelProps)
         <NumberField label={t('timeline.limit')} value={avLimit} onChange={(value) => edit({ avLimit: value })} />
         <NumberField label={t('timeline.firstCycle')} value={firstCycle} onChange={(value) => edit({ firstCycle: value })} />
         <NumberField label={t('timeline.laterCycle')} value={laterCycle} onChange={(value) => edit({ laterCycle: value })} />
+        <button type="button" onClick={() => edit(cyclePreset)}>
+          {t('timeline.cyclePreset').replace('{first}', formatNumber(cyclePreset.firstCycle))
+            .replace('{later}', formatNumber(cyclePreset.laterCycle))}
+        </button>
       </div>
       {adjustments.map((adjustment, index) => {
         const update = (patch: Partial<AdjustmentDraft>) =>
@@ -135,6 +141,11 @@ export function TurnOrderPanel({ team, enemies, onAppend }: TurnOrderPanelProps)
               <NumberField label={t('timeline.advance')} value={adjustment.advance} percent
                 onChange={(advance) => update({ advance })} />
               <NumberField label={t('timeline.newSpeed')} value={adjustment.spd} onChange={(spd) => update({ spd })} />
+              <label>
+                {t('timeline.actNow')}
+                <input type="checkbox" checked={adjustment.actNow === true}
+                  onChange={({ currentTarget }) => update({ actNow: currentTarget.checked ? true : undefined })} />
+              </label>
             </div>
             <button type="button" onClick={() => edit({ adjustments: adjustments.toSpliced(index, 1) })}>
               {t('rotation.remove')}
