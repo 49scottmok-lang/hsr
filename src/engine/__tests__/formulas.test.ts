@@ -69,6 +69,15 @@ describe('formulas', () => {
     expect(f.weakenMultiplier(1.5)).toBe(0);
   });
 
+  it('combined weaken multiplies sources (E1, R3 srsim)', () => {
+    // 1 − (1 − 0.1)(1 − 0.2) = 1 − 0.72 = 0.28, not 0.3
+    expect(f.combinedWeaken([0.1, 0.2])).toBeCloseTo(0.28, 12);
+    expect(f.weakenMultiplier(f.combinedWeaken([0.1, 0.2]))).toBeCloseTo(0.72, 12);
+    expect(f.combinedWeaken([])).toBe(0);
+    // Each factor is floored at 0: (0)(0) = 0, so the result is 1, not 1 − 0.04.
+    expect(f.combinedWeaken([1.2, 1.2])).toBe(1);
+  });
+
   it('vulnerability multiplier is additive, clamped to [0, 2.5]', () => {
     expect(f.vulnerabilityMultiplier(0.35)).toBeCloseTo(1.35, 12);
     expect(f.vulnerabilityMultiplier(2.5)).toBe(3.5);

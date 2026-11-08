@@ -59,6 +59,16 @@ export function weakenMultiplier(weaken: number): number {
 }
 
 /**
+ * §Weaken, several sources (E1): they multiply, `1 − Π max(0, 1 − w_i)`, as in
+ * R3 (srsim `PropMap.Modify` for `Fatigue`). The result is a single Weaken value
+ * for `weakenMultiplier`. Each factor is floored at 0, so two sources above 100%
+ * cannot cancel out.
+ */
+export function combinedWeaken(sources: readonly number[]): number {
+  return 1 - sources.reduce((acc, w) => acc * Math.max(0, 1 - w), 1);
+}
+
+/**
  * §DEF
  * targetDef = baseDef × max(0, 1 + defPct − defReduction − defIgnore) + defFlat, floored at 0
  * multiplier = 1 − targetDef / (targetDef + 200 + 10 × attackerLevel)

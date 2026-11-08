@@ -102,6 +102,20 @@ describe('calculateHit', () => {
     expect(b.weakenMultiplier).toBeCloseTo(0.9, 12);
   });
 
+  it('multiplies Weaken from separate effects (E1 regression, R3 srsim)', () => {
+    // (1 − 0.1)(1 − 0.2) = 0.72; the engine used to add them: 1 − 0.3 = 0.7.
+    const weakA: EffectDef = { id: 'weak-a', name: 'Fixture weaken A', kind: 'debuff', modifiers: [{ stat: 'weaken', value: 0.1 }] };
+    const weakB: EffectDef = { id: 'weak-b', name: 'Fixture weaken B', kind: 'debuff', modifiers: [{ stat: 'weaken', value: 0.2 }] };
+    const base = stateWithSkillBuff();
+    const s = applyEffect(applyEffect(base, weakA, 'dps', 'e1'), weakB, 'dps', 'e1');
+    const c = calculateHit(s, skillHit, 'dps', 'expected');
+    expect(c.stats.weaken).toBeCloseTo(0.28, 12);
+    expect(c.breakdown.weakenMultiplier).toBeCloseTo(0.72, 12);
+    const plain = calculateHit(base, skillHit, 'dps', 'expected').breakdown.total;
+    expect(c.breakdown.total).toBeCloseTo(plain * 0.72, 8);
+    expect(c.breakdown.total).toBeCloseTo(EXPECTED_SKILL_HIT * 0.72, 6);
+  });
+
   it('counterpartIds restricts a target-held modifier to a specific attacker', () => {
     const mark: EffectDef = {
       id: 'mark',

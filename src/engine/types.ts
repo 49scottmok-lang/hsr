@@ -494,6 +494,7 @@ export interface ResolvedHitStats {
   critRate: number;
   critDmg: number;
   dmgBoost: number;
+  /** Combined Weaken: 1 − Π (1 − w_i) over the attacker's sources (E1, FORMULAS § Weaken). */
   weaken: number;
   finalDmgBoosts: readonly number[];
   trueDmg: number;

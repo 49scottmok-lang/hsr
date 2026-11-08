@@ -33,8 +33,9 @@ describe('suggestTurnOrder', () => {
     expect(r.unusedAdjustments).toEqual([]);
   });
 
-  it('breaks ties allies first, then by slot', () => {
-    // All at SPD 100: every unit reaches 0 at 100 and 200.
+  it('breaks battle-start ties allies first, then by slot, and keeps that queue order', () => {
+    // All at SPD 100: every unit reaches 0 at 100 and 200. Each actor goes to the
+    // back of the queue, so the order at 200 is the same as at 100.
     const r = suggestTurnOrder({
       units: [
         { id: 'e', side: 'enemy', spd: 100 },
@@ -47,12 +48,14 @@ describe('suggestTurnOrder', () => {
   });
 
   it('ties after float sums (3 × 10000/3 = 10000)', () => {
-    // a: 3333.33… × 3 vs b: 10000 at 10000 AV; a is the earlier slot.
+    // a: 3333.33… × 3 vs b: 10000 at 10000 AV. Without the tolerance a3 would
+    // not tie with b1. They tie, and a acted last (at 6666.6…), so b goes first.
     const r = suggestTurnOrder({
       units: [{ id: 'a', side: 'ally', spd: 3 }, { id: 'b', side: 'ally', spd: 1 }],
       avLimit: 10000,
     });
-    expect(r.turns.map((t) => `${t.unitId}${t.turn}`)).toEqual(['a1', 'a2', 'a3', 'b1']);
+    expect(r.turns.map((t) => `${t.unitId}${t.turn}`)).toEqual(['a1', 'a2', 'b1', 'a3']);
+    expect(r.turns[3]!.av).toBeCloseTo(10000, 9);
   });
 
   it('applies Action Advance after the trigger turn', () => {
@@ -88,10 +91,57 @@ describe('suggestTurnOrder', () => {
     expect(order(r)).toEqual(['b1@50', 'a1@90', 'b2@100', 'b3@150', 'a2@170', 'b4@200']);
   });
 
+  describe('mid-battle ties (E1, 2026-11-08: R3 srsim turn queue)', () => {
+    it('puts the unit that just acted behind the units it ties with', () => {
+      // a (SPD 200): 50, 100. b (SPD 100): 100. At 100, a acted last (at 50) → b first.
+      // The old rule (allies, then slot) gave a2 before b1.
+      const r = suggestTurnOrder({
+        units: [{ id: 'a', side: 'ally', spd: 200 }, { id: 'b', side: 'ally', spd: 100 }],
+        avLimit: 100,
+      });
+      expect(order(r)).toEqual(['a1@50', 'b1@100', 'a2@100']);
+    });
+
+    it('lets an enemy go before an ally that just acted', () => {
+      // a (ally, SPD 200): 50, 100. e (enemy, SPD 100): 100.
+      const r = suggestTurnOrder({
+        units: [{ id: 'a', side: 'ally', spd: 200 }, { id: 'e', side: 'enemy', spd: 100 }],
+        avLimit: 100,
+      });
+      expect(order(r)).toEqual(['a1@50', 'e1@100', 'a2@100']);
+    });
+
+    it('puts a unit whose gauge was changed in front of the units it ties with', () => {
+      // c (SPD 50) advanced 50% at start: 10000 − 5000 = 5000 → 5000 / 50 = 100,
+      // tying a and b (SPD 100) at 100. c's gauge changed, so c goes first.
+      const r = suggestTurnOrder({
+        units: [
+          { id: 'a', side: 'ally', spd: 100 },
+          { id: 'b', side: 'ally', spd: 100 },
+          { id: 'c', side: 'ally', spd: 50 },
+        ],
+        avLimit: 100,
+        adjustments: [{ at: 'start', targetId: 'c', advance: 0.5 }],
+      });
+      expect(order(r)).toEqual(['c1@100', 'a1@100', 'b1@100']);
+    });
+
+    it('does not move a unit whose SPD changed but whose gauge did not', () => {
+      // b: SPD 50 → 100 at start keeps its gauge of 10000, so it reaches 0 at 100,
+      // tying a. Only the gauge counts, so the queue order stays a, b.
+      const r = suggestTurnOrder({
+        units: [{ id: 'a', side: 'ally', spd: 100 }, { id: 'b', side: 'ally', spd: 50 }],
+        avLimit: 100,
+        adjustments: [{ at: 'start', targetId: 'b', spd: 100 }],
+      });
+      expect(order(r)).toEqual(['a1@100', 'b1@100']);
+    });
+  });
+
   it('floors the gauge at 0 (E1 regression, 2026-11-08: S3 Speed gives max(0, …))', () => {
-    // a: max(0, 10000 − 15000) = 0; b: 10000 − 10000 = 0. Both act at AV 0 and tie,
-    // so slot order decides (b, a): the extra 50% advance on a is lost.
-    // Then both reset: 0 + 100 = 100, tie again → b, a.
+    // a: max(0, 10000 − 15000) = 0; b: 10000 − 10000 = 0. Both act at AV 0 and tie.
+    // b was advanced last, so it is in front (b, a): the extra 50% advance on a is lost.
+    // Then both reset: 0 + 100 = 100, tie again; each actor went to the back → b, a.
     const r = suggestTurnOrder({
       units: [{ id: 'b', side: 'ally', spd: 100 }, { id: 'a', side: 'ally', spd: 100 }],
       avLimit: 100,

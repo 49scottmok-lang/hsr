@@ -49,7 +49,7 @@ Engine independence is enforced three ways (and the same three cover `src/data` 
 | `validate.ts` | `validateRotationInput`, `EngineValidationError`, `RESERVED_UNIT_IDS` (unit IDs that validation rejects). | yes |
 | `index.ts` | **Public API.** The only import path for UI code. | — |
 
-`formulas` (exported as a namespace) also holds the stat-table level formulas `promotedBaseStat` and `relicMainStatValue` (added 2026-11-07, `FORMULAS.md § Level scaling`), the break formulas `BREAK_ELEMENT_FACTOR`, `breakToughnessFactor`, `breakBaseDmg`, `superBreakToughness`, `superBreakBaseDmg` and `breakEffectMultiplier` (E4, `FORMULAS.md § Break DMG`), and `dotApplicationChance` (E8, `FORMULAS.md § DoT application chance`).
+`formulas` (exported as a namespace) also holds the stat-table level formulas `promotedBaseStat` and `relicMainStatValue` (added 2026-11-07, `FORMULAS.md § Level scaling`), the break formulas `BREAK_ELEMENT_FACTOR`, `breakToughnessFactor`, `breakBaseDmg`, `superBreakToughness`, `superBreakBaseDmg` and `breakEffectMultiplier` (E4, `FORMULAS.md § Break DMG`), `dotApplicationChance` (E8, `FORMULAS.md § DoT application chance`), and `combinedWeaken` (E1, `FORMULAS.md § Weaken`).
 
 ## Data and import modules
 

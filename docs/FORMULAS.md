@@ -17,6 +17,7 @@ Every formula below maps to one function in `src/engine/formulas.ts`. All percen
 - **S2**: GenshinTheory, "hsr damage" (`genshintheory.github.io/hsr-damage.html`). Read in full. It is an early, pre-release write-up.
 - **R1** (also **B** in `DATA_SOURCES.md`): Fribbels HSR Optimizer, `github.com/fribbels/hsr-optimizer`, MIT license, commit `ac5e9d6` (2026-11-04). The file is `src/lib/optimization/engine/damage/damageCalculator.ts`, mainly `computeCommonMultipliers`, `calculateDefMulti`, `getCritMultiplier` and `DotDamageFunction`. It was read on 2026-11-07. No code was copied; only the formulas were compared.
 - **R1′**: the same repository at the same commit (`ac5e9d6`), stat and buff pipeline, read on 2026-11-07 for E1: `src/lib/optimization/context/calculateContext.ts` (`sumCharacterBase`), `src/lib/optimization/calculateStats.ts` (`calculateBaseStats`, `sumFlatStat`, `applyPercentStats`) and `src/lib/optimization/engine/container/computedStatsContainer.ts` (`MULTIPLICATIVE_BOOST`). Formulas compared only; no code copied.
+- **R3**: srsim (`github.com/simimpact/srsim`), an open-source Go battle simulator, commit `3967db0` (last push 2025-02-06). **No licence is stated**, so no code is copied; only the formulas are compared. Read on 2026-11-08 for E1, through the GitHub API in the browser pane: `pkg/engine/combat/damage.go` and `hit.go` (damage product, Vulnerability cap, DMG reduction), `pkg/engine/info/map.go` (`PropMap.Modify`: how properties stack), and `pkg/engine/turn/turn.go` and `modify.go` (turn queue and ties). It is independent of R1, and it is used as a second reference implementation.
 - **R2**: Nous StarRailSim (`starrailsim.com`). This is a closed-source cloud simulator that claims ≤0.5% error against the game. It publishes **no formulas**, so it cannot verify anything here. Its APL reference page (`starrailsim.com/apl`, read in the browser pane on 2026-11-08) was the design reference for E9/E6.
 - **S4**: KQM Star Rail Library, "Turn Order Mechanics" (`srl.keqingmains.com/combat-mechanics/turn-order/turn-order-mechanics`). Read in full on 2026-11-08. A community theorycrafting page; no licence shown. Only the mechanics are referenced.
 - **S5**: GenshinTheory, "hsr speed" (`genshintheory.github.io/hsr-speed.html`). Read in full on 2026-11-08. Its SPD-change formula, as extracted, contradicts its own derivation, so only its start/reset and negative-gauge statements are used.
@@ -99,14 +100,19 @@ DMGBoost = 1 + Σ dmgBoost   (all matching modifiers: elemental, all-type, abili
 ## Weaken
 
 ```
-Weaken = max(0, 1 − Σ weaken)   (read from the attacker)
+Weaken = max(0, 1 − W),  W = 1 − Π max(0, 1 − w_i)   (each weaken entry on the attacker)
 ```
 
+So the multiplier is `Π max(0, 1 − w_i)`: several sources **multiply**.
+
 - **[SOURCED]** S3 gives `1 − Weaken` (read from the attacker). It is not in R1.
-- Summing several Weaken sources is **[UNVERIFIED]**, because S3 shows a single value. *(E1, 2026-11-07: still no source. R1 has no Weaken term.)*
+- **[CROSS-CHECKED]** R3 stores Weaken as the property `Fatigue` and stacks it as `1 − (1 − old) × (1 − new)` (`PropMap.Modify`, which does the same for DMG reduction and adds every other property), then applies `1 − Fatigue`. *Changed 2026-11-08 (E1): the engine used to add the sources (`1 − Σ w`).* Example: 10% and 20% give ×0.72, not ×0.7.
+- An entry is one effect's value × its stacks (§ Effect stacking), so stacks of one effect add, and separate effects multiply. **[ENGINE]** R3 applies a modifier's amount in one step as well. A conversion to `weaken` is its own entry.
+- `ResolvedHitStats.weaken` is the combined W. `formulas.combinedWeaken` computes it.
+- *(Before 2026-11-08: summing several sources was **[UNVERIFIED]**, because S3 shows a single value and R1 has no Weaken term.)*
 - **[SOURCED]** S3 Weaken and Weakness Break (2026-11-08): Break-related DMG is not affected by Weaken. Break and Super Break hits use a Weaken multiplier of 1 (§ Break DMG). *Changed 2026-11-08: the engine used to apply Weaken to them.*
-- Summing several sources is still **[UNVERIFIED]** after reading the Weaken page (2026-11-08): it gives only `1 − Weaken`.
-- The floor at 0 is **[ENGINE]**.
+- The S3 Weaken page (2026-11-08) gives only `1 − Weaken`, so it neither confirms nor contradicts R3.
+- The floor at 0, applied to each factor, is **[ENGINE]**: R3 has none.
 
 ## DEF
 
@@ -142,7 +148,7 @@ Vulnerability = 1 + clamp(Σ vulnerability, 0, 2.5)   (read from the target)
 ```
 
 - **[CROSS-CHECKED]** R1 uses `1 + min(2.50, max(0, VULNERABILITY))`. The cap is therefore **+250%** (a ×3.5 multiplier). *Changed 2026-11-07: the engine previously had no cap.*
-- **[SOURCED]** S3 gives `1 + Type Vulnerability + Elemental Vulnerability + All-Type Vulnerability`, i.e. additive. S3's Damage page states no cap, so the cap rests on R1 alone. *(E1, 2026-11-07: re-read in R1′ `computeCommonMultipliers`, unchanged.)* *(E1, 2026-11-08: the S3 Vulnerability page says different sources stack additively, **[SOURCED]**, and states no cap. The +250% cap still rests on R1 alone.)*
+- **[SOURCED]** S3 gives `1 + Type Vulnerability + Elemental Vulnerability + All-Type Vulnerability`, i.e. additive. S3's Damage page states no cap, so the cap rests on R1 alone. *(E1, 2026-11-07: re-read in R1′ `computeCommonMultipliers`, unchanged.)* *(E1, 2026-11-08: the S3 Vulnerability page says different sources stack additively, **[SOURCED]**, and states no cap. The +250% cap still rests on R1 alone.)* *(E1, 2026-11-08, second pass: **[CROSS-CHECKED]** R3 also caps the multiplier at 3.5, i.e. +250%, in `vul`. The cap now rests on two independent reference implementations, R1 and R3, but still on no game-side source.)*
 - Constants: `VULNERABILITY_MIN/MAX`.
 
 ## Mitigation (DMG Reduction)
@@ -153,6 +159,7 @@ Mitigation = Π (1 − m_i)   (each dmgMitigation modifier on the target)
 
 - **[SOURCED]** S3 gives `(1 − Mitigation₁) × (1 − Mitigation₂) × (1 − Mitigation₃) × …`.
 - R1 does not model enemy DMG reduction for outgoing damage. It does compose *ally* DMG reduction multiplicatively.
+- **[CROSS-CHECKED]** R3 also multiplies (`1 − (1 − old)(1 − new)`, 2026-11-08). R3 floors the multiplier at 0.01. The engine has no floor, so it differs only when the combined reduction is above 99%.
 - This factor does not include the toughness multiplier.
 
 ## Toughness (Broken)
@@ -170,7 +177,7 @@ Broken = 1.0 if broken, else 0.9
 FinalDMG = Π (1 + f_i)   (each finalDmgBoost modifier on the attacker)
 ```
 
-- **[SOURCED]** S3 has an "Original DMG Multiplier": "a multiplier such as the one from The Abyss that directly increases damage", which is omitted when there isn't one. R1 implements The Abyss through `FINAL_DMG_BOOST`, so the two are the same zone. S3 does not say how several sources stack.
+- **[SOURCED]** S3 has an "Original DMG Multiplier": "a multiplier such as the one from The Abyss that directly increases damage", which is omitted when there isn't one. R1 implements The Abyss through `FINAL_DMG_BOOST`, so the two are the same zone. S3 does not say how several sources stack. *(E1, 2026-11-08: R3 has no Final DMG term at all, so multiplying several sources still rests on R1 alone.)*
 - **[CROSS-CHECKED]** R1 uses `1 + FINAL_DMG_BOOST`, where every source applies through `(1 + current) × (1 + new) − 1`, i.e. multiplicatively. *(Re-checked 2026-11-07, E1: every write goes through R1′'s `MULTIPLICATIVE_BOOST` operator, `a = (1 + a)(1 + v) − 1`.)* No other source states how several sources stack, so this rests on R1 alone.
 - R1 uses this zone for some newer abilities that state a separate DMG multiplier. Which abilities belong here is caller-supplied data, so the engine encodes none.
 
@@ -348,7 +355,7 @@ Act now:         gauge_new = 0
 
 - **[SOURCED]** S3 Speed (2026-11-08): Base AV = 10000 / SPD; each unit starts at its Base AV; the lowest AV acts and all others subtract it; the actor is reset to its Base AV. After a SPD change, `AV_new = AV_old × SPD_old / SPD_new`. Advance and Delay: `AV_new = max(0, AV_old − Base AV × (Advance% − Delay%))`, a percentage of the **full** turn time. This is the gauge formula above, since Base AV × SPD = 10000.
 - **[SOURCED]** S4: the gauge starts at 10000 for every unit, a unit acts when it reaches 0, and it refills to 10000 after the unit acts. AV = gauge / SPD. A SPD change scales the current AV by old / new SPD. Advance and Delay add or subtract a percentage **of 10000** (not of the remaining gauge). S5 gives the same start and reset. R2's APL reference also says (in its Chinese page) that the next turn comes a full 10000 / current SPD later.
-- **[SOURCED]** S4, ties: characters sort before enemies, and the lower slot acts first. **[UNVERIFIED]** S4 describes this for the battle-start order and a stable sort afterwards. The engine applies the same rule to every tie mid-battle.
+- **Ties.** **[SOURCED]** S4: at battle start, characters sort before enemies, and the lower slot acts first; afterwards the order is a stable sort. **[CROSS-CHECKED]** R3 keeps one stable queue, sorted by AV, and refines this: the unit that has just acted is moved behind the units it ties with, and a unit whose gauge is changed (advance, delay, act now) is moved in front of them. The engine does the same, starting from S4's battle-start order. A SPD change alone keeps the gauge, so it does not move the unit. *Changed 2026-11-08 (E1): the engine used to apply the battle-start rule to every tie, so an ally that had just acted went before a tied enemy.* When an adjustment lands during another unit's active turn, R3 keeps that unit first; the helper never needs this, because adjustments apply after the turn ends.
 - **[SOURCED]** Floor at 0: S3's `max(0, …)`. *Changed 2026-11-08 (E1): the engine used to keep negative gauges, following S5, which says a negative gauge is allowed. S3 is explicit, and S4 gives no floor either way.* Two units advanced to 0 tie, and the tie rule decides.
 - **[SOURCED]** "Immediately take action" (`TimelineAdjustment.actNow`): S3 Speed says it sets the AV to 0 whatever it was, so it fully advances even a delayed unit, which a 100% advance does not. Applied after `spd` and `advance` in the same adjustment. If it lands during another unit's turn, that turn finishes first, which the trigger-after-turn rule already gives.
 - **[ENGINE]** Ultimates, follow-ups and extra actions are not turns. They do not touch any gauge, and the helper does not list them; the user adds them as `extra` events. R2 says the same of its own AV readings: only turns count. Effects that cancel or insert turns in the game (e.g. Frozen, Toughness Break delay) must be entered as adjustments.
@@ -374,7 +381,7 @@ Function: `formulas.actionValue` (a full gauge, 10000 / SPD), used by `suggestTu
 ## Rounding
 
 - The engine never rounds. R1 doesn't round damage either (**[CROSS-CHECKED]**, as an optimizer convention).
-- Whether the game itself floors values remains **[UNVERIFIED]**. The UI should round only for display. *(E1, 2026-11-07: no authoritative source found. A Prydwen worked example (search snippet only) differs from the game by under 1 point and blames rounded displayed stats, as a guess.)* *(2026-11-08: S1 read in full; it still only guesses.)*
+- Whether the game itself floors values remains **[UNVERIFIED]**. The UI should round only for display. *(E1, 2026-11-07: no authoritative source found. A Prydwen worked example (search snippet only) differs from the game by under 1 point and blames rounded displayed stats, as a guess.)* *(2026-11-08: S1 read in full; it still only guesses. R3 does not round damage either, though it truncates action gauges to integers, which the engine does not.)* No read source states the game's rounding, so this stays open. It needs an in-game measurement.
 
 ---
 

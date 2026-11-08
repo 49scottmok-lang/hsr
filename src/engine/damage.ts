@@ -1,6 +1,7 @@
 import {
   baseDmg,
   brokenMultiplier,
+  combinedWeaken,
   critMultiplier,
   defMultiplier,
   dmgBoostMultiplier,
@@ -103,7 +104,7 @@ export function resolveHitStats(
     critRate: a.critRate,
     critDmg: a.critDmg,
     dmgBoost: a.dmgBoost,
-    weaken: sumStat(state, attackerId, 'weaken', aCtx),
+    weaken: combinedWeaken(collectStat(state, attackerId, 'weaken', aCtx)),
     finalDmgBoosts: collectStat(state, attackerId, 'finalDmgBoost', aCtx),
     trueDmg: sumStat(state, attackerId, 'trueDmg', aCtx),
     defIgnore: sumStat(state, attackerId, 'defIgnore', aCtx),

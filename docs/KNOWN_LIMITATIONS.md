@@ -49,10 +49,10 @@ These are still **unverified**, because no read source covers them:
 
 1. ~~Stat formula `(char + LC base) × (1 + %) + flat`.~~ *Cross-checked 2026-11-07 (E1) against R1's stat pipeline (`FORMULAS.md § Stats`). It still has no game-side source.*
 2. Whether the game itself rounds values.
-3. Whether several Weaken sources add together.
-4. How several Final DMG (Original DMG) sources stack. R1 multiplies them (re-checked 2026-11-07: its `MULTIPLICATIVE_BOOST` operator), and so does the engine. No other source says.
+3. ~~Whether several Weaken sources add together.~~ *2026-11-08 (E1): they multiply, as in R3 (srsim). Cross-checked against one reference implementation; no game-side source.*
+4. How several Final DMG (Original DMG) sources stack. R1 multiplies them (re-checked 2026-11-07: its `MULTIPLICATIVE_BOOST` operator), and so does the engine. No other source says; R3 has no Final DMG term (2026-11-08).
 5. Level scaling below level 80 (base stats) and below max level (relic main stats). The formulas are checked only at those levels (`FORMULAS.md § Level scaling`).
-6. The vulnerability cap of +250%. It rests on R1 alone: the S3 Vulnerability page (read 2026-11-08) says sources add, but states no cap. *The RES clamp [10%, 200%] was sourced on 2026-11-08 (S3 Damage RES).*
+6. The vulnerability cap of +250%. R1 and R3 both cap at +250% (R3 read 2026-11-08), but no game-side source states it: the S3 Vulnerability page says sources add and gives no cap. *The RES clamp [10%, 200%] was sourced on 2026-11-08 (S3 Damage RES).*
 7. *(E8)* R1's multi-stack DoT weighting. *Debuff RES was modelled on 2026-11-08 (E12): `EnemyConfig.debuffRes` per DoT type and `HitSpec.dotType`.* Debuff RES of non-DoT debuffs (`apply` steps) is not modelled, because those always land.
 8. ~~*(E11)* Super Break as Break DMG.~~ *Resolved 2026-11-08: the engine follows S3. `break` modifiers reach Super Break hits, and Break DMG Increase × Super Break DMG Increase multiply. A modifier naming both tags counts once (**[ENGINE]**).*
 
@@ -77,7 +77,7 @@ R1 is a widely used optimizer, but it is not the game. If game testing contradic
 | A9 | *(E7)* A stat conversion reads its source stat **without** other conversions (single pass), so conversions never chain. `fromUnit: 'source'` reads the source unit's context-free stats. The cap applies after stacks. | `stats.ts` |
 | A10 | *(E8)* Enemy Effect RES defaults to 0 when `EnemyConfig.effectRes` is not set. | `damage.ts` |
 | A11 | *(E4 follow-up; E11 2026-11-08)* Break hits report only their own tag (`break` or `superBreak`), but a Super Break hit also matches `break` modifiers (S3). A `dmgBoost` naming both tags counts once, as Break DMG Increase. `breakEfficiency` / `superBreakDmg` modifiers are read in the Super Break hit's context, not the triggering hit's. | `breakDamage.ts` |
-| A12 | *(E6)* AV ties mid-battle are broken like battle-start ties (allies first, then slot). The source describes the battle-start order and a stable sort only. | `timeline.ts` |
+| A12 | *(E6; changed 2026-11-08, E1)* AV ties follow one stable queue: battle-start order from S4 (allies, then slot); afterwards, as in R3 (srsim), the unit that just acted goes behind the units it ties with, and a unit whose gauge an adjustment changed goes in front. Cross-checked against R3 only; no game-side source. | `timeline.ts` |
 | A13 | *(E6)* ~~A gauge can go below 0.~~ *Replaced 2026-11-08 (E1):* gauges are floored at 0 (S3 Speed), so two units advanced to 0 tie and A12 decides. | `timeline.ts` |
 | A14 | *(E6)* An adjustment triggered by a turn applies after that turn ends, after the actor's gauge refill. S3 Speed (2026-11-08) confirms that post-action Ultimates act at this point. | `timeline.ts` |
 

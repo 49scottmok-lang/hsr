@@ -82,20 +82,27 @@ interface Clock {
  * Keeps the gauge across a SPD change, then subtracts the advance, floored at 0
  * (S3 Speed: `max(0, AV − Base AV × (Advance% − Delay%))`). `actNow` sets the
  * gauge to 0 whatever it was, even above 10000 after a delay (FORMULAS § Action Value).
+ * Returns whether the gauge changed: only then does the unit move in the tie order.
  */
-function adjust(clock: Clock, now: number, a: TimelineAdjustment): void {
-  let gauge = (clock.nextAt - now) * clock.spd;
+function adjust(clock: Clock, now: number, a: TimelineAdjustment): boolean {
+  const before = (clock.nextAt - now) * clock.spd;
+  let gauge = before;
   if (a.spd !== undefined) clock.spd = a.spd;
   if (a.advance !== undefined) gauge = Math.max(0, gauge - a.advance * ACTION_GAUGE);
   if (a.actNow) gauge = 0;
   clock.nextAt = now + gauge / clock.spd;
+  return gauge !== before;
 }
 
-/** Earlier gauge-zero first; ties: allies before enemies, then lower slot (FORMULAS § Action Value). */
+/** Strictly earlier gauge-zero. Ties are decided by position in the tie queue. */
 function actsBefore(a: Clock, b: Clock): boolean {
-  if (!sameAv(a.nextAt, b.nextAt)) return a.nextAt < b.nextAt;
-  if (a.unit.side !== b.unit.side) return a.unit.side === 'ally';
-  return a.slot < b.slot;
+  return !sameAv(a.nextAt, b.nextAt) && a.nextAt < b.nextAt;
+}
+
+function moveTo(queue: Clock[], clock: Clock, end: 'front' | 'back'): void {
+  queue.splice(queue.indexOf(clock), 1);
+  if (end === 'front') queue.unshift(clock);
+  else queue.push(clock);
 }
 
 /** §Action Value, cycles: the first cycle covers (0, first], each later one the next `later` AV. */
@@ -119,12 +126,19 @@ export function suggestTurnOrder(input: TimelineInput): TimelineResult {
     unit, slot, spd: unit.spd, nextAt: actionValue(unit.spd), turns: 0,
   }));
   const byId = new Map(clocks.map((c) => [c.unit.id, c]));
+  // Tie queue (FORMULAS § Action Value, ties). Battle start: allies before
+  // enemies, then slot (S4). Afterwards, as in R3 (srsim's stable turn queue),
+  // the unit that just acted goes behind the units it ties with, and a unit
+  // whose gauge an adjustment changed goes in front of them.
+  const queue = [...clocks].sort((a, b) =>
+    a.unit.side === b.unit.side ? a.slot - b.slot : a.unit.side === 'ally' ? -1 : 1);
   const adjustments = input.adjustments ?? [];
   const used = new Set<number>();
   const applyWhere = (now: number, matches: (a: TimelineAdjustment) => boolean) => {
     for (const [i, a] of adjustments.entries()) {
       if (!matches(a)) continue;
-      adjust(byId.get(a.targetId)!, now, a);
+      const target = byId.get(a.targetId)!;
+      if (adjust(target, now, a)) moveTo(queue, target, 'front');
       used.add(i);
     }
   };
@@ -134,7 +148,7 @@ export function suggestTurnOrder(input: TimelineInput): TimelineResult {
   const turns: TimelineTurn[] = [];
   let truncated = false;
   for (;;) {
-    const next = clocks.reduce((best, c) => (actsBefore(c, best) ? c : best));
+    const next = queue.reduce((best, c) => (actsBefore(c, best) ? c : best));
     // Gauges never go below 0, so this only guards against float drift.
     const at = Math.max(now, next.nextAt);
     if (at > input.avLimit && !sameAv(at, input.avLimit)) break;
@@ -151,6 +165,7 @@ export function suggestTurnOrder(input: TimelineInput): TimelineResult {
       ...(input.cycleAv ? { cycle: cycleOf(now, input.cycleAv) } : {}),
     });
     next.nextAt = now + actionValue(next.spd);
+    moveTo(queue, next, 'back');
     applyWhere(now, (a) => a.at !== 'start' && a.at.unitId === next.unit.id && a.at.turn === next.turns);
   }
 
