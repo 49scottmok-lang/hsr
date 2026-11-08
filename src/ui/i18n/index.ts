@@ -73,6 +73,17 @@ const issuePatterns: readonly (readonly [RegExp, TranslationKey])[] = [
   [/^source "(.*)" is not a unit$/s, 'issue.source'],
   [/^stacks must be an integer >= 1$/, 'issue.stacks'],
   [/^"(.*)" is not an enemy$/s, 'issue.brokenEnemy'],
+  [/^at least one unit is required$/, 'issue.timelineUnits'],
+  [/^id must be a non-empty string$/, 'issue.timelineIdRequired'],
+  [/^duplicate id "(.*)"$/s, 'issue.timelineDuplicateId'],
+  [/^side must be "ally" or "enemy"$/, 'issue.timelineSide'],
+  [/^spd must be a finite number > 0$/, 'issue.timelineSpeed'],
+  [/^must be a finite number > 0$/, 'issue.positiveNumber'],
+  [/^unknown unit "(.*)" in at$/s, 'issue.timelineTriggerUnit'],
+  [/^at\.turn must be an integer >= 1$/, 'issue.timelineTriggerTurn'],
+  [/^unknown target "(.*)"$/s, 'issue.timelineTarget'],
+  [/^needs advance or spd$/, 'issue.timelineAdjustment'],
+  [/^advance must be a finite number$/, 'issue.timelineAdvance'],
 ];
 
 export function translateIssue(issue: string): string {

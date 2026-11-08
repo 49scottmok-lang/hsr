@@ -14,6 +14,7 @@ export type ScenarioAction =
   | ({ teamIndex: TeamIndex } & (
     | { type: 'editCharacters'; edit: ListEdit<CharacterBuild> }
     | { type: 'editEvents'; edit: ListEdit<RotationEvent> }
+    | { type: 'appendEvents'; events: readonly Omit<RotationEvent, 'id'>[] }
     | { type: 'editEffects'; edit: ListEdit<EffectDef> }
     | { type: 'editSteps'; eventIndex: number; edit: ListEdit<ActionStep> }
     | { type: 'setCycles'; cycles: number | undefined }
@@ -57,6 +58,16 @@ export function scenarioReducer(scenario: Scenario, action: ScenarioAction): Sce
       const events = editList(draft.events, action.edit);
       if (events === draft.events) return scenario;
       updated = { ...draft, events };
+      break;
+    }
+    case 'appendEvents': {
+      const ids = new Set(draft.events.map(({ id }) => id));
+      let number = 1;
+      const additions = action.events.map((event) => {
+        while (ids.has(`event-${number}`)) number++;
+        return { ...event, id: `event-${number++}` };
+      });
+      updated = { ...draft, events: [...draft.events, ...additions] };
       break;
     }
     case 'editEffects': {

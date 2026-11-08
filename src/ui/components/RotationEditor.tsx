@@ -5,6 +5,7 @@ import type { TeamDraft, TeamIndex } from '../state/scenario';
 import { IssueList } from './IssueList';
 import { NumberField } from './NumberField';
 import { StepEditor } from './StepEditor';
+import { TurnOrderPanel } from './TurnOrderPanel';
 import { UnitSelect } from './UnitSelect';
 
 interface RotationEditorProps {
@@ -43,10 +44,7 @@ export function RotationEditor({ draft, enemies, teamIndex, issues, dispatch }: 
     dispatch({ type: 'editSteps', teamIndex, eventIndex, edit });
 
   function addEvent(event: Omit<RotationEvent, 'id'>) {
-    const ids = new Set(events.map(({ id }) => id));
-    let number = 1;
-    while (ids.has(`event-${number}`)) number++;
-    editEvent({ type: 'add', value: { ...event, id: `event-${number}` } });
+    dispatch({ type: 'appendEvents', teamIndex, events: [event] });
   }
 
   function addStep(eventIndex: number, op: ActionStep['op']) {
@@ -79,6 +77,8 @@ export function RotationEditor({ draft, enemies, teamIndex, issues, dispatch }: 
   return (
     <fieldset>
       <legend>{t('rotation.title')}</legend>
+      <TurnOrderPanel team={team} enemies={enemies}
+        onAppend={(events) => dispatch({ type: 'appendEvents', teamIndex, events })} />
       <IssueList issues={issues?.get(`teams[${teamIndex}].cycles`)} />
       <NumberField
         label={t('rotation.cycles')}

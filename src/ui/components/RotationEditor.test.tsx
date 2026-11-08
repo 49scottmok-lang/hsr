@@ -35,6 +35,7 @@ function renderRotation() {
           stats: [
             { stat: 'atkPct', value: 0.5 }, { stat: 'atkFlat', value: 300 },
             { stat: 'dmgBoost', value: 0.4, condition: { elements: ['fire'] } },
+            { stat: 'spdFlat', value: 25 },
           ],
           setEffects: [],
         },
@@ -176,4 +177,79 @@ it('reorders events and steps and supports removal, broken state and eidolon req
   expect(runRotation(input()).log[0]?.skippedSteps).toEqual([0]);
   click('rotation.remove', within(event(1).getByRole('group', { name: t('rotation.step.remove') })));
   expect(input().events[0]?.steps).toHaveLength(1);
+});
+
+it('previews turn order from final ally speed and manual changes, then appends empty turns in that order', () => {
+  const input = renderRotation();
+  click('rotation.addExtra');
+  addSkillHit(1);
+  const original = input().events[0];
+  fireEvent.click(screen.getByText(t('timeline.title')));
+  expect(screen.getByText(t('timeline.allySpeed').replace('{name}', 'Test attacker').replace('{spd}', '125'))).toBeTruthy();
+  fireEvent.change(screen.getByLabelText(t('timeline.enemySpeed').replace('{name}', 'Test enemy')), { target: { value: '100' } });
+  change('timeline.limit', '150');
+  change('timeline.firstCycle', '100');
+  change('timeline.laterCycle', '50');
+
+  function addAdjustment(number: number) {
+    click('timeline.addAdjustment');
+    return within(screen.getByRole('group', { name: t('timeline.adjustment').replace('{number}', String(number)) }));
+  }
+
+  const delay = addAdjustment(1);
+  change('rotation.target', 'e1', delay);
+  change('timeline.advance', '-25', delay);
+  const speed = addAdjustment(2);
+  change('timeline.trigger', 'after', speed);
+  change('rotation.target', 'sup', speed);
+  change('timeline.advance', '25', speed);
+  change('timeline.newSpeed', '200', speed);
+  const unused = addAdjustment(3);
+  change('timeline.trigger', 'after', unused);
+  change('timeline.triggerUnit', 'sup', unused);
+  change('timeline.turnNumber', '3', unused);
+  change('timeline.advance', '10', unused);
+
+  click('timeline.preview');
+  const table = within(screen.getByRole('table', { name: t('timeline.preview') }));
+  const rows = table.getAllByRole('row').slice(1).map((row) =>
+    [...row.querySelectorAll('th, td')].map((cell) => cell.textContent));
+  // Attacker: 10000 / 125 = 80. Support at AV 80: 10000 - 80 × 120 = 400;
+  // advancing by 2500 puts it at AV 80 too, then 10000 / 200 later. Enemy: 12500 / 100 = 125.
+  expect(rows).toEqual([
+    ['Test attacker', '1', '80', '1'], ['Test support', '1', '80', '1'],
+    ['Test enemy', '1', '125', '2'], ['Test support', '2', '130', '2'],
+  ]);
+  expect(screen.getByRole('status').textContent).toBe(t('timeline.unused').replace('{numbers}',
+    t('timeline.adjustment').replace('{number}', '3')));
+  expect(input().events).toEqual([original]);
+
+  fireEvent.click(screen.getByRole('button', { name: t('timeline.append').replace('{number}', '4') }));
+  expect(input().events[0]).toEqual(original);
+  expect(input().events.slice(1)).toEqual(['dps', 'sup', 'e1', 'sup'].map((actorId, index) => ({
+    kind: 'turn', id: `event-${index + 2}`, actorId, steps: [],
+  })));
+  expect(input().cycles).toBeUndefined();
+  expect(runRotation(input()).hits).toHaveLength(1);
+});
+
+it('localizes missing timeline inputs and clears an obsolete preview when a setting changes', () => {
+  const input = renderRotation();
+  fireEvent.click(screen.getByText(t('timeline.title')));
+  change('timeline.firstCycle', '100');
+  click('timeline.preview');
+  const errors = screen.getByRole('alert').textContent;
+  expect(errors).toContain(`Test enemy：${t('issue.timelineSpeed')}`);
+  expect(errors).toContain(`${t('timeline.limit')}：${t('issue.positiveNumber')}`);
+  expect(errors).toContain(`${t('timeline.laterCycle')}：${t('issue.positiveNumber')}`);
+  change('timeline.firstCycle', '');
+  fireEvent.change(screen.getByLabelText(t('timeline.enemySpeed').replace('{name}', 'Test enemy')), { target: { value: '100' } });
+  change('timeline.limit', '90');
+  click('timeline.preview');
+  expect(screen.getByRole('button', { name: t('timeline.append').replace('{number}', '2') })).toBeTruthy();
+  change('timeline.limit', '20');
+  expect(screen.queryByRole('table', { name: t('timeline.preview') })).toBeNull();
+  click('timeline.preview');
+  expect(screen.getByRole('status').textContent).toBe(t('timeline.noTurns'));
+  expect(input().events).toEqual([]);
 });
