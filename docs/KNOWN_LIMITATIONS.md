@@ -102,6 +102,10 @@ R1 is a widely used optimizer, but it is not the game. If game testing contradic
 - **Allies as damage targets.** Not supported.
 - **Elation, Joint ATK, and future DMG types.** These are not in `DAMAGE_TAGS`. Add them only with a source.
 
+## Artwork (F14)
+
+- Portraits and icons load at runtime from jsDelivr or GitHub raw (StarRailRes, pinned commit). Offline, behind a filter that blocks those hosts, or for characters newer than the pin, cards fall back to an element colour and the name's first character. No number depends on artwork.
+
 ## Environment notes
 
 - Node.js was not on the system PATH on the development machine. A bundled Node 24 / pnpm 11 was used. The data scripts (`pnpm data:extract`, `pnpm data:crosscheck`) run TypeScript directly and need Node ≥ 22.18. Use Node ≥ 20 and pnpm (the lockfile is `pnpm-lock.yaml`).

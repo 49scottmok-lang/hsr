@@ -1,19 +1,10 @@
-import { characterName, DATA_TABLES, lightConeName, NAME_TABLES, pathName, relicSetName } from '../../data';
+import { DATA_TABLES, lightConeName, NAME_TABLES, relicSetName } from '../../data';
 import {
   importArchive, parseArchive, SUPPORTED_ARCHIVE_VERSIONS,
   type ArchiveIssue, type LookedUpItem, type ProblemItem, type ToEnterItem,
 } from '../../import';
 import { formatNumber, t } from '../i18n';
-
-function displayCharacter(id: string, fallback: string): string {
-  const record = characterName(NAME_TABLES, id);
-  if (!record) return fallback || id;
-  const name = record.name ?? t('import.trailblazer');
-  const collision = NAME_TABLES.characters.some((other) => other.id !== id && other.name === record.name);
-  if (record.name !== null && !collision) return name;
-  const path = pathName(NAME_TABLES, record.path)?.name ?? record.path;
-  return t('import.nameWithPath').replace('{name}', () => name).replace('{path}', () => path);
-}
+import { displayCharacter } from './characters';
 
 const displayCone = (id: string, fallback?: string) => lightConeName(NAME_TABLES, id)?.name || fallback || id;
 const displaySet = (id: string, fallback?: string) => relicSetName(NAME_TABLES, id)?.name || fallback || id;

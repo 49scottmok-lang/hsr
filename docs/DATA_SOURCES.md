@@ -141,3 +141,13 @@ Cross-check against B (`crosscheck-b.test.ts`). B hard-codes the attacker at lev
 | B's Super Break base `(3767.5533 / 10) × toughness` | Equal to the engine's `superBreakBaseDmg` |
 
 Levels other than 80 have no second source (**[UNVERIFIED]**, `FORMULAS.md § Break DMG`).
+
+## Artwork (F14, owner, 2026-11-08)
+
+The owner chose to hotlink character portraits and element and path icons from **`Mar-7th/StarRailRes`** (AGPL-3.0), pinned to commit `dbe8cdfcfb0bf657b9fe1cf92d5537f118ccb487` (2026-09-29). The pin is `ARTWORK_COMMIT` in `src/data/credits.ts`, and the footer credits it.
+
+- **Nothing is copied.** The browser loads each image from jsDelivr (`cdn.jsdelivr.net/gh/…@<commit>/`) and falls back to GitHub raw (`raw.githubusercontent.com/…/<commit>/`). This repository holds only URL patterns, so the AGPL concern in § Considerations (bundling C's files) doesn't arise. The images themselves are HoYoverse's, covered by the existing game-data notice.
+- **Paths used:** `image/character_preview/<id>.png` (card art), `icon/character/<id>.png` (round avatar), `icon/element/<Element>.png` (Lightning is `Thunder`), `icon/path/<Path>.png`. The element and path file names come from the repo's `index_new/en/elements.json` and `paths.json`.
+- **IDs:** artwork is keyed by the game character ID in `CharacterBuild.characterId`, which is display metadata. The account import sets it, and so does the editor's character picker. Builds whose unit ID is a game ID (older imports) also get artwork.
+- **Fallback:** an element-coloured card with the name's first character, when a character has no ID or every host fails.
+- **Re-pinning:** change `ARTWORK_COMMIT` after checking that a few `character_preview` URLs return 200 on both hosts.

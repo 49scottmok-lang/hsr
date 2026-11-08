@@ -25,6 +25,6 @@ export const DATA_TABLES: DataTables = {
   traces: TRACES,
   breakLevelMultipliers: BREAK_LEVEL_MULTIPLIERS,
 };
-export { DATA_CREDITS, GAME_DATA_NOTICE } from './credits';
+export { DATA_CREDITS, GAME_DATA_NOTICE, ARTWORK_REPO, ARTWORK_COMMIT } from './credits';
 export type { DataCredit, CreditRole } from './credits';
 export { NAME_TABLES, validateNameTables, pathName, characterName, lightConeName, relicSetName } from './names';

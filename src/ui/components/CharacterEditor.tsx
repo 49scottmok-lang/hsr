@@ -1,6 +1,9 @@
 import { createInitialState, ELEMENTS, resolveUnitStats, type CharacterBuild, type LightCone } from '../../engine/index';
 import { formatNumber, formatPercent, t } from '../i18n';
+import { characterArt } from '../assets/game-art';
 import { suggestedBreakLevelMultiplier } from '../state/break-level';
+import { buildCharacterId, CHARACTER_OPTIONS, maxLevelBase, pickCharacter } from '../state/characters';
+import { GameImage } from './GameImage';
 import { IssueList } from './IssueList';
 import { ModifierList } from './ModifierList';
 import { NumberField } from './NumberField';
@@ -26,10 +29,33 @@ export function CharacterEditor({ build, issues, onChange, onRemove }: Character
   const stats = resolveUnitStats(createInitialState([build], [previewEnemy]), build.id);
   const tableMultiplier = suggestedBreakLevelMultiplier(build.level);
 
+  const characterId = buildCharacterId(build);
+  const filled = maxLevelBase(build);
+
   return (
-    <fieldset>
+    <fieldset className="character-editor" data-element={build.element}>
       <legend>{build.name || t('character.title')}</legend>
       <IssueList issues={issues} />
+      <div className="character-pick">
+        <span className="character-avatar" aria-hidden="true">
+          <GameImage srcs={characterId ? characterArt(characterId, 'icon') : []} />
+        </span>
+        <label>
+          {t('character.game')}
+          <select
+            value={characterId ?? ''}
+            onChange={({ currentTarget }) => onChange(pickCharacter(build, currentTarget.value || undefined))}
+          >
+            <option value="">{t('character.custom')}</option>
+            {CHARACTER_OPTIONS.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
+          </select>
+        </label>
+        {filled && (
+          <button type="button" title={t('character.fillBaseHint')} onClick={() => onChange(filled)}>
+            {t('character.fillBase').replace('{level}', formatNumber(filled.level))}
+          </button>
+        )}
+      </div>
       <label>
         {t('character.name')}
         <input value={build.name} onChange={({ currentTarget }) => onChange({ ...build, name: currentTarget.value })} />

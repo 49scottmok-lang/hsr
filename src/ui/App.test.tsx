@@ -119,3 +119,24 @@ it('shows the localized data notices and every sourced credit before calculating
     expect(link.closest('li')?.textContent).toContain(credit.licence ?? t('credits.licenceUnknown'));
   }
 });
+
+it('edits one team member at a time, chosen from the portrait row', () => {
+  render(<App />);
+  const team = within(screen.getByRole('region', { name: t('team.a') }));
+  fireEvent.click(team.getByRole('button', { name: t('character.add') }));
+  fireEvent.change(team.getByLabelText(t('character.name')), { target: { value: 'First member' } });
+  fireEvent.click(team.getByRole('button', { name: t('character.add') }));
+  // The newest member opens in the editor.
+  expect(team.getByRole('group', { name: t('character.title') })).toBeTruthy();
+  fireEvent.change(team.getByLabelText(t('character.name')), { target: { value: 'Second member' } });
+  expect(team.getAllByLabelText(t('character.name'))).toHaveLength(1);
+
+  const first = team.getByRole('button', { name: /First member/ });
+  fireEvent.click(first);
+  expect(first.getAttribute('aria-pressed')).toBe('true');
+  expect(team.getByRole('group', { name: 'First member' })).toBeTruthy();
+
+  fireEvent.click(team.getByRole('button', { name: t('character.remove') }));
+  expect(team.queryByRole('button', { name: /First member/ })).toBeNull();
+  expect(team.getByRole('group', { name: 'Second member' })).toBeTruthy();
+});

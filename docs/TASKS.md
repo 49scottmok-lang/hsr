@@ -125,6 +125,16 @@ Rules for every task:
 - Note: decode through `importScenario()` so the link reuses its field allowlist, which already drops `uid` and other unknown keys. Still keep the UID test, and also cover the encode side.
 - **Acceptance:** encode → decode gives a deep-equal result (unit test). A tampered link shows a validation error and doesn't crash. A test asserts that a link built from an imported scenario does not contain the UID.
 
+### F14. Battle-sim visual redesign — done by the engine owner at the owner's request (2026-11-08)
+
+The owner asked for a look like the NOUS StarRailSim site, with character art, and **approved Claude editing `src/ui/**`, `src/index.css` and `index.html` for this task**. Ownership of `src/ui` stays with the frontend agent afterwards.
+
+- [x] Dark theme with a sticky top bar (title, section links, scenario import, reset, share). `src/index.css` replaces the unstyled defaults.
+- [x] Each team is a row of up to four portrait cards (`PortraitCard`), with element-coloured borders, element and path badges and an issue dot. Clicking a card opens that member's `CharacterEditor`; the empty card adds a member.
+- [x] `CharacterEditor` has a game-character picker (sets `characterId`, name and element) and a button that fills table base stats at the character's max level. Neither touches light cone, relics or effects.
+- [x] Artwork is hotlinked from StarRailRes at a pinned commit (`docs/DATA_SOURCES.md § Artwork`), with a fallback when it fails to load.
+- Engine/import side: `CharacterBuild.characterId?` (display metadata) and `importArchive` sets it. `scenario-shape` keeps it in files and links.
+
 ### Suggested order
 
 F1 + F11 → F2 → F3 → F4 → F5 → F6 → F7 → F8 → F10 (once I1–I2 land) → F13 → F9 → F12

@@ -5,7 +5,14 @@
  */
 import { BUILD, COMMIT, GAME_VERSION, REPO } from './generated/source';
 
-export type CreditRole = 'tableSource' | 'crossCheck' | 'exportFormat';
+export type CreditRole = 'tableSource' | 'crossCheck' | 'exportFormat' | 'artwork';
+
+/**
+ * Portrait and icon images are hotlinked from this repository at this commit,
+ * never copied into ours (docs/DATA_SOURCES.md § Artwork).
+ */
+export const ARTWORK_REPO = 'Mar-7th/StarRailRes';
+export const ARTWORK_COMMIT = 'dbe8cdfcfb0bf657b9fe1cf92d5537f118ccb487';
 
 export interface DataCredit {
   readonly name: string;
@@ -46,6 +53,15 @@ export const DATA_CREDITS: readonly DataCredit[] = [
     licence: 'MIT',
     commit: '5e50dcbf980afe77463f9ad357001f2afa3c66fb',
     note: 'The account export format, and how its trace and main-stat fields map to game data.',
+  },
+  {
+    name: 'StarRailRes',
+    repo: ARTWORK_REPO,
+    url: `https://github.com/${ARTWORK_REPO}`,
+    role: 'artwork',
+    licence: 'AGPL-3.0',
+    commit: ARTWORK_COMMIT,
+    note: 'Character portraits and element and path icons, loaded from jsDelivr or GitHub at runtime. No image or file of it is copied into this repository. The images themselves belong to HoYoverse.',
   },
 ];
 

@@ -6,9 +6,10 @@ import { EffectEditor } from './components/EffectEditor';
 import { EnemyEditor } from './components/EnemyEditor';
 import { ImportPanel } from './components/ImportPanel';
 import { IssueList } from './components/IssueList';
+import { PortraitCard } from './components/PortraitCard';
 import { Results } from './components/Results';
 import { RotationEditor } from './components/RotationEditor';
-import { t } from './i18n';
+import { formatNumber, t } from './i18n';
 import { decodeScenarioLink, isScenarioLink } from './share/scenario-link';
 import { ShareButton } from './share/ShareButton';
 import { suggestedBreakLevelMultiplier } from './state/break-level';
@@ -34,6 +35,8 @@ export default function App() {
   const [loadErrors, setLoadErrors] = useState(restored?.ok === false ? restored.issues : undefined);
   const [scenario, dispatch] = useReducer(scenarioReducer, loaded?.scenario ?? initialScenario);
   const [showResults, setShowResults] = useState(false);
+  // The character each team's editor shows, by index; clamped when members are removed.
+  const [selected, setSelected] = useState<readonly [number, number]>([0, 0]);
   const issues = editorIssues(scenario, loaded?.scenario === scenario
     ? loaded.issues
     : showResults || loaded ? scenarioIssues(scenario) : []);
@@ -125,6 +128,8 @@ export default function App() {
         },
       },
     });
+    const index = scenario.teams[teamIndex].team.length;
+    setSelected((value) => teamIndex === 0 ? [index, value[1]] : [value[0], index]);
   }
 
   function addEffect(teamIndex: TeamIndex) {
@@ -145,89 +150,128 @@ export default function App() {
     });
   }
 
+  const selectedIndex = (teamIndex: TeamIndex) =>
+    Math.min(selected[teamIndex], Math.max(scenario.teams[teamIndex].team.length - 1, 0));
+
   return (
-    <main>
-      <h1>{t('app.title')}</h1>
-      <label>
-        {t('scenario.import')}
-        <input type="file" accept=".json,application/json" onChange={({ currentTarget }) => {
-          const file = currentTarget.files?.[0];
-          currentTarget.value = '';
-          if (file) void readScenarioFile(file);
-        }} />
-      </label>
-      <button type="button" onClick={resetScenario}>{t('scenario.reset')}</button>
-      <ShareButton scenario={scenario} />
-      {loadErrors && <div role="alert"><IssueList issues={loadErrors} /></div>}
-      <ImportPanel scenario={scenario} onAdd={(teamIndex, value) => dispatch({
-        type: 'editCharacters', teamIndex, edit: { type: 'add', value },
-      })} />
-      <section aria-label={t('enemy.shared')}>
-        <h2>{t('enemy.shared')}</h2>
-        <IssueList issues={issues.get('enemies')} />
-        {scenario.enemies.map((enemy, index) => (
-          <EnemyEditor
-            key={index}
-            enemy={enemy}
-            issues={issues.get(`enemies[${index}]`)}
-            onChange={(value) => dispatch({ type: 'editEnemies', edit: { type: 'update', index, value } })}
-            onRemove={() => dispatch({ type: 'editEnemies', edit: { type: 'remove', index } })}
-          />
-        ))}
-        <button type="button" onClick={addEnemy}>{t('enemy.add')}</button>
-      </section>
-      {([0, 1] as const).map((teamIndex) => {
-        const { label, team, effectLibrary = [] } = scenario.teams[teamIndex];
-        return (
-          <section key={teamIndex} aria-label={label}>
-            <h2>{label}</h2>
-            <IssueList issues={issues.get(`teams[${teamIndex}]`)} />
-            {team.map((build, index) => (
-              <CharacterEditor
+    <>
+      <header className="topbar">
+        <div className="topbar-inner">
+          <h1 className="brand">{t('app.title')}</h1>
+          <nav className="topbar-nav" aria-label={t('nav.label')}>
+            <a href="#enemies">{t('enemy.shared')}</a>
+            {scenario.teams.map(({ label }, teamIndex) => <a key={teamIndex} href={`#team-${teamIndex}`}>{label}</a>)}
+            <a href="#results">{t('results.title')}</a>
+          </nav>
+          <div className="topbar-actions">
+            <label className="button file-button">
+              {t('scenario.import')}
+              <input type="file" accept=".json,application/json" onChange={({ currentTarget }) => {
+                const file = currentTarget.files?.[0];
+                currentTarget.value = '';
+                if (file) void readScenarioFile(file);
+              }} />
+            </label>
+            <button type="button" onClick={resetScenario}>{t('scenario.reset')}</button>
+            <ShareButton scenario={scenario} />
+          </div>
+        </div>
+      </header>
+      <main className="app-shell">
+        {loadErrors && <div role="alert" className="panel alert"><IssueList issues={loadErrors} /></div>}
+        <ImportPanel scenario={scenario} onAdd={(teamIndex, value) => dispatch({
+          type: 'editCharacters', teamIndex, edit: { type: 'add', value },
+        })} />
+        <section id="enemies" className="panel" aria-label={t('enemy.shared')}>
+          <h2>{t('enemy.shared')}</h2>
+          <IssueList issues={issues.get('enemies')} />
+          <div className="card-grid">
+            {scenario.enemies.map((enemy, index) => (
+              <EnemyEditor
                 key={index}
-                build={build}
-                issues={issues.get(`teams[${teamIndex}].team[${index}]`)}
-                onChange={(value) => dispatch({ type: 'editCharacters', teamIndex, edit: { type: 'update', index, value } })}
-                onRemove={() => dispatch({ type: 'editCharacters', teamIndex, edit: { type: 'remove', index } })}
+                enemy={enemy}
+                issues={issues.get(`enemies[${index}]`)}
+                onChange={(value) => dispatch({ type: 'editEnemies', edit: { type: 'update', index, value } })}
+                onRemove={() => dispatch({ type: 'editEnemies', edit: { type: 'remove', index } })}
               />
             ))}
-            <button
-              type="button"
-              disabled={team.length >= 4}
-              onClick={() => addCharacter(teamIndex)}
-            >
-              {t('character.add')}
-            </button>
-            <fieldset>
-              <legend>{t('effect.library')}</legend>
-              {effectLibrary.map((effect, index) => (
-                <EffectEditor
-                  key={index}
-                  effect={effect}
-                  units={[...team, ...scenario.enemies]}
-                  reservedIds={new Set(effectLibrary.filter((_, i) => i !== index).map(({ id }) => id))}
-                  onChange={(value) => dispatch({ type: 'editEffects', teamIndex, edit: { type: 'update', index, value } })}
-                  onRemove={() => dispatch({ type: 'editEffects', teamIndex, edit: { type: 'remove', index } })}
+            <button type="button" className="add-card" onClick={addEnemy}>{t('enemy.add')}</button>
+          </div>
+        </section>
+        {([0, 1] as const).map((teamIndex) => {
+          const { label, team, effectLibrary = [] } = scenario.teams[teamIndex];
+          const current = selectedIndex(teamIndex);
+          const build = team[current];
+          return (
+            <section key={teamIndex} id={`team-${teamIndex}`} className="panel team-panel" data-team={teamIndex} aria-label={label}>
+              <div className="panel-head">
+                <h2>{label}</h2>
+                <span className="panel-count">{t('team.members').replace('{count}', formatNumber(team.length))}</span>
+              </div>
+              <IssueList issues={issues.get(`teams[${teamIndex}]`)} />
+              <div className="portrait-row">
+                {team.map((member, index) => (
+                  <PortraitCard
+                    key={index}
+                    build={member}
+                    selected={index === current}
+                    hasIssues={(issues.get(`teams[${teamIndex}].team[${index}]`)?.length ?? 0) > 0}
+                    onSelect={() => setSelected((value) => teamIndex === 0 ? [index, value[1]] : [value[0], index])}
+                  />
+                ))}
+                {team.length < 4 && (
+                  <button type="button" className="portrait portrait-empty" onClick={() => addCharacter(teamIndex)}>
+                    {t('character.add')}
+                  </button>
+                )}
+              </div>
+              {build && (
+                <CharacterEditor
+                  key={current}
+                  build={build}
+                  issues={issues.get(`teams[${teamIndex}].team[${current}]`)}
+                  onChange={(value) => dispatch({ type: 'editCharacters', teamIndex, edit: { type: 'update', index: current, value } })}
+                  onRemove={() => dispatch({ type: 'editCharacters', teamIndex, edit: { type: 'remove', index: current } })}
                 />
-              ))}
-              <button type="button" onClick={() => addEffect(teamIndex)}>{t('effect.add')}</button>
-            </fieldset>
-            <RotationEditor draft={scenario.teams[teamIndex]} enemies={scenario.enemies} teamIndex={teamIndex}
-              issues={issues} dispatch={dispatch} />
-          </section>
-        );
-      })}
-      <label>
-        {t('results.critMode')}
-        <select value={scenario.critMode} onChange={({ currentTarget }) => dispatch({
-          type: 'setCritMode', critMode: currentTarget.value as CritMode,
-        })}>
-          {critModes.map((mode) => <option key={mode} value={mode}>{t(`results.critMode.${mode}`)}</option>)}
-        </select>
-      </label>
-      {!showResults && <button type="button" onClick={() => setShowResults(true)}>{t('results.calculate')}</button>}
-      {showResults && <Results scenario={scenario} />}
-      <DataFooter />
-    </main>
+              )}
+              <fieldset className="effect-library">
+                <legend>{t('effect.library')}</legend>
+                <div className="card-grid">
+                  {effectLibrary.map((effect, index) => (
+                    <EffectEditor
+                      key={index}
+                      effect={effect}
+                      units={[...team, ...scenario.enemies]}
+                      reservedIds={new Set(effectLibrary.filter((_, i) => i !== index).map(({ id }) => id))}
+                      onChange={(value) => dispatch({ type: 'editEffects', teamIndex, edit: { type: 'update', index, value } })}
+                      onRemove={() => dispatch({ type: 'editEffects', teamIndex, edit: { type: 'remove', index } })}
+                    />
+                  ))}
+                  <button type="button" className="add-card" onClick={() => addEffect(teamIndex)}>{t('effect.add')}</button>
+                </div>
+              </fieldset>
+              <RotationEditor draft={scenario.teams[teamIndex]} enemies={scenario.enemies} teamIndex={teamIndex}
+                issues={issues} dispatch={dispatch} />
+            </section>
+          );
+        })}
+        <section id="results" className="panel results-panel" aria-label={t('results.settings')}>
+          <h2>{t('results.settings')}</h2>
+          <div className="settings-row">
+            <label>
+              {t('results.critMode')}
+              <select value={scenario.critMode} onChange={({ currentTarget }) => dispatch({
+                type: 'setCritMode', critMode: currentTarget.value as CritMode,
+              })}>
+                {critModes.map((mode) => <option key={mode} value={mode}>{t(`results.critMode.${mode}`)}</option>)}
+              </select>
+            </label>
+            {!showResults && <button type="button" className="primary" onClick={() => setShowResults(true)}>{t('results.calculate')}</button>}
+          </div>
+          {showResults && <Results scenario={scenario} />}
+        </section>
+        <DataFooter />
+      </main>
+    </>
   );
 }
