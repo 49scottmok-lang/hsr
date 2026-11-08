@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { useReducer } from 'react';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { characterEnergyCost, DATA_TABLES } from '../../data';
 import type { ActionStep } from '../../engine/index';
 import { t } from '../i18n';
-import type { AutoBattleDraft } from '../state/auto-battle';
+import { isBlankKit, newKit, type AutoBattleDraft } from '../state/auto-battle';
 import { scenarioReducer } from '../state/reducer';
 import type { Scenario } from '../state/scenario';
 import { AutoBattlePanel } from './AutoBattlePanel';
@@ -133,10 +133,10 @@ it('fills an imported character from the skill table and re-fills at new levels'
   expect(multiplier(kit().skill.steps)).toEqual([2.2]);
 });
 
-function renderPanelWith(team: Scenario['teams'][0]) {
+function renderPanelWith(team: Scenario['teams'][0], enemies: Scenario['enemies'] = [{ id: 'e1', name: 'Test enemy', level: 90, res: {}, spd: 50 }]) {
   let state: Scenario = {
     critMode: 'expected',
-    enemies: [{ id: 'e1', name: 'Test enemy', level: 90, res: {}, spd: 50 }],
+    enemies,
     teams: [team, { label: 'Team B', team: [], events: [] }],
   };
   function Panel() {
@@ -159,4 +159,28 @@ it('enables every member in one click and names an empty kit list in zh-HK', () 
   fireEvent.click(enableAll);
   expect(state().teams[0].autoBattle?.kits.map(({ unitId }) => unitId)).toEqual(['dps', 'sup']);
   expect(enableAll.disabled).toBe(true);
+});
+
+describe('kits need an enemy to fill from the skill table', () => {
+  // TEST FIXTURE — synthetic stats; the game ID (1003) and skill levels are what an import sets.
+  const himeko = {
+    id: 'h', name: 'Test imported', level: 80, element: 'fire' as const, base: { hp: 1000, atk: 600, def: 400, spd: 100 },
+    characterId: '1003', skillLevels: { basic: 6, skill: 10, ultimate: 10 },
+  };
+
+  it('cannot enable a kit before there is an enemy', () => {
+    renderPanelWith({ label: 'Team A', team: [himeko], events: [] }, []);
+    expect(screen.getByText(t('auto.needEnemies'))).toBeTruthy();
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: t('auto.enableAll') }).disabled).toBe(true);
+    expect(screen.getByLabelText<HTMLInputElement>(t('auto.enabled')).disabled).toBe(true);
+  });
+
+  it('enable all refills a kit that was enabled blank (regression)', () => {
+    const blank = newKit(himeko, []);
+    expect(isBlankKit(blank)).toBe(true);
+    const next = renderPanelWith({ label: 'Team A', team: [himeko], events: [], autoBattle: { kits: [blank] } });
+    fireEvent.click(screen.getByRole('button', { name: t('auto.enableAll') }));
+    // Himeko Basic ATK at level 6: 20 Energy, +1 skill point (src/ui/state/auto-battle.test.ts).
+    expect(next().teams[0].autoBattle!.kits[0]!.basic).toMatchObject({ energy: 20, skillPoints: 1 });
+  });
 });

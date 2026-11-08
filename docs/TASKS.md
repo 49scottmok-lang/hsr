@@ -286,3 +286,4 @@ _Append requests here: what you need, why, and the proposed API._
 - `kitTemplate` fills Energy and skill points for actions whose damage sentence is unparseable (e.g. 1507 Skill), and lists the damage as an `unsupported` gap.
 - **Frontend note:** these touched `src/ui` (`AutoBattlePanel` "全部角色啟用自動行動" button, `newKit` Ultimate default, `toAutoBattleInput` drops an unused Ultimate, i18n keys). Please review.
 - **Open data issues:** 1308's `SPNeed` (9) is not Energy, so the auto battle casts its Ultimate far too often; 1507 and 1413 have no readable Skill or Ultimate damage, so their auto rotations deal almost nothing until hits are added by hand.
+- **Follow-up (same day).** Kits enabled before any enemy existed came out blank (the skill table needs a target), so every number was reported missing. The panel now blocks enabling until there is an enemy, and "enable all" refills blank kits the table can fill (`isBlankKit`).

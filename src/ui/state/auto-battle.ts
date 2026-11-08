@@ -79,6 +79,12 @@ export function newKit(build: CharacterBuild, enemies: readonly EnemyConfig[] = 
   return template?.ok ? applyKitTemplate(kit, template.value) : kit;
 }
 
+/** A kit with no hits and no numbers in any action, e.g. one enabled before there was an enemy. */
+export function isBlankKit(kit: AutoKitDraft): boolean {
+  return AUTO_KIT_ACTIONS.every((name) => kit[name].steps.length === 0 && kit[name].energy === undefined)
+    && kit.basic.skillPoints === undefined && kit.skill.skillPoints === undefined;
+}
+
 /**
  * The sourced template for a build, or `undefined` when the build has no
  * game character ID. Missing levels reach the lookup as NaN and come back as gaps.

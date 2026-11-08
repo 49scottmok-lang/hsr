@@ -5,7 +5,7 @@ import {
 } from '../../engine/index';
 import { formatNumber, t, translateIssue } from '../i18n';
 import {
-  applyKitTemplate, AUTO_KIT_ACTIONS, kitTemplateFor, newKit, toAutoBattleInput, type KitPrefill, type AutoBattleDraft, type AutoKitActionName, type AutoKitDraft,
+  applyKitTemplate, AUTO_KIT_ACTIONS, isBlankKit, kitTemplateFor, newKit, toAutoBattleInput, type KitPrefill, type AutoBattleDraft, type AutoKitActionName, type AutoKitDraft,
 } from '../state/auto-battle';
 import { editList, type ScenarioAction } from '../state/reducer';
 import type { TeamDraft, TeamIndex } from '../state/scenario';
@@ -45,6 +45,20 @@ export function AutoBattlePanel({ draft, enemies, teamIndex, dispatch }: AutoBat
   const key = JSON.stringify(input);
   const current = outcome?.key === key ? outcome : undefined;
   const showCycle = input.cycleAv !== undefined;
+  // The skill table fills a kit only once there is an enemy to target.
+  const noEnemies = enemies.length === 0;
+  /**
+   * The kit "enable all" gives a member, or `undefined` to keep its own: a new
+   * kit when it has none, or a refilled one when it is blank (e.g. enabled
+   * before any enemy existed) and the skill table can now fill it.
+   */
+  const enableAllKit = (build: CharacterBuild): AutoKitDraft | undefined => {
+    const kit = settings.kits.find(({ unitId }) => unitId === build.id);
+    if (!kit) return newKit(build, enemies);
+    if (!isBlankKit(kit)) return undefined;
+    const filled = newKit(build, enemies);
+    return isBlankKit(filled) ? undefined : filled;
+  };
 
   const update = (patch: Partial<AutoBattleDraft>) =>
     dispatch({ type: 'setAutoBattle', teamIndex, autoBattle: { ...settings, ...patch } });
@@ -85,11 +99,9 @@ export function AutoBattlePanel({ draft, enemies, teamIndex, dispatch }: AutoBat
             .replace('{later}', formatNumber(CHALLENGE_CYCLE_AV.later))}
         </button>
       </div>
-      <button type="button" disabled={team.every(({ id }) => settings.kits.some((kit) => kit.unitId === id))}
-        onClick={() => update({ kits: [
-          ...settings.kits,
-          ...team.filter(({ id }) => !settings.kits.some((kit) => kit.unitId === id)).map((build) => newKit(build, enemies)),
-        ] })}>
+      {noEnemies && <p role="status">{t('auto.needEnemies')}</p>}
+      <button type="button" disabled={noEnemies || team.every((build) => enableAllKit(build) === undefined)}
+        onClick={() => update({ kits: team.map((build) => enableAllKit(build) ?? settings.kits.find(({ unitId }) => unitId === build.id)!) })}>
         {t('auto.enableAll')}
       </button>
       {team.map((build, index) => {
@@ -98,7 +110,7 @@ export function AutoBattlePanel({ draft, enemies, teamIndex, dispatch }: AutoBat
           <fieldset key={index}>
             <legend>{t('auto.kitFor').replace('{name}', () => names.get(build.id) ?? build.id)}</legend>
             <label>
-              <input type="checkbox" checked={kit !== undefined}
+              <input type="checkbox" checked={kit !== undefined} disabled={kit === undefined && noEnemies}
                 onChange={({ currentTarget }) => updateKit(build.id, currentTarget.checked ? newKit(build, enemies) : undefined)} />
               {t('auto.enabled')}
             </label>
