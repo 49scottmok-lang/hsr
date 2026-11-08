@@ -315,6 +315,12 @@ export interface CharacterBuild {
    * The engine never reads it; every number still comes from the fields below.
    */
   characterId?: string;
+  /**
+   * Skill-tree levels from the account export (eidolon bonuses not included)
+   * and which skill tree they belong to. Metadata for prefilling auto-battle
+   * kits from `src/data`; the engine never reads it.
+   */
+  skillLevels?: { basic: number; skill: number; ultimate: number; tree?: 'base' | 'enhanced' };
   level: number;
   element: Element;
   /** Eidolon level 0–6 (default 0). Gates effects and rotation steps via `requires`. */

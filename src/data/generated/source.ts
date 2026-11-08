@@ -11,6 +11,7 @@ export const LIGHT_CONE_SOURCE: DataSource = { repo: REPO, commit: COMMIT, files
 export const RELIC_MAIN_STAT_SOURCE: DataSource = { repo: REPO, commit: COMMIT, files: ["ExcelOutput/RelicConfig.json","ExcelOutput/RelicMainAffixConfig.json"] };
 export const SET_BONUS_SOURCE: DataSource = { repo: REPO, commit: COMMIT, files: ["ExcelOutput/RelicSetConfig.json","ExcelOutput/RelicSetSkillConfig.json"] };
 export const TRACE_SOURCE: DataSource = { repo: REPO, commit: COMMIT, files: ["ExcelOutput/AvatarConfig.json","ExcelOutput/AvatarSkillTreeConfig.json"] };
+export const SKILL_KIT_SOURCE: DataSource = { repo: REPO, commit: COMMIT, files: ["ExcelOutput/AvatarConfig.json","ExcelOutput/AvatarSkillTreeConfig.json","ExcelOutput/AvatarSkillConfig.json","ExcelOutput/AvatarRankConfig.json","TextMap/TextMapCHT.json"] };
 export const BREAK_LEVEL_MULTIPLIER_SOURCE: DataSource = { repo: REPO, commit: COMMIT, files: ["ExcelOutput/AvatarBreakDamage.json"] };
 export const PATH_NAME_SOURCE: DataSource = { repo: REPO, commit: COMMIT, files: ["ExcelOutput/AvatarBaseType.json","TextMap/TextMapCHT.json"] };
 export const CHARACTER_NAME_SOURCE: DataSource = { repo: REPO, commit: COMMIT, files: ["ExcelOutput/AvatarConfig.json","ExcelOutput/MultiplePathAvatarConfig.json","TextMap/TextMapCHT.json"] };

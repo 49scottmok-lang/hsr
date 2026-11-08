@@ -104,3 +104,46 @@ it('enables a kit with the sourced Ultimate cost and names missing numbers', () 
   fireEvent.click(support.getByLabelText(t('auto.enabled')));
   expect(state().teams[0].autoBattle?.kits).toEqual([]);
 });
+
+it('fills an imported character from the skill table and re-fills at new levels', () => {
+  // TEST FIXTURE — synthetic stats; the game ID (1003) and skill levels are what an import sets.
+  const next = renderPanelWith({
+    label: 'Team A',
+    team: [{
+      id: 'dps', name: 'Test attacker', level: 80, element: 'fire', base: { hp: 1000, atk: 600, def: 400, spd: 100 },
+      characterId: '1003', skillLevels: { basic: 6, skill: 10, ultimate: 10 },
+    }],
+    events: [],
+  });
+  const attacker = within(screen.getByRole('group', { name: t('auto.kitFor').replace('{name}', 'Test attacker') }));
+  fireEvent.click(attacker.getByLabelText(t('auto.enabled')));
+
+  const kit = () => next().teams[0].autoBattle!.kits[0]!;
+  const multiplier = (steps: readonly ActionStep[]) => steps.map((s) => s.op === 'hit' && s.hit.multiplier);
+  // Himeko at 6 / 10 / 10 (one enemy, so the Blast has no neighbours): 100%, 200%, 230%.
+  expect(multiplier(kit().basic.steps)).toEqual([1]);
+  expect(multiplier(kit().skill.steps)).toEqual([2]);
+  expect(multiplier(kit().ultimate.steps)).toEqual([2.3]);
+  expect(kit().basic).toMatchObject({ energy: 20, skillPoints: 1 });
+
+  const prefill = within(attacker.getByRole('group', { name: t('auto.prefill.title') }));
+  expect(prefill.getAllByRole('listitem')).toHaveLength(3);
+  fireEvent.change(prefill.getByLabelText(t('auto.prefill.level.skill')), { target: { value: '12' } });
+  fireEvent.click(prefill.getByRole('button', { name: t('auto.prefill.apply') }));
+  expect(multiplier(kit().skill.steps)).toEqual([2.2]);
+});
+
+function renderPanelWith(team: Scenario['teams'][0]) {
+  let state: Scenario = {
+    critMode: 'expected',
+    enemies: [{ id: 'e1', name: 'Test enemy', level: 90, res: {}, spd: 50 }],
+    teams: [team, { label: 'Team B', team: [], events: [] }],
+  };
+  function Panel() {
+    const [scenario, dispatch] = useReducer(scenarioReducer, state);
+    state = scenario;
+    return <AutoBattlePanel draft={scenario.teams[0]} enemies={scenario.enemies} teamIndex={0} dispatch={dispatch} />;
+  }
+  render(<Panel />);
+  return () => state;
+}

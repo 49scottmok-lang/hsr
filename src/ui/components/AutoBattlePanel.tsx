@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import {
   CHALLENGE_CYCLE_AV, EngineValidationError, simulateBattle,
-  type AutoBattleInput, type AutoBattleResult, type EffectDef, type EnemyConfig,
+  type AutoBattleInput, type AutoBattleResult, type CharacterBuild, type EffectDef, type EnemyConfig,
 } from '../../engine/index';
 import { formatNumber, t, translateIssue } from '../i18n';
 import {
-  AUTO_KIT_ACTIONS, newKit, toAutoBattleInput, type AutoBattleDraft, type AutoKitActionName, type AutoKitDraft,
+  applyKitTemplate, AUTO_KIT_ACTIONS, kitTemplateFor, newKit, toAutoBattleInput, type KitPrefill, type AutoBattleDraft, type AutoKitActionName, type AutoKitDraft,
 } from '../state/auto-battle';
 import { editList, type ScenarioAction } from '../state/reducer';
 import type { TeamDraft, TeamIndex } from '../state/scenario';
 import { NumberField } from './NumberField';
 import { StepList } from './StepList';
+import { UnitSelect } from './UnitSelect';
 
 interface AutoBattlePanelProps {
   draft: TeamDraft;
@@ -91,10 +92,10 @@ export function AutoBattlePanel({ draft, enemies, teamIndex, dispatch }: AutoBat
             <legend>{t('auto.kitFor').replace('{name}', () => names.get(build.id) ?? build.id)}</legend>
             <label>
               <input type="checkbox" checked={kit !== undefined}
-                onChange={({ currentTarget }) => updateKit(build.id, currentTarget.checked ? newKit(build) : undefined)} />
+                onChange={({ currentTarget }) => updateKit(build.id, currentTarget.checked ? newKit(build, enemies) : undefined)} />
               {t('auto.enabled')}
             </label>
-            {kit && <KitEditor kit={kit} draft={draft} enemies={enemies} effects={effectLibrary}
+            {kit && <KitEditor kit={kit} build={build} draft={draft} enemies={enemies} effects={effectLibrary}
               onChange={(value) => updateKit(build.id, value)} />}
           </fieldset>
         );
@@ -144,16 +145,18 @@ export function AutoBattlePanel({ draft, enemies, teamIndex, dispatch }: AutoBat
 
 interface KitEditorProps {
   kit: AutoKitDraft;
+  build: CharacterBuild;
   draft: TeamDraft;
   enemies: readonly EnemyConfig[];
   effects: readonly EffectDef[];
   onChange: (kit: AutoKitDraft) => void;
 }
 
-function KitEditor({ kit, draft, enemies, effects, onChange }: KitEditorProps) {
+function KitEditor({ kit, build, draft, enemies, effects, onChange }: KitEditorProps) {
   const update = (patch: Partial<AutoKitDraft>) => onChange({ ...kit, ...patch });
   return (
     <>
+      <KitPrefillEditor kit={kit} build={build} enemies={enemies} onChange={onChange} />
       <div className="turn-order-fields">
         <NumberField label={t('auto.startEnergy')} value={kit.startEnergy} min={0}
           onChange={(startEnergy) => update({ startEnergy })} />
@@ -191,6 +194,62 @@ function KitEditor({ kit, draft, enemies, effects, onChange }: KitEditorProps) {
         );
       })}
     </>
+  );
+}
+
+interface KitPrefillEditorProps {
+  kit: AutoKitDraft;
+  build: CharacterBuild;
+  enemies: readonly EnemyConfig[];
+  onChange: (kit: AutoKitDraft) => void;
+}
+
+/** Skill levels and target for the sourced kit template, what it can fill, and what stays manual. */
+function KitPrefillEditor({ kit, build, enemies, onChange }: KitPrefillEditorProps) {
+  const prefill = kit.prefill ?? {};
+  const template = kitTemplateFor(build, enemies, prefill);
+  // Without a game character ID there is no table row to fill from.
+  if (!template) return null;
+  const set = (patch: KitPrefill) => onChange({ ...kit, prefill: { ...prefill, ...patch } });
+  const actionName = (name: AutoKitActionName) => t(`auto.action.${name}`);
+  const lines: string[] = [];
+  if (template.ok) {
+    for (const name of AUTO_KIT_ACTIONS) {
+      const action = template.value.actions[name];
+      if (!action) continue;
+      const notes = [
+        ...(action.steps.length === 0 ? [t('auto.prefill.noDamage')] : []),
+        ...(action.otherEffects ? [t('auto.prefill.otherEffects')] : []),
+      ];
+      lines.push(t('auto.prefill.ready').replace('{action}', () => actionName(name)).replace('{name}', () => action.name)
+        .replace('{level}', formatNumber(action.level)) + notes.map((note) => `${t('results.separator')}${note}`).join(''));
+    }
+    for (const gap of template.value.gaps) {
+      lines.push(t(`auto.prefill.gap.${gap.reason}`).replace('{action}', () => actionName(gap.slot)));
+    }
+  }
+  const canApply = template.ok && Object.keys(template.value.actions).length > 0;
+  return (
+    <fieldset>
+      <legend>{t('auto.prefill.title')}</legend>
+      <p>{t('auto.prefill.hint')}</p>
+      <div className="turn-order-fields">
+        {AUTO_KIT_ACTIONS.map((name) => (
+          <NumberField key={name} label={t(`auto.prefill.level.${name}`)} value={prefill[name]} min={1} integer
+            onChange={(level) => set({ [name]: level })} />
+        ))}
+        <UnitSelect label={t('auto.prefill.target')} value={prefill.targetId ?? ''} units={enemies}
+          emptyLabel={t('auto.prefill.firstEnemy')} onChange={(targetId) => set({ targetId: targetId || undefined })} />
+      </div>
+      {template.ok
+        ? <ul>{lines.map((line, index) => <li key={index}>{line}</li>)}</ul>
+        : <p role="status">{t(enemies.length === 0 ? 'auto.prefill.noEnemies' : 'auto.prefill.noKit')}</p>}
+      <button type="button" disabled={!canApply}
+        onClick={() => { if (template.ok) onChange(applyKitTemplate(kit, template.value)); }}>
+        {t('auto.prefill.apply')}
+      </button>
+      {template.ok && <p>{t('auto.prefill.source').replace('{version}', () => template.value.gameVersion)}</p>}
+    </fieldset>
   );
 }
 

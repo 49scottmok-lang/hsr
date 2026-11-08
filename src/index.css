@@ -148,6 +148,11 @@ fieldset {
 fieldset > :is(p, ul, dl, table, details, fieldset, div, section) { flex-basis: 100%; }
 fieldset fieldset { background: rgb(255 255 255 / 0.02); }
 fieldset > p { color: var(--muted); font-size: 0.82rem; margin: 0; }
+/* Account import: compact cards; the dl stacks label over value so long relic set names fit. */
+.import-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.import-grid dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.import-grid dl > div { flex-direction: column; justify-content: flex-start; }
+.import-grid details { padding: 0; }
 #enemies .card-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); }
 legend {
   padding-inline: 0.4rem;

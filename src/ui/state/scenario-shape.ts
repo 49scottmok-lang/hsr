@@ -81,6 +81,7 @@ const baseStats = { hp: number, atk: number, def: number };
 const character = shape({
   ...unit,
   characterId: optional(string),
+  skillLevels: optional(shape({ basic: number, skill: number, ultimate: number, tree: optional(oneOf('base', 'enhanced')) })),
   element: string,
   eidolon: optional(number),
   base: shape({ ...baseStats, spd: number }),
@@ -165,6 +166,9 @@ const kitAction = shape({ steps: list(step), energy: optional(number), skillPoin
 const autoBattle = shape({
   kits: list(shape({
     unitId: string,
+    prefill: optional(shape({
+      basic: optional(number), skill: optional(number), ultimate: optional(number), targetId: optional(string),
+    })),
     startEnergy: optional(number),
     basic: kitAction,
     skill: kitAction,
