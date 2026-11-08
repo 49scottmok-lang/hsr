@@ -12,6 +12,13 @@ import { EngineValidationError, RESERVED_UNIT_IDS } from './validate';
 /** §Action Value: every unit's action gauge is this long, at battle start and after each turn. */
 export const ACTION_GAUGE = 10000;
 
+/**
+ * §Action Value, cycles (S3 Speed): in challenges such as Forgotten Hall, the
+ * first cycle of each wave lasts 150 AV and every later one 100 AV. Pass it as
+ * `TimelineInput.cycleAv` for a single wave; it is not applied by default.
+ */
+export const CHALLENGE_CYCLE_AV: { readonly first: number; readonly later: number } = { first: 150, later: 100 };
+
 /** Hard stop, so a huge `avLimit` cannot freeze the UI. `TimelineResult.truncated` reports it. */
 export const MAX_TIMELINE_TURNS = 10000;
 
@@ -52,7 +59,10 @@ export function validateTimelineInput(input: TimelineInput): string[] {
       if (!Number.isInteger(a.at.turn) || a.at.turn < 1) out.push(`${path}: at.turn must be an integer >= 1`);
     }
     if (!ids.has(a.targetId)) out.push(`${path}: unknown target "${a.targetId}"`);
-    if (a.advance === undefined && a.spd === undefined) out.push(`${path}: needs advance or spd`);
+    if (a.advance === undefined && a.spd === undefined && a.actNow === undefined) {
+      out.push(`${path}: needs advance, spd or actNow`);
+    }
+    if (a.actNow !== undefined && a.actNow !== true) out.push(`${path}: actNow must be true when set`);
     if (a.advance !== undefined && !isFiniteNum(a.advance)) out.push(`${path}: advance must be a finite number`);
     if (a.spd !== undefined && !isPosNum(a.spd)) out.push(`${path}: spd must be a finite number > 0`);
   }
@@ -63,16 +73,21 @@ interface Clock {
   readonly unit: TimelineUnit;
   readonly slot: number;
   spd: number;
-  /** Elapsed AV at which the gauge reaches 0. Below `now` means a negative gauge (advance past 0). */
+  /** Elapsed AV at which the gauge reaches 0. Never below `now`: gauges are floored at 0. */
   nextAt: number;
   turns: number;
 }
 
-/** Keeps the gauge across a SPD change, then subtracts the advance (FORMULAS § Action Value). */
+/**
+ * Keeps the gauge across a SPD change, then subtracts the advance, floored at 0
+ * (S3 Speed: `max(0, AV − Base AV × (Advance% − Delay%))`). `actNow` sets the
+ * gauge to 0 whatever it was, even above 10000 after a delay (FORMULAS § Action Value).
+ */
 function adjust(clock: Clock, now: number, a: TimelineAdjustment): void {
   let gauge = (clock.nextAt - now) * clock.spd;
   if (a.spd !== undefined) clock.spd = a.spd;
-  if (a.advance !== undefined) gauge -= a.advance * ACTION_GAUGE;
+  if (a.advance !== undefined) gauge = Math.max(0, gauge - a.advance * ACTION_GAUGE);
+  if (a.actNow) gauge = 0;
   clock.nextAt = now + gauge / clock.spd;
 }
 
@@ -120,7 +135,7 @@ export function suggestTurnOrder(input: TimelineInput): TimelineResult {
   let truncated = false;
   for (;;) {
     const next = clocks.reduce((best, c) => (actsBefore(c, best) ? c : best));
-    // A negative gauge cannot move time backwards: that unit simply acts now.
+    // Gauges never go below 0, so this only guards against float drift.
     const at = Math.max(now, next.nextAt);
     if (at > input.avLimit && !sameAv(at, input.avLimit)) break;
     if (turns.length >= MAX_TIMELINE_TURNS) {

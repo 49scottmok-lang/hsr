@@ -43,7 +43,7 @@ Engine independence is enforced three ways (and the same three cover `src/data` 
 | `effects.ts` | Buff/debuff lifecycle: `applyEffect`, `removeEffect`, `tickEffects`. | yes (returns new state) |
 | `rotation.ts` | `createInitialState`, `runRotation` (manual rotation engine). | yes |
 | `compare.ts` | `compareTeams`. | yes |
-| `timeline.ts` | Turn order helper (E6): `suggestTurnOrder`, `timelineToEvents`, `validateTimelineInput`, `ACTION_GAUGE`, `MAX_TIMELINE_TURNS`. | yes |
+| `timeline.ts` | Turn order helper (E6): `suggestTurnOrder`, `timelineToEvents`, `validateTimelineInput`, `ACTION_GAUGE`, `CHALLENGE_CYCLE_AV`, `MAX_TIMELINE_TURNS`. | yes |
 | `validate.ts` | `validateRotationInput`, `EngineValidationError`, `RESERVED_UNIT_IDS` (unit IDs that validation rejects). | yes |
 | `index.ts` | **Public API.** The only import path for UI code. | — |
 
@@ -127,7 +127,7 @@ suggestTurnOrder({ units, avLimit, adjustments?, cycleAv? }) → { turns, trunca
 timelineToEvents(result) → RotationEvent[]   (empty 'turn' events, ids "turn-<n>-<unitId>")
 ```
 
-- **Input.** `units` are `{ id, side, spd }` in slot order. The caller supplies SPD: for allies, `resolveUnitStats(createInitialState(team, enemies), id).spd`; for enemies, user input, because `EnemyConfig` has no SPD. `adjustments` are manual Action Advance/Delay (`advance`, a fraction of the 10000 gauge, negative for delay) and absolute SPD changes, each triggered at battle start or right after a given turn of a given unit. `cycleAv` is user-supplied; no game default ships.
+- **Input.** `units` are `{ id, side, spd }` in slot order. The caller supplies SPD: for allies, `resolveUnitStats(createInitialState(team, enemies), id).spd`; for enemies, user input, because `EnemyConfig` has no SPD. `adjustments` are manual Action Advance/Delay (`advance`, a fraction of the 10000 gauge, negative for delay; the gauge never goes below 0), "immediately take action" (`actNow`, gauge set to 0) and absolute SPD changes, each triggered at battle start or right after a given turn of a given unit. `cycleAv` is optional; `CHALLENGE_CYCLE_AV` holds the sourced 150/100 AV.
 - **Output.** `turns` lists each turn with the unit's own turn count, the elapsed AV and, with `cycleAv`, the cycle. `truncated` is true when `MAX_TIMELINE_TURNS` stopped it; `unusedAdjustments` lists adjustments whose trigger turn never came.
 - **Scope.** Only turns. Ultimates, follow-ups, energy, skill points and kit-driven advances are not simulated: the user enters them (as adjustments or `extra` events). Formulas and tags: `FORMULAS.md § Action Value`.
 - **Why not an APL simulator (E9).** R2's APL (`action on target if condition`, first matching line wins, ultimates in their own windows) needs energy, skill points, kit state and targeting for every character. This project ships no kit data (SPEC D5, AGENTS rule 3), so an APL would run on invented numbers. The helper takes R2's timeline layer only, and keeps the manual event list as the authority.

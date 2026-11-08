@@ -1,8 +1,8 @@
 /**
  * Break and Super Break DMG (TASKS E4, docs/FORMULAS.md § Break DMG and
  * § Super Break DMG). They share the target-side multipliers with ordinary
- * hits but have their own base, cannot crit, and take only DMG Boost that
- * explicitly names their tag (`break` / `superBreak`).
+ * hits but have their own base, cannot crit, ignore Weaken, and take only DMG
+ * Boost that explicitly names their tag (`break` / `superBreak`).
  */
 import { resolveHitStats } from './damage';
 import {
@@ -20,7 +20,6 @@ import {
   targetDef,
   trueDmgMultiplier,
   vulnerabilityMultiplier,
-  weakenMultiplier,
 } from './formulas';
 import { namesTag, resolveUnitStats, sumStat, type HitContext } from './stats';
 import type {
@@ -44,8 +43,8 @@ export interface BreakDamageInput {
 /**
  * Pure formula application for Break and Super Break DMG. The breakdown has
  * the same factors as an ordinary hit, so `baseDmg` is the break base × (1 +
- * Break Effect), CRIT is fixed at 1, and `stats.dmgBoost` must already hold
- * only the break-specific DMG Boost.
+ * Break Effect), CRIT and Weaken are fixed at 1, and `stats.dmgBoost` must
+ * already hold only the break-specific DMG Boost.
  */
 export function computeBreakBreakdown(input: BreakDamageInput): DamageBreakdown {
   const s = input.stats;
@@ -54,7 +53,9 @@ export function computeBreakBreakdown(input: BreakDamageInput): DamageBreakdown 
     // Break DMG cannot crit (R1). DMG Boost is the break-specific part only, see calculateBreakHit.
     critMultiplier: 1,
     dmgBoostMultiplier: dmgBoostMultiplier(s.dmgBoost),
-    weakenMultiplier: weakenMultiplier(s.weaken),
+    // S3 (Weaken, Weakness Break): Break-related DMG is not affected by Weaken.
+    // `stats.weaken` still shows the attacker's Weaken for display.
+    weakenMultiplier: 1,
     defMultiplier: defMultiplier(
       targetDef(s.targetBaseDef, s.targetDefPct, s.targetDefFlat, s.targetDefReduction, s.defIgnore),
       s.attackerLevel,

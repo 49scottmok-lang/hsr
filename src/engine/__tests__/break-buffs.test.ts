@@ -147,3 +147,25 @@ describe('validation', () => {
     expect(validateRotationInput(input)).toEqual([]);
   });
 });
+
+describe('Weaken on break hits (E1 regression, 2026-11-08)', () => {
+  // S3 (Fandom Weaken and Weakness Break pages): Break-related DMG is not affected by Weaken.
+  const weaken: StatModifier = { stat: 'weaken', value: 0.3 };
+
+  it('Break DMG ignores the attacker\'s Weaken', () => {
+    // 70000 × 0.8 × 1000/2100 = 26666.666…, unchanged by Weaken 30% (it would be × 0.7).
+    const c = hit([weaken], { kind: 'break', targetId: 'e1' });
+    expect(c.stats.weaken).toBeCloseTo(0.3, 12);
+    expect(c.breakdown.weakenMultiplier).toBe(1);
+    expect(c.breakdown.total).toBeCloseTo(70000 * RES * DEF, 8);
+    expect(c.breakdown.total).toBeCloseTo(26666.666667, 6);
+  });
+
+  it('Super Break DMG ignores the attacker\'s Weaken', () => {
+    // 4000 × 10/10 × 1 × 2.5 = 10000; × 0.8 × 1000/2100 = 3809.523…
+    const c = hit([weaken], { kind: 'superBreak', targetId: 'e1', toughnessReduction: 10, multiplier: 1 });
+    expect(c.breakdown.weakenMultiplier).toBe(1);
+    expect(c.breakdown.total).toBeCloseTo(10000 * RES * DEF, 8);
+    expect(c.breakdown.total).toBeCloseTo(3809.523810, 6);
+  });
+});

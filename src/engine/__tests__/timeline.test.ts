@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHALLENGE_CYCLE_AV,
   EngineValidationError,
   MAX_TIMELINE_TURNS,
   runRotation,
@@ -87,9 +88,10 @@ describe('suggestTurnOrder', () => {
     expect(order(r)).toEqual(['b1@50', 'a1@90', 'b2@100', 'b3@150', 'a2@170', 'b4@200']);
   });
 
-  it('lets a gauge go below 0: the more advanced unit acts first, at the current AV', () => {
-    // a: 10000 − 15000 = −5000; b: 10000 − 10000 = 0. Both act at AV 0, a first
-    // despite the later slot. Then both reset: 0 + 100 = 100, tie → slot order (b, a).
+  it('floors the gauge at 0 (E1 regression, 2026-11-08: S3 Speed gives max(0, …))', () => {
+    // a: max(0, 10000 − 15000) = 0; b: 10000 − 10000 = 0. Both act at AV 0 and tie,
+    // so slot order decides (b, a): the extra 50% advance on a is lost.
+    // Then both reset: 0 + 100 = 100, tie again → b, a.
     const r = suggestTurnOrder({
       units: [{ id: 'b', side: 'ally', spd: 100 }, { id: 'a', side: 'ally', spd: 100 }],
       avLimit: 100,
@@ -98,7 +100,31 @@ describe('suggestTurnOrder', () => {
         { at: 'start', targetId: 'b', advance: 1 },
       ],
     });
-    expect(order(r)).toEqual(['a1@0', 'b1@0', 'b2@100', 'a2@100']);
+    expect(order(r)).toEqual(['b1@0', 'a1@0', 'b2@100', 'a2@100']);
+  });
+
+  it('a 100% advance cannot undo a delay, but actNow can', () => {
+    // e delayed 50%: gauge 15000. Then +100% → 5000 → e at 50; a (SPD 100) at 100, 200; e at 150.
+    const delayThenAdvance = suggestTurnOrder({
+      units: [{ id: 'a', side: 'ally', spd: 100 }, { id: 'e', side: 'enemy', spd: 100 }],
+      avLimit: 200,
+      adjustments: [
+        { at: 'start', targetId: 'e', advance: -0.5 },
+        { at: 'start', targetId: 'e', advance: 1 },
+      ],
+    });
+    expect(order(delayThenAdvance)).toEqual(['e1@50', 'a1@100', 'e2@150', 'a2@200']);
+    // Same delay, then "immediately take action": gauge 0 → e at 0, then 100 and 200,
+    // tying with a, who goes first as an ally.
+    const delayThenActNow = suggestTurnOrder({
+      units: [{ id: 'a', side: 'ally', spd: 100 }, { id: 'e', side: 'enemy', spd: 100 }],
+      avLimit: 200,
+      adjustments: [
+        { at: 'start', targetId: 'e', advance: -0.5 },
+        { at: 'start', targetId: 'e', actNow: true },
+      ],
+    });
+    expect(order(delayThenActNow)).toEqual(['e1@0', 'a1@100', 'e2@100', 'a2@200', 'e3@200']);
   });
 
   it('assigns user-supplied cycles with inclusive upper bounds', () => {
@@ -110,6 +136,13 @@ describe('suggestTurnOrder', () => {
       cycleAv: { first: 150, later: 100 },
     });
     expect(r.turns.map((t) => [t.av, t.cycle])).toEqual([[50, 1], [100, 1], [150, 1], [200, 2], [250, 2], [300, 3]]);
+  });
+
+  it('exports the sourced challenge cycle lengths (S3 Speed)', () => {
+    expect(CHALLENGE_CYCLE_AV).toEqual({ first: 150, later: 100 });
+    // SPD 134: 74.63 and 149.25 fall in cycle 1, 223.88 in cycle 2.
+    const r = suggestTurnOrder({ units: [{ id: 'a', side: 'ally', spd: 134 }], avLimit: 250, cycleAv: CHALLENGE_CYCLE_AV });
+    expect(r.turns.map((t) => t.cycle)).toEqual([1, 1, 2]);
   });
 
   it('omits cycle when cycleAv is not set', () => {
@@ -159,7 +192,7 @@ describe('suggestTurnOrder', () => {
       cycleAv: { first: 0, later: -1 },
       adjustments: [
         { at: { unitId: 'nope', turn: 0 }, targetId: 'ghost' },
-        { at: 'start', targetId: 'a', advance: Number.NaN, spd: -5 },
+        { at: 'start', targetId: 'a', advance: Number.NaN, spd: -5, actNow: false },
       ],
     } as unknown as TimelineInput;
     let issues: readonly string[] = [];
@@ -180,7 +213,8 @@ describe('suggestTurnOrder', () => {
       'adjustments[0]: unknown unit "nope" in at',
       'adjustments[0]: at.turn must be an integer >= 1',
       'adjustments[0]: unknown target "ghost"',
-      'adjustments[0]: needs advance or spd',
+      'adjustments[0]: needs advance, spd or actNow',
+      'adjustments[1]: actNow must be true when set',
       'adjustments[1]: advance must be a finite number',
       'adjustments[1]: spd must be a finite number > 0',
     ]);

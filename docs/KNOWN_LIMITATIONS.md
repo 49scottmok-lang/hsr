@@ -52,8 +52,9 @@ These are still **unverified**, because no read source covers them:
 3. Whether several Weaken sources add together.
 4. How several Final DMG (Original DMG) sources stack. R1 multiplies them (re-checked 2026-11-07: its `MULTIPLICATIVE_BOOST` operator), and so does the engine. No other source says.
 5. Level scaling below level 80 (base stats) and below max level (relic main stats). The formulas are checked only at those levels (`FORMULAS.md § Level scaling`).
-6. RES clamp [10%, 200%] and the vulnerability cap of +250%. These rest on R1 alone, because S3's Damage page states no bounds. The Damage RES and Vulnerability sub-pages couldn't be read (on 2026-11-07 they returned HTTP 402 to automated fetch; search snippets of the RES page agree with the RES bounds).
-7. *(E8)* Debuff-specific RES in the DoT application chance, and R1's multi-stack DoT weighting. Neither is modelled (`FORMULAS.md § DoT application chance`).
+6. The vulnerability cap of +250%. It rests on R1 alone: the S3 Vulnerability page (read 2026-11-08) says sources add, but states no cap. *The RES clamp [10%, 200%] was sourced on 2026-11-08 (S3 Damage RES).*
+7. *(E8)* R1's multi-stack DoT weighting. Debuff RES is now sourced (S3, 2026-11-08: `× (1 − Debuff RES)`) but **not modelled** (TASKS E12).
+8. *(E11)* Super Break as Break DMG. S3 says Super Break DMG is also Break DMG and multiplies `(1 + Break DMG Increase) × (1 + Super Break DMG Increase)`. The engine keeps the two tags apart and adds `superBreakDmg` to the ability multiplier, as R1 does. S3 and R1 disagree (`FORMULAS.md § Super Break DMG`).
 
 *Resolved 2026-11-07:* base CRIT Rate 5% / CRIT DMG 50% is in source A's `AvatarPromotionConfig` for every character and ascension, and matches B (`FORMULAS.md § Base CRIT`).
 
@@ -77,18 +78,18 @@ R1 is a widely used optimizer, but it is not the game. If game testing contradic
 | A10 | *(E8)* Enemy Effect RES defaults to 0 when `EnemyConfig.effectRes` is not set. | `damage.ts` |
 | A11 | *(E4 follow-up)* Break hits carry only their own tag (`break` or `superBreak`). An effect that should boost both must list both. `breakEfficiency` / `superBreakDmg` modifiers are read in the Super Break hit's context, not the triggering hit's. | `breakDamage.ts` |
 | A12 | *(E6)* AV ties mid-battle are broken like battle-start ties (allies first, then slot). The source describes the battle-start order and a stable sort only. | `timeline.ts` |
-| A13 | *(E6)* An action gauge can go below 0 after a large advance. That unit acts at the current AV, before units with a higher gauge. | `timeline.ts` |
-| A14 | *(E6)* An adjustment triggered by a turn applies after that turn ends, after the actor's gauge refill. | `timeline.ts` |
+| A13 | *(E6)* ~~A gauge can go below 0.~~ *Replaced 2026-11-08 (E1):* gauges are floored at 0 (S3 Speed), so two units advanced to 0 tie and A12 decides. | `timeline.ts` |
+| A14 | *(E6)* An adjustment triggered by a turn applies after that turn ends, after the actor's gauge refill. S3 Speed (2026-11-08) confirms that post-action Ultimates act at this point. | `timeline.ts` |
 
 ## Out of scope for the MVP
 
 - **Break and Super Break DMG (E4, added 2026-11-07) have these gaps** (formulas: `FORMULAS.md § Break DMG`):
   - *Resolved 2026-11-07 (E4 follow-up):* break hits now carry the tag `break` / `superBreak`, so "Break DMG +X%" is a `dmgBoost` modifier conditioned on that tag. Weakness Break Efficiency and the Super Break DMG multiplier can come from buffs (`breakEfficiency`, `superBreakDmg` stats), added to the step's own values.
   - Break DoTs (the Burn, Bleed, Shock, Wind Shear, Entanglement, Freeze and Imprisonment that a Weakness Break applies) are not modelled.
-  - The level multiplier is checked against R1 only at level 80. Weaken and Mitigation on break hits, and the broken factor at the moment of the break, are **[UNVERIFIED]**.
+  - The level multiplier is checked against R1 only at level 80. *Resolved 2026-11-08 (E1, S3 Weakness Break):* break hits ignore Weaken, take Mitigation, and the breaking hit's Break DMG uses the 0.9 unbroken multiplier.
   - Toughness is not simulated: the user states the enemy's max Toughness (displayed units) and each Super Break step's Toughness reduction.
 - **Toughness simulation.** Weakness break is a manual toggle (`setBroken`).
-- **SPD/AV timeline simulation.** `runRotation` stays manual. The turn order helper (E6, `suggestTurnOrder`) only suggests the order of turns from SPD and **user-entered** advances, delays and SPD changes. It knows no kit: ultimates, follow-ups, energy, skill points, Frozen, Toughness Break delay and Memory of Chaos cycle lengths must be entered by the user (`FORMULAS.md § Action Value`).
+- **SPD/AV timeline simulation.** `runRotation` stays manual. The turn order helper (E6, `suggestTurnOrder`) only suggests the order of turns from SPD and **user-entered** advances, delays, "immediately take action" and SPD changes. It knows no kit: ultimates, follow-ups, energy, skill points, Frozen and Toughness Break delay must be entered by the user. It models a single wave; `CHALLENGE_CYCLE_AV` (150 then 100 AV, sourced) restarts each wave in the game (`FORMULAS.md § Action Value`).
 - **Energy and skill points.** Neither is tracked or validated, so a rotation can be "illegal" in-game.
 - **Standalone True DMG** (based on tallied DMG, Max HP, etc.). Not supported. Only "True DMG equal to X% of this hit" is modelled, via `trueDmg`.
 - **Superimposition scaling.** `LightCone.superimposition` is a label only. The values for each S1–S5 level must be entered or supplied by data.

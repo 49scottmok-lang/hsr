@@ -629,10 +629,15 @@ export interface TimelineAdjustment {
   at: 'start' | { unitId: string; turn: number };
   /** Unit whose gauge or SPD changes. */
   targetId: string;
-  /** Action Advance as a fraction of the 10000 gauge (`0.25` = 25%). Negative = Action Delay. */
+  /** Action Advance as a fraction of the 10000 gauge (`0.25` = 25%). Negative = Action Delay. The gauge never goes below 0. */
   advance?: number;
   /** New SPD from this point on (absolute value, not a delta). */
   spd?: number;
+  /**
+   * "Immediately take action": sets the gauge to 0, unlike a 100% advance, which
+   * cannot undo a delay. Applied after `spd` and `advance`.
+   */
+  actNow?: true;
 }
 
 export interface TimelineInput {

@@ -20,9 +20,9 @@ Every formula below maps to one function in `src/engine/formulas.ts`. All percen
 - **R2**: Nous StarRailSim (`starrailsim.com`). This is a closed-source cloud simulator that claims ≤0.5% error against the game. It publishes **no formulas**, so it cannot verify anything here. Its APL reference page (`starrailsim.com/apl`, read in the browser pane on 2026-11-08) was the design reference for E9/E6.
 - **S4**: KQM Star Rail Library, "Turn Order Mechanics" (`srl.keqingmains.com/combat-mechanics/turn-order/turn-order-mechanics`). Read in full on 2026-11-08. A community theorycrafting page; no licence shown. Only the mechanics are referenced.
 - **S5**: GenshinTheory, "hsr speed" (`genshintheory.github.io/hsr-speed.html`). Read in full on 2026-11-08. Its SPD-change formula, as extracted, contradicts its own derivation, so only its start/reset and negative-gauge statements are used.
-- The Fandom "Speed" page returned a bot check on 2026-11-08 and was **not** read.
 - **S3**: Honkai: Star Rail Wiki (Fandom), "Damage" (`honkai-star-rail.fandom.com/wiki/Damage`), section "General Damage Formula". Read in full on 2026-11-07, after the user cleared the site's bot check in the browser pane. Text is CC-BY-SA. Only the formulas are referenced; none of the page's game data (hit splits, ability values) is used.
-- The sub-pages (Damage RES, Vulnerability, CRIT Rate, DEF) were **not** read, because each one triggered a new bot check.
+- **S3, more pages** (same wiki, CC-BY-SA), read on 2026-11-08 for E1 after the user cleared one bot check: "Damage RES" and "Vulnerability" (rendered pages), then "Weaken", "Weakness Break" (§ Damage Formula and § Super Break DMG), "Speed" (§ turn order, § Cycles and Breakpoints, § Action Value Modification), "Effect RES", "Debuff RES" and "Effect Hit Rate", as wikitext from the wiki's own `api.php?action=parse` in the same browser session. Only formulas and rules are referenced; no enemy tables or ability values are used.
+- The CRIT Rate and DEF sub-pages were not read.
 
 ---
 
@@ -57,7 +57,7 @@ BaseDMG = (SkillMultiplier + ExtraMultiplier) × ScalingStat + FlatDMG
 FinalATK = (CharacterBaseATK + LightConeBaseATK) × (1 + ΣATK%) + ΣflatATK
 ```
 
-HP works the same way. SPD uses the character base only.
+HP works the same way. SPD uses the character base only: `SPD = Base SPD × (1 + SPD%) + Flat SPD`, **[SOURCED]** S3 Speed (2026-11-08).
 
 - **[CROSS-CHECKED]** *(2026-11-07, E1)* R1′: `sumCharacterBase` takes character base + light cone base for HP, ATK, DEF and SPD; `sumFlatStat` computes `base × (1 + Σ%) + Σflat`, and later % buffs add `% × base` (`applyPercentStats`), which is the same sum. R1′ multiplies SPD% by character + light cone base, but light cones have no SPD, so it equals ours.
 - No game-side source was read for this, so it rests on R1 alone.
@@ -103,7 +103,9 @@ Weaken = max(0, 1 − Σ weaken)   (read from the attacker)
 ```
 
 - **[SOURCED]** S3 gives `1 − Weaken` (read from the attacker). It is not in R1.
-- Summing several Weaken sources is **[UNVERIFIED]**, because S3 shows a single value. *(E1, 2026-11-07: still no source. R1 has no Weaken term; the Fandom Weaken page returned HTTP 402.)*
+- Summing several Weaken sources is **[UNVERIFIED]**, because S3 shows a single value. *(E1, 2026-11-07: still no source. R1 has no Weaken term.)*
+- **[SOURCED]** S3 Weaken and Weakness Break (2026-11-08): Break-related DMG is not affected by Weaken. Break and Super Break hits use a Weaken multiplier of 1 (§ Break DMG). *Changed 2026-11-08: the engine used to apply Weaken to them.*
+- Summing several sources is still **[UNVERIFIED]** after reading the Weaken page (2026-11-08): it gives only `1 − Weaken`.
 - The floor at 0 is **[ENGINE]**.
 
 ## DEF
@@ -129,7 +131,7 @@ RES = 1 − clamp(EnemyRES − ΣresPen − ΣresReduction, −1.0, 0.9)
 
 - The linear form `1 − (RES − RES PEN)` is **[SOURCED]** S3 and S2. S3's Damage page states no clamp.
 - **[CROSS-CHECKED]** R1 uses `1 − min(0.90, max(−1.00, RES − RES_PEN))`, which gives the same [10%, 200%] bounds. R1 puts RES PEN and RES reduction in one pool (`RES_PEN`).
-- *E1, 2026-11-07:* search-result snippets of the Fandom Damage RES page and Prydwen also give RES between −100% and 90%, but neither page could be read (HTTP 402 / 403), so the bounds still rest on R1 alone.
+- **[SOURCED]** S3 Damage RES (read 2026-11-08): Damage RES ranges between −100% and 90%, so the RES multiplier ranges between 10% and 200%. The bounds no longer rest on R1 alone.
 - S2's pre-release remark that "RES over 100% could reduce the multiplier to 0" conflicts with this. We follow R1.
 - Enemy RES values are **caller-supplied**. Missing elements default to 0 **[ENGINE]**.
 
@@ -140,7 +142,7 @@ Vulnerability = 1 + clamp(Σ vulnerability, 0, 2.5)   (read from the target)
 ```
 
 - **[CROSS-CHECKED]** R1 uses `1 + min(2.50, max(0, VULNERABILITY))`. The cap is therefore **+250%** (a ×3.5 multiplier). *Changed 2026-11-07: the engine previously had no cap.*
-- **[SOURCED]** S3 gives `1 + Type Vulnerability + Elemental Vulnerability + All-Type Vulnerability`, i.e. additive. S3's Damage page states no cap, so the cap rests on R1 alone. *(E1, 2026-11-07: re-read in R1′ `computeCommonMultipliers`, unchanged. No other source states the cap; the Fandom Vulnerability page returned HTTP 402.)*
+- **[SOURCED]** S3 gives `1 + Type Vulnerability + Elemental Vulnerability + All-Type Vulnerability`, i.e. additive. S3's Damage page states no cap, so the cap rests on R1 alone. *(E1, 2026-11-07: re-read in R1′ `computeCommonMultipliers`, unchanged.)* *(E1, 2026-11-08: the S3 Vulnerability page says different sources stack additively, **[SOURCED]**, and states no cap. The +250% cap still rests on R1 alone.)*
 - Constants: `VULNERABILITY_MIN/MAX`.
 
 ## Mitigation (DMG Reduction)
@@ -216,7 +218,7 @@ Covered by `src/engine/__tests__/formulas.test.ts` and `src/data/__tests__/looku
 
 ```
 BreakDMG = LevelMultiplier × ElementFactor × (0.5 + MaxToughness / 40) × Multiplier × (1 + BreakEffect)
-         × Weaken × DEF × RES × Vulnerability × Mitigation × Broken × FinalDMG × TrueDMG
+         × BreakDMGIncrease × DEF × RES × Vulnerability × Mitigation × Broken × FinalDMG × TrueDMG
 ```
 
 - **LevelMultiplier** is the attacker's `CharacterBuild.breakLevelMultiplier`. `src/data` tabulates it from source A's `ExcelOutput/AvatarBreakDamage.json` (`BreakBaseDamage` by level, levels 1–100 and 120) and the account import fills it in. **[SOURCED]** A. **[CROSS-CHECKED]** at level 80 only: A's 3767.5535 equals R1's constant 3767.5533 to 3 decimals. R1 fixes the attacker at level 80, so other levels are **[UNVERIFIED]**.
@@ -226,9 +228,11 @@ BreakDMG = LevelMultiplier × ElementFactor × (0.5 + MaxToughness / 40) × Mult
 - **(1 + BreakEffect)**: **[CROSS-CHECKED]** R1 `beMulti`. The engine folds it into `DamageBreakdown.baseDmg`, so the breakdown keeps the same factors as an ordinary hit. `HitResult.break` lists the parts.
 - **No CRIT; only break-specific DMG Boost.** **[CROSS-CHECKED]** R1 uses `dmgBoostMulti = 1 + (hit-level BOOST)` for Break and Super Break (its comment: "no action-level, no elemental boost"). *(Added 2026-11-07, E4 follow-up.)* The engine's equivalent is `DMGBoost = 1 + Σ dmgBoost` over the attacker's modifiers whose condition **names the hit's tag** (`damageTags` includes `break`, or `superBreak` for Super Break). Unconditional, element-only and other-tag DMG Boost does not apply. `stats.dmgBoost` shows that sum. `critMultiplier` is 1.
 - **DEF, RES, Vulnerability, Broken, Final DMG, True DMG**: the same functions as ordinary hits. **[CROSS-CHECKED]** R1 applies the same common multipliers to Break DMG.
-- **Weaken and Mitigation** are applied as for ordinary hits. **[UNVERIFIED]** R1 models neither, for any damage type.
+- **[SOURCED]** S3 Weakness Break (2026-11-08) gives `Base DMG × Ability Multiplier × (1 + Break Effect) × DMG Increase Multiplier × DEF × RES × Vulnerability × DMG Mitigation × Broken`, with `DMG Increase Multiplier = 1 + Break DMG Increase`, and says Break-related DMG is not affected by CRIT Rate, CRIT DMG, DMG Boost and Weaken. This matches the engine: `dmgBoostMultiplier` for a break hit **is** S3's Break DMG Increase, since only modifiers naming the `break` tag count (shown as `BreakDMGIncrease` above).
+- **Weaken** is 1 for break hits, **[SOURCED]** S3. *Changed 2026-11-08 (E1): it used to be applied.* `stats.weaken` still shows the attacker's Weaken. **Mitigation** is applied, **[SOURCED]** S3.
+- **Final DMG and True DMG** are not in S3's break formula. They stay because R1 applies them (**[CROSS-CHECKED]** only).
 - **Tags** *(changed 2026-11-07, E4 follow-up)*: a Break hit carries exactly the tag `break`, and a Super Break hit exactly `superBreak`. Every modifier conditioned on that tag applies (e.g. `defIgnore` with `damageTags: ['superBreak']`, or a target-held `vulnerability` with `damageTags: ['break']`). Modifiers conditioned on other tags never do. Element-conditioned ones apply as before. The two tags are separate: an effect that boosts both must list both. Ordinary `hit` steps may not carry them. **[ENGINE]** Whether the game counts Super Break DMG as Break DMG for some effects is ability-specific and not modelled.
-- **Broken** uses the target's state at that step. Whether the game's Break DMG uses 0.9 or 1.0 is **[UNVERIFIED]** (R1 uses its global broken toggle). Put a `setBroken` step before or after the `break` step to choose.
+- **Broken** uses the target's state at that step. **[SOURCED]** S3 Weakness Break (2026-11-08): the 0.9 multiplier applies while the enemy has Toughness, and the page notes that this affects the Break DMG dealt when Toughness is depleted. So the Break DMG of the breaking hit uses 0.9: put the `break` step **before** `setBroken: true`.
 
 Function: `calculateBreakHit` / `computeBreakBreakdown` in `src/engine/breakDamage.ts`, with `formulas.breakToughnessFactor`, `breakBaseDmg` and `breakEffectMultiplier`.
 
@@ -237,7 +241,7 @@ Function: `calculateBreakHit` / `computeBreakBreakdown` in `src/engine/breakDama
 ```
 Toughness       = (1 + BreakEfficiency) × ToughnessReduction + FixedToughnessReduction
 SuperBreakDMG   = LevelMultiplier × Toughness / 10 × Multiplier × (1 + BreakEffect)
-                × Weaken × DEF × RES × Vulnerability × Mitigation × Broken × FinalDMG × TrueDMG
+                × SuperBreakDMGBoost × DEF × RES × Vulnerability × Mitigation × Broken × FinalDMG × TrueDMG
 ```
 
 - **[CROSS-CHECKED]** R1 `SuperBreakDamageFunction`: `(3767.5533 / 10) × effectiveToughness × beMulti × superBreakModMulti`, with `effectiveToughness = (1 + breakEfficiency) × toughnessDmg + fixedToughnessDmg`. R1's `toughnessDmg` is in displayed units (e.g. March 7th's Basic ATK is `.toughnessDmg(10)` in `March7th.ts@dd0c4af`).
@@ -245,7 +249,8 @@ SuperBreakDMG   = LevelMultiplier × Toughness / 10 × Multiplier × (1 + BreakE
 - **BreakEfficiency** (Weakness Break Efficiency) is the step's `breakEfficiency` + Σ the attacker's `breakEfficiency` stat *(stat added 2026-11-07, E4 follow-up)*. **[CROSS-CHECKED]** R1 uses `1 + BREAK_EFFICIENCY_BOOST`, one additive term, and scales only `toughnessDmg`, not `fixedToughnessDmg`.
 - **Multiplier** (the Super Break DMG multiplier, R1's `SUPER_BREAK_MODIFIER`) is the step's `multiplier` + Σ the attacker's `superBreakDmg` stat *(stat added 2026-11-07)*. **[CROSS-CHECKED]** R1 adds `SUPER_BREAK_MODIFIER + hit.extraSuperBreakModifier`. A step may set `multiplier: 0` and take it all from buffs. The code read does not show whether R1's stat container sums several sources, so summing them is **[ENGINE]**, consistent with R1's single additive term.
 - Both stats are read in the Super Break hit's context (tag `superBreak`). They describe the triggering hit, but the engine does not know that hit's tags, so a `breakEfficiency` modifier conditioned on e.g. `ultimate` never applies. **[ENGINE]**
-- The other factors follow § Break DMG, including the unverified Weaken and Mitigation.
+- The other factors follow § Break DMG: no CRIT, **no Weaken** (S3, changed 2026-11-08), Mitigation applied. `SuperBreakDMGBoost` is `1 + Σ dmgBoost` naming the `superBreak` tag.
+- **Open conflict (E11).** S3 Weakness Break (2026-11-08) says Super Break DMG is also considered Break DMG, and gives `… × (1 + Break DMG Increase) × (1 + Super Break DMG Increase) × …`: two factors that **multiply**. The engine differs in two ways. A `break`-tagged modifier does not reach a Super Break hit, because its only tag is `superBreak`. And the `superBreakDmg` stat is **added** to the ability multiplier, as in R1 (`SUPER_BREAK_MODIFIER`), not applied as its own factor. S3 and R1 disagree, so the engine is unchanged until E11 decides. **[UNVERIFIED]**
 
 Function: `calculateBreakHit` with `formulas.superBreakToughness` and `superBreakBaseDmg`.
 
@@ -298,6 +303,7 @@ DoT DMG = (ordinary DMG product) × Chance
 ```
 
 - Applies only to a `hit` with the `dot` tag that sets `baseChance` (the base chance of the debuff that deals the DoT, which may exceed 1). Without `baseChance` the factor is 1, as before. Validation rejects `baseChance` on a hit without `dot`.
+- **[SOURCED]** S3 Effect RES, Debuff RES and Effect Hit Rate (2026-11-08): `Real Chance = Base Chance × (1 + Effect Hit Rate) × (1 − Effect RES) × (1 − Debuff RES)`. The engine has no Debuff RES term (E12), and S3 has no Effect RES PEN term, which comes from R1 only.
 - **[CROSS-CHECKED]** R1 `DotDamageFunction`: `min(1, dotBaseChance × (1 + EHR) × (1 − enemyEffectRes + EFFECT_RES_PEN))`, applied to DoT only. The floor at 0 is **[ENGINE]**: R1 has none, and it only matters when Effect RES exceeds 1 + PEN.
 - **EHR** and **EffectRESPEN** (`effectResPen`, a new stat) are read from the attacker in the hit's context. **EffectRES** is the target's `EnemyConfig.effectRes` (caller-supplied; default 0 is **[ENGINE]**) plus Σ its `effectRes` modifiers, so an "Effect RES −X%" debuff is a negative `effectRes` modifier on the enemy.
 - The game's real-chance formula also has a debuff-specific RES factor `(1 − Debuff RES)`. Its form comes only from search snippets of the Fandom Effect RES and Debuff RES pages, which were not read (HTTP 402). R1 has no such term, and **it is not modelled**.
@@ -325,16 +331,19 @@ Used only by the turn order helper (E6, `suggestTurnOrder` in `src/engine/timeli
 gauge   = 10000 at battle start and again right after each of the unit's turns
 AV      = gauge / SPD                         (full turn: 10000 / SPD)
 SPD change:      gauge kept, so AV_new = AV_old × SPD_old / SPD_new
-Advance/Delay X: gauge_new = gauge_old − X × 10000   (X > 0 advance, X < 0 delay)
+Advance/Delay X: gauge_new = max(0, gauge_old − X × 10000)   (X > 0 advance, X < 0 delay)
+Act now:         gauge_new = 0
 ```
 
+- **[SOURCED]** S3 Speed (2026-11-08): Base AV = 10000 / SPD; each unit starts at its Base AV; the lowest AV acts and all others subtract it; the actor is reset to its Base AV. After a SPD change, `AV_new = AV_old × SPD_old / SPD_new`. Advance and Delay: `AV_new = max(0, AV_old − Base AV × (Advance% − Delay%))`, a percentage of the **full** turn time. This is the gauge formula above, since Base AV × SPD = 10000.
 - **[SOURCED]** S4: the gauge starts at 10000 for every unit, a unit acts when it reaches 0, and it refills to 10000 after the unit acts. AV = gauge / SPD. A SPD change scales the current AV by old / new SPD. Advance and Delay add or subtract a percentage **of 10000** (not of the remaining gauge). S5 gives the same start and reset. R2's APL reference also says (in its Chinese page) that the next turn comes a full 10000 / current SPD later.
 - **[SOURCED]** S4, ties: characters sort before enemies, and the lower slot acts first. **[UNVERIFIED]** S4 describes this for the battle-start order and a stable sort afterwards. The engine applies the same rule to every tie mid-battle.
-- **[UNVERIFIED]** No floor at 0. S4 gives the formula with no floor; S5 says a negative gauge is allowed and puts the unit first in line. The engine keeps negative gauges: the most advanced unit acts first, at the current AV (time never goes back).
+- **[SOURCED]** Floor at 0: S3's `max(0, …)`. *Changed 2026-11-08 (E1): the engine used to keep negative gauges, following S5, which says a negative gauge is allowed. S3 is explicit, and S4 gives no floor either way.* Two units advanced to 0 tie, and the tie rule decides.
+- **[SOURCED]** "Immediately take action" (`TimelineAdjustment.actNow`): S3 Speed says it sets the AV to 0 whatever it was, so it fully advances even a delayed unit, which a 100% advance does not. Applied after `spd` and `advance` in the same adjustment. If it lands during another unit's turn, that turn finishes first, which the trigger-after-turn rule already gives.
 - **[ENGINE]** Ultimates, follow-ups and extra actions are not turns. They do not touch any gauge, and the helper does not list them; the user adds them as `extra` events. R2 says the same of its own AV readings: only turns count. Effects that cancel or insert turns in the game (e.g. Frozen, Toughness Break delay) must be entered as adjustments.
-- **[ENGINE]** An adjustment triggered by a turn is applied right after that turn ends, after the actor's gauge refill. One that targets the actor therefore changes its next turn.
+- An adjustment triggered by a turn is applied right after that turn ends, after the actor's gauge refill. One that targets the actor therefore changes its next turn. **[SOURCED]** S3 Speed: post-action Ultimates **can** advance the actor's next action because its AV has been reset, while pre-action Ultimates cannot. A pre-action effect must be entered as an adjustment on the previous turn.
 - **[ENGINE]** Turns at exactly `avLimit` are included. Ties are detected with a relative tolerance of 1e-9 (so 3 × 10000/3 ties with 10000). No AV value is rounded.
-- **[UNVERIFIED]** Cycles. Community guides say Memory of Chaos counts a first cycle of 150 AV and 100 AV per later cycle; no read source confirms it. The engine has **no default**: the caller supplies `cycleAv`, and a turn at exactly a boundary belongs to the earlier cycle **[ENGINE]**.
+- **[SOURCED]** Cycles, S3 Speed (2026-11-08): in challenges such as the Forgotten Hall, the first cycle at the start of **each wave** lasts 150 AV and later cycles 100 AV each. Exported as `CHALLENGE_CYCLE_AV`. The helper models one wave and applies cycles only when the caller passes `cycleAv`. A turn at exactly a boundary belongs to the earlier cycle **[ENGINE]**.
 
 Hand-computed tests (`src/engine/__tests__/timeline.test.ts`; synthetic SPD values):
 
@@ -344,7 +353,9 @@ Hand-computed tests (`src/engine/__tests__/timeline.test.ts`; synthetic SPD valu
 | SPD 100 and 200; a advanced 25% after b's turn 1 | a's gauge at 50: 10000 − 50 × 100 = 5000 − 2500 = 2500 → 50 + 25 = 75 | b@50, a@75, b@100, b@150, a@175, b@200 |
 | Same, but a's SPD becomes 125 instead | 5000 / 125 = 40 → 90, then 90 + 80 = 170 | b@50, a@90, b@100, b@150, a@170, b@200 |
 | Enemy delayed 25% at start | 12500 / 100 = 125 | a@100, e@125, a@200 |
-| Advance 150% and 100% at start | gauges −5000 and 0: both act at 0, more advanced first | a@0, b@0, then the tie at 100 by slot |
+| Advance 150% and 100% at start | max(0, −5000) = 0 and 0: both act at 0, tie by slot | b@0, a@0, b@100, a@100 |
+| Enemy delayed 50%, then advanced 100% | 15000 − 10000 = 5000 → 50 | e@50, a@100, e@150, a@200 |
+| Enemy delayed 50%, then `actNow` | gauge 0 → 0, then 100 (tie, ally first) | e@0, a@100, e@100, a@200, e@200 |
 | Cycles first 150, later 100 | 50, 100, 150 → 1; 200, 250 → 2; 300 → 3 | |
 
 Function: `formulas.actionValue` (a full gauge, 10000 / SPD), used by `suggestTurnOrder`.
