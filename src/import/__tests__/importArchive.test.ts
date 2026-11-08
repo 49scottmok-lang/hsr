@@ -38,6 +38,8 @@ describe('importArchive (I2) with the synthetic fixture (I3)', () => {
     expect(builds.map((b) => b.id)).toEqual(['9001']);
     // The game ID doubles as the portrait key (characterId) for the UI.
     expect(builds.map((b) => b.characterId)).toEqual(['9001']);
+    // Skill-tree levels (fixture: basic 6, skill 10, ult 10) are kept for the kit prefill.
+    expect(build.skillLevels).toEqual({ basic: 6, skill: 10, ultimate: 10, tree: 'base' });
     expect(report.builds.map((b) => [b.characterId, b.built])).toEqual([
       ['9001', true],
       ['9002', false],
@@ -163,6 +165,7 @@ describe('importArchive edge cases', () => {
     expect(builds[0]!.traces).toEqual([{ stat: 'critDmg', value: 0.04 }]);
     const problems = report.builds[0]!.problems;
     expect(problems[0]).toMatchObject({ kind: 'traceTree', tree: 'enhanced' });
+    expect(builds[0]!.skillLevels?.tree).toBe('enhanced');
     // stat_2, stat_4 and stat_10 have no enhanced rows in the fixture.
     expect(problems.filter((p) => p.kind === 'tableMiss').length).toBe(3);
   });

@@ -8,7 +8,8 @@ import { RELIC_MAIN_STATS } from './generated/relicMainStats';
 import { SET_BONUSES } from './generated/setBonuses';
 import { TRACES } from './generated/traces';
 import { BREAK_LEVEL_MULTIPLIERS } from './generated/breakLevelMultipliers';
-import type { DataTables } from './schema';
+import { SKILL_KITS } from './generated/skillKits';
+import type { DataTables, SkillTables } from './schema';
 
 export * from './schema';
 export { validateDataTables, DATA_LIMITS } from './validate';
@@ -33,6 +34,10 @@ export const DATA_TABLES: DataTables = {
   traces: TRACES,
   breakLevelMultipliers: BREAK_LEVEL_MULTIPLIERS,
 };
+/** Skill kit templates for the auto battle (added 2026-11-08). */
+export const SKILL_TABLES: SkillTables = { kits: SKILL_KITS };
+export { kitTemplate, skillKit, effectiveSkillLevel } from './kits';
+export type { KitLevels, KitTemplateRequest, KitTemplateAction, KitGap, KitTemplate } from './kits';
 export { DATA_CREDITS, GAME_DATA_NOTICE, ARTWORK_REPO, ARTWORK_COMMIT } from './credits';
 export type { DataCredit, CreditRole } from './credits';
 export { NAME_TABLES, validateNameTables, pathName, characterName, lightConeName, relicSetName } from './names';

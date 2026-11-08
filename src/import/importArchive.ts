@@ -189,8 +189,7 @@ function traceTree(c: ArchiveCharacter, tables: DataTables, r: Collector): Trace
   return tree;
 }
 
-function traceStats(c: ArchiveCharacter, tables: DataTables, r: Collector): StatModifier[] {
-  const tree = traceTree(c, tables, r);
+function traceStats(c: ArchiveCharacter, tree: TraceTree, tables: DataTables, r: Collector): StatModifier[] {
   const mods: StatModifier[] = [];
   for (const key of STAT_TRACES) {
     if (!c.traces[key]) continue;
@@ -253,7 +252,8 @@ function importCharacter(
   const relics = archive.relics.filter((x) => x.location === c.id);
   const relicMods = relicStats(relics, tables, r);
   const sets = setEffects(relics, tables, r);
-  const traces = traceStats(c, tables, r);
+  const tree = traceTree(c, tables, r);
+  const traces = traceStats(c, tree, tables, r);
 
   r.toEnter.unshift({ kind: 'kit', message: 'skill multipliers, talents and other kit effects' });
   if (c.eidolon > 0) r.toEnter.splice(1, 0, { kind: 'eidolonEffects', eidolon: c.eidolon, message: `eidolon effects E1–E${c.eidolon}` });
@@ -262,6 +262,8 @@ function importCharacter(
     id: c.id,
     name: c.name,
     characterId: c.id,
+    // The kit uses the same tree as the traces (same ability_version assumption).
+    skillLevels: { basic: c.skills.basic, skill: c.skills.skill, ultimate: c.skills.ult, tree },
     level: c.level,
     element: base.value.element,
     eidolon: c.eidolon,

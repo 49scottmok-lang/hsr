@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { characterEnergyCost, DATA_TABLES } from '../../data';
-import type { ActionStep, CharacterBuild } from '../../engine/index';
+import { runRotation, simulateBattle, type ActionStep, type CharacterBuild } from '../../engine/index';
 import { t } from '../i18n';
-import { newKit, toAutoBattleInput, type AutoKitDraft } from './auto-battle';
+import { kitTemplateFor, newKit, toAutoBattleInput, type AutoKitDraft } from './auto-battle';
 import { scenarioReducer } from './reducer';
 import { exportScenario, importScenario } from './scenario-json';
 import type { Scenario } from './scenario';
@@ -43,6 +43,50 @@ describe('newKit', () => {
     expect(newKit(build('x')).ultimate).toEqual({ steps: [] });
     expect(characterEnergyCost(DATA_TABLES, '1407')).toBe(0);
     expect(newKit(build('x', '1407')).ultimate).toEqual({ steps: [] });
+  });
+});
+
+describe('newKit from the skill table', () => {
+  // An imported Himeko (1003) with synthetic stats (TEST FIXTURE) and skill-tree levels 6 / 10 / 10.
+  const himeko: CharacterBuild = { ...build('h', '1003'), skillLevels: { basic: 6, skill: 10, ultimate: 10, tree: 'base' } };
+  const enemies = [1, 2, 3].map((n) => ({ id: `e${n}`, name: `e${n}`, level: 90, res: {}, spd: 100 }));
+  const multipliers = (steps: readonly ActionStep[]) => steps.map((s) => s.op === 'hit' && [s.hit.targetId, s.hit.multiplier]);
+
+  it('fills multipliers, Energy and skill points at the imported levels', () => {
+    const kit = newKit(himeko, enemies);
+    expect(kit.prefill).toEqual({ basic: 6, skill: 10, ultimate: 10 });
+    // A at the levels above (cross-checked against B in data/__tests__/kits.test.ts): Basic 100%, Skill 200% + 80% Blast, Ultimate 230% AoE.
+    expect(multipliers(kit.basic.steps)).toEqual([['e1', 1]]);
+    expect(multipliers(kit.skill.steps)).toEqual([['e1', 2], ['e2', 0.8]]);
+    expect(multipliers(kit.ultimate.steps)).toEqual([['e1', 2.3], ['e2', 2.3], ['e3', 2.3]]);
+    expect(kit.basic).toMatchObject({ energy: 20, skillPoints: 1 });
+    expect(kit.skill).toMatchObject({ energy: 30, skillPoints: 1 });
+    expect(kit.ultimate).toMatchObject({ energy: 5, energyCost: characterEnergyCost(DATA_TABLES, '1003') });
+  });
+
+  it('adds eidolon levels and follows the chosen target', () => {
+    const template = kitTemplateFor({ ...himeko, eidolon: 3 }, enemies, { basic: 6, skill: 10, ultimate: 10, targetId: 'e2' });
+    // E3: Basic +1 (7 → 110%), Skill +2 (12 → 220% main, 88% neighbours).
+    expect(template?.ok && multipliers(template.value.actions.basic!.steps)).toEqual([['e2', 1.1]]);
+    expect(template?.ok && multipliers(template.value.actions.skill!.steps)).toEqual([['e2', 2.2], ['e1', 0.88], ['e3', 0.88]]);
+  });
+
+  it('a removed target falls back to the first enemy; no game ID means no template', () => {
+    const template = kitTemplateFor(himeko, enemies, { basic: 6, skill: 10, ultimate: 10, targetId: 'gone' });
+    expect(template?.ok && multipliers(template.value.actions.basic!.steps)).toEqual([['e1', 1]]);
+    expect(kitTemplateFor(build('x'), enemies, {})).toBeUndefined();
+  });
+
+  it('produces a damaging rotation with no multiplier typed in', () => {
+    const team: Scenario['teams'][0] = {
+      label: 'A', team: [himeko], events: [],
+      autoBattle: { kits: [{ ...newKit(himeko, enemies), startEnergy: 120 }], avLimit: 150, skillPointStart: 3, skillPointMax: 5 },
+    };
+    const input = toAutoBattleInput({ critMode: 'expected', enemies, teams: [team, team] }, 0);
+    const battle = simulateBattle(input);
+    const result = runRotation({ team: input.team, enemies, events: battle.events, critMode: 'expected' });
+    expect(battle.actions.map(({ action }) => action)).toContain('ultimate');
+    expect(result.totalDamage).toBeGreaterThan(0);
   });
 });
 

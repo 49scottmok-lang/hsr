@@ -14,6 +14,8 @@ import { fileURLToPath } from 'node:url';
 import { parseExcelJson, transformNames, transformSourceA } from './sourceA.ts';
 import type { RawNamesA, RawSourceA } from './sourceA.ts';
 import { transformEnemies } from './enemiesA.ts';
+import { transformSkills } from './skillsA.ts';
+import type { RawSkillsA } from './skillsA.ts';
 import type { EnemySelection, RawEnemiesA, RawModeTables } from './enemiesA.ts';
 import type { EndgameMode } from '../../src/data/schema.ts';
 
@@ -42,6 +44,11 @@ const NAME_TABLES = {
   baseTypes: 'AvatarBaseType',
   multiplePathAvatars: 'MultiplePathAvatarConfig',
 } as const satisfies Partial<Record<keyof RawNamesA, string>>;
+/** Skill kit tables (auto battle prefill, added 2026-11-08). */
+const SKILL_TABLES = {
+  skills: 'AvatarSkillConfig',
+  ranks: 'AvatarRankConfig',
+} as const satisfies Partial<Record<keyof RawSkillsA, string>>;
 /** Endgame enemy tables (added 2026-11-08). */
 const ENEMY_TABLES = {
   monsters: 'MonsterConfig',
@@ -129,6 +136,14 @@ async function main(): Promise<void> {
     ENEMY_SELECTION,
   );
 
+  const skillKits = transformSkills({
+    avatars: raw.avatars as unknown as RawSkillsA['avatars'],
+    skillTree: raw.skillTree as unknown as RawSkillsA['skillTree'],
+    skills: (await load(file(SKILL_TABLES.skills), fromDir)) as RawSkillsA['skills'],
+    ranks: (await load(file(SKILL_TABLES.ranks), fromDir)) as RawSkillsA['ranks'],
+    textMap,
+  });
+
   const outDir = join(dirname(fileURLToPath(import.meta.url)), '../../src/data/generated');
   mkdirSync(outDir, { recursive: true });
 
@@ -147,6 +162,7 @@ async function main(): Promise<void> {
       src('RELIC_MAIN_STAT_SOURCE', [TABLES.relics, TABLES.relicMainAffixes]) +
       src('SET_BONUS_SOURCE', [TABLES.relicSets, TABLES.relicSetSkills]) +
       src('TRACE_SOURCE', [TABLES.avatars, TABLES.skillTree]) +
+      src('SKILL_KIT_SOURCE', [TABLES.avatars, TABLES.skillTree, SKILL_TABLES.skills, SKILL_TABLES.ranks], [TEXT_MAP]) +
       src('BREAK_LEVEL_MULTIPLIER_SOURCE', [TABLES.avatarBreakDamage]) +
       src('PATH_NAME_SOURCE', [NAME_TABLES.baseTypes], [TEXT_MAP]) +
       src('CHARACTER_NAME_SOURCE', [TABLES.avatars, NAME_TABLES.multiplePathAvatars], [TEXT_MAP]) +
@@ -170,6 +186,7 @@ async function main(): Promise<void> {
   write('relicMainStats.ts', 'RelicMainStatRecord', 'RELIC_MAIN_STATS', 'RELIC_MAIN_STAT_SOURCE', out.relicMainStats);
   write('setBonuses.ts', 'SetBonusRecord', 'SET_BONUSES', 'SET_BONUS_SOURCE', out.setBonuses);
   write('traces.ts', 'TraceRecord', 'TRACES', 'TRACE_SOURCE', out.traces);
+  write('skillKits.ts', 'SkillKitRecord', 'SKILL_KITS', 'SKILL_KIT_SOURCE', skillKits);
   write('breakLevelMultipliers.ts', 'BreakLevelMultiplierRecord', 'BREAK_LEVEL_MULTIPLIERS', 'BREAK_LEVEL_MULTIPLIER_SOURCE', out.breakLevelMultipliers);
   write('pathNames.ts', 'PathNameRecord', 'PATH_NAMES', 'PATH_NAME_SOURCE', names.paths);
   write('characterNames.ts', 'CharacterNameRecord', 'CHARACTER_NAMES', 'CHARACTER_NAME_SOURCE', names.characters);

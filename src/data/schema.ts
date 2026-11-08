@@ -155,6 +155,64 @@ export interface BreakLevelMultiplierRecord extends Cited {
   readonly value: number;
 }
 
+// --- Skill kits (auto battle prefill, added 2026-11-08) -----------------------
+//
+// Basic ATK, Skill and Ultimate rows from A's `AvatarSkillConfig`. Damage is
+// read from the game's own description template by a strict parser
+// (`scripts/data/skillsA.ts`); anything it cannot read is `unsupported` and
+// stays manual. Only damage is read: buffs, debuffs and conditions are not.
+
+export const KIT_SLOTS = ['basic', 'skill', 'ultimate'] as const;
+export type KitSlot = (typeof KIT_SLOTS)[number];
+
+/** `target`: the chosen enemy; `adjacent`: its neighbours; `all`: every enemy. */
+export const SKILL_AREAS = ['target', 'adjacent', 'all'] as const;
+export type SkillArea = (typeof SKILL_AREAS)[number];
+
+export interface SkillDamageRecord {
+  readonly area: SkillArea;
+  readonly scaling: 'atk' | 'hp' | 'def';
+  /** Skill multiplier (fraction) per skill level; index = level − 1. */
+  readonly multipliers: readonly number[];
+}
+
+export interface SkillRecord {
+  /** Source `SkillID`. */
+  readonly skillId: string;
+  readonly slot: KitSlot;
+  /** Position in the skill-tree point's `LevelUpSkillID`; 0 is the normal version. */
+  readonly variant: number;
+  /** Skill name from the Traditional Chinese text map. */
+  readonly name: string;
+  readonly element: Element;
+  /** Energy gained (`SPBase`), before Energy Regeneration Rate. */
+  readonly energy: number;
+  /** Skill points generated (`BPAdd`). */
+  readonly skillPointGain: number;
+  /** Skill points spent (`BPNeed`, -1 read as 0). */
+  readonly skillPointCost: number;
+  /** Highest level with a row. */
+  readonly maxLevel: number;
+  /** Empty for a skill that deals no damage, and for an unsupported one. */
+  readonly damage: readonly SkillDamageRecord[];
+  /** Why the description could not be read as plain hits. The damage must then be entered by hand. */
+  readonly unsupported?: string;
+  /** The description has effects besides the parsed damage (buffs, debuffs, conditional bonuses). They are not included. */
+  readonly otherEffects: boolean;
+}
+
+export interface SkillKitRecord extends Cited {
+  readonly characterId: string;
+  readonly tree: TraceTree;
+  readonly skills: readonly SkillRecord[];
+  /** Skill level bonuses from eidolons (`AvatarRankConfig.SkillAddLevelList`), per slot. */
+  readonly eidolonLevels: readonly { readonly eidolon: number; readonly slot: KitSlot; readonly add: number }[];
+}
+
+export interface SkillTables {
+  readonly kits: readonly SkillKitRecord[];
+}
+
 export interface DataTables {
   readonly characters: readonly CharacterRecord[];
   readonly lightCones: readonly LightConeRecord[];

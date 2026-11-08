@@ -67,7 +67,7 @@ All engine functions are deterministic. None mutates its inputs, and this is tes
 
 Full definitions are in `src/engine/types.ts`.
 
-- **`CharacterBuild`**: id, optional `characterId` (game character ID for portraits and names; display metadata the engine never reads), level, element, base HP/ATK/DEF/SPD, optional base CRIT, optional `breakLevelMultiplier` (E4), `lightCone` (base stats plus passive `EffectDef[]`), `relics` (summed `StatModifier[]` plus set-bonus `EffectDef[]`), `traces`, `passiveEffects`.
+- **`CharacterBuild`**: id, optional `characterId` (game character ID for portraits and names; display metadata the engine never reads), optional `skillLevels` (skill-tree levels and tree from the import, for the kit prefill; metadata the engine never reads), level, element, base HP/ATK/DEF/SPD, optional base CRIT, optional `breakLevelMultiplier` (E4), `lightCone` (base stats plus passive `EffectDef[]`), `relics` (summed `StatModifier[]` plus set-bonus `EffectDef[]`), `traces`, `passiveEffects`.
 - **`EnemyConfig`**: id, level, optional `baseDef`, per-element `res`, initial `broken`, optional `maxToughness` (displayed units, E4), optional `effectRes` (E8), optional `debuffRes` per DoT type (E12), optional `spd` (D6: for the turn order helper's caller only; `runRotation` never reads it), `passiveEffects`.
 - **`StatModifier`**: `{ stat, value, condition? }`. The condition can filter on hit element, damage tags (any-of), or counterpart unit IDs.
 - **`EffectDef`** (buff or debuff): id, kind, modifiers, optional `conversions` (`StatConversion[]`, E7), `DurationSpec`, `maxStacks`, `stacking` (E5), `source`.
@@ -147,7 +147,8 @@ validateAutoBattleInput(input) → string[]
 - **Input.** One `AutoKit` per team member that should act: `basic` (steps, Energy, skill points gained), optional `skill` (skill points spent) and `ultimate` (`energyCost`), `startEnergy`, `useSkill`, `skillPointReserve`, `useUltimate`. Every enemy needs `EnemyConfig.spd`. All numbers are user input; the UI may pre-fill `ultimate.energyCost` from `characterEnergyCost` in `src/data`.
 - **Output.** `events` is an ordinary `RotationEvent[]` (ids `auto-<n>`; turns as `turn`, Ultimates as `extra`), which the UI puts into the team's rotation and `runRotation` scores. `actions` is a log, one entry per event, with the action kind, AV, cycle, skill points after it and the actor's Energy after it.
 - **Rules.** `FORMULAS.md § Auto battle`. The turn order is `suggestTurnOrder` with static SPD; actions never move gauges.
-- **Why semi-auto.** The project ships no kit data (SPEC D5, AGENTS rule 3), so the user enters each kit once and the simulator only repeats it under the Energy and skill point rules. The generated rotation stays editable by hand.
+- **Why semi-auto.** The simulator only repeats each kit under the Energy and skill point rules; it plays no talents, follow-ups or buffs. The generated rotation stays editable by hand.
+- **Prefill (D8, 2026-11-08).** `kitTemplate(SKILL_TABLES, { characterId, tree?, eidolon?, levels, targetId, enemyIds })` in `src/data` returns `{ actions: { basic?, skill?, ultimate? }, gaps, source, gameVersion }`: each supported action's hit steps, Energy, skill points and eidolon-adjusted level, and a gap (`noData`, `unsupported`, `level`, `skillPoints`) for each action it cannot fill. The account import stores the skill-tree levels and tree on `CharacterBuild.skillLevels` (metadata; the engine never reads it), and the auto battle panel fills a new kit from them. Rules: `FORMULAS.md § Skill kit templates`.
 - Throws `EngineValidationError` on invalid input; paths name the kit (`kits[i].skill.steps[0]…`).
 
 ## Team comparison
